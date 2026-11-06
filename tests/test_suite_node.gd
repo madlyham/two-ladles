@@ -3,6 +3,10 @@ extends Node
 ## Runs inside the active SceneTree with full Autoload access (`GameData`, `NetworkManager`, `ShiftManager`).
 ## Run via: godot --headless -- --run-tests
 
+const CampaignLevelSpec = preload("res://scripts/data/campaign_level_spec.gd")
+const CharacterProgressionData = preload("res://scripts/data/character_progression_data.gd")
+const RecipeData = preload("res://scripts/data/recipe_data.gd")
+
 var tests_run: int = 0
 var tests_passed: int = 0
 var tests_failed: int = 0
@@ -21,6 +25,11 @@ func _ready() -> void:
 	_test_kitchen_flow_and_rush_rhythm()
 	_test_washing_station_plate_lifecycle()
 	_test_lobby_exclusivity_and_ready_reset()
+	_test_progression_system()
+	_test_linh_execution_specialist_tiers()
+	_test_jiwon_delegation_part_time_crew()
+	_test_campaign_levels_and_progression_unlocks()
+	_test_endless_rush_mode()
 
 	print("------------------------------------------------------------")
 	print("  RESULTS: %d / %d Passed | %d Failed" % [tests_passed, tests_run, tests_failed])
@@ -277,3 +286,223 @@ func _test_lobby_exclusivity_and_ready_reset() -> void:
 
 	var start_blocked: Dictionary = NetworkManager.can_start_shift(true)
 	_assert(not bool(start_blocked.get("ok", false)), "Host cannot start shift after a player's Ready status was reset")
+
+func _test_progression_system() -> void:
+	print("\n[Suite 9] Milestone 3 Progression, Stage Unlocks & Kitchen Upgrades")
+	ProgressionManager.reset_progression_for_testing()
+
+	_assert(ProgressionManager.coins == 150, "Player starts with 150 initial seed coins")
+	_assert(ProgressionManager.highest_unlocked_stage == 1, "Only Stage 1 is unlocked initially")
+
+	# Shift 1: 1 Star result (score 250) -> does not unlock Stage 2
+	var s1_res: Dictionary = ProgressionManager.record_shift_results(1, {
+		"total_score": 250,
+		"stars": 1,
+		"handoffs_completed": 2,
+		"rush_rhythms_triggered": 0
+	})
+	_assert(int(s1_res.get("earned_coins", 0)) == 41, "Shift 1 earned 41 coins (250/8 + 2*5)")
+	_assert(ProgressionManager.highest_unlocked_stage == 1, "Stage 2 remains locked after 1-star shift")
+
+	# Shift 2: 2 Stars result (score 400) -> unlocks Stage 2!
+	var s2_res: Dictionary = ProgressionManager.record_shift_results(1, {
+		"total_score": 400,
+		"stars": 2,
+		"handoffs_completed": 3,
+		"rush_rhythms_triggered": 1
+	})
+	_assert(bool(s2_res.get("newly_unlocked", false)), "Achieving 2 stars unlocks the next stage")
+	_assert(ProgressionManager.highest_unlocked_stage == 2, "Highest unlocked stage is now Stage 2 (Village Market Restaurant)")
+
+	# Upgrades: purchase sharp_santoku_knives (cost 100)
+	var prev_balance: int = ProgressionManager.coins
+	var buy_ok: Dictionary = ProgressionManager.purchase_upgrade("sharp_santoku_knives")
+	_assert(bool(buy_ok.get("ok", false)), "Successfully purchased Sharp Santoku Knife Set")
+	_assert(ProgressionManager.is_upgrade_owned("sharp_santoku_knives"), "Sharp knives upgrade marked as owned")
+	_assert(ProgressionManager.coins == prev_balance - 100, "100 coins deducted for knife upgrade")
+
+	# Duplicate purchase rejected
+	var dup_buy: Dictionary = ProgressionManager.purchase_upgrade("sharp_santoku_knives")
+	_assert(not bool(dup_buy.get("ok", false)), "Duplicate upgrade purchase is rejected")
+
+	# Test knife upgrade effect on Prep Station rhythm window
+	var prep: PrepStation = PrepStation.new()
+	prep.place_raw_item({"item_id": "pork_raw", "display_name": "Raw Pork Belly"})
+	prep.perform_strike(0.0, "", "linh")
+	# Ideal interval is 0.45s. Base good window is 0.28s. With +15% from knife upgrade, window is 0.322s.
+	# An interval of 0.75s has delta = 0.30s (> 0.28s, but <= 0.322s)!
+	var upgraded_strike: Dictionary = prep.perform_strike(0.75, "", "linh")
+	_assert(upgraded_strike["grade"] == RecipeData.CadenceGrade.GOOD, "Purchased knife upgrade widened cadence tolerance window")
+	prep.free()
+
+	# Test JSON persistence save and reload
+	ProgressionManager.save_progression()
+	var reload_ok: bool = ProgressionManager.load_progression()
+	_assert(reload_ok, "Progression data saved and reloaded from JSON file successfully")
+	_assert(ProgressionManager.highest_unlocked_stage == 2, "Reloaded progression preserves unlocked stages")
+	_assert(ProgressionManager.is_upgrade_owned("sharp_santoku_knives"), "Reloaded progression preserves owned upgrades")
+
+func _test_linh_execution_specialist_tiers() -> void:
+	print("\n[Suite 10] Linh Execution Specialist: Tiers 1-3 Speed Multipliers & Visual Third Arm")
+	var player_linh: PlayerController = PlayerController.new()
+	add_child(player_linh)
+
+	# Tier 1: Ordinary Chef
+	player_linh.configure_chef(1, "linh", "prep_master", 1)
+	_assert(is_equal_approx(player_linh.get_task_speed_multiplier(), 1.0), "Linh Tier 1 task speed multiplier is 1.0x (Ordinary Chef)")
+	_assert(not player_linh.third_arm_mesh.visible, "Linh Tier 1 has no mechanical third arm visible")
+
+	# Tier 2: Workshop Engineer (~8% faster, rustic mechanical third arm)
+	player_linh.configure_chef(1, "linh", "prep_master", 2)
+	_assert(is_equal_approx(player_linh.get_task_speed_multiplier(), 0.92), "Linh Tier 2 task speed multiplier is 0.92x (~8% faster)")
+	_assert(player_linh.third_arm_mesh.visible, "Linh Tier 2 has rustic mechanical third arm visible")
+	_assert(not player_linh.third_arm_glow_mesh.visible, "Linh Tier 2 has no neon glow on rustic third arm")
+
+	# Tier 3: Precision Engineer (~15% faster, sleek precision white-and-blue glowing arm)
+	player_linh.configure_chef(1, "linh", "prep_master", 3)
+	_assert(is_equal_approx(player_linh.get_task_speed_multiplier(), 0.85), "Linh Tier 3 task speed multiplier is 0.85x (~15% faster)")
+	_assert(player_linh.third_arm_mesh.visible and player_linh.third_arm_glow_mesh.visible, "Linh Tier 3 has futuristic white-and-blue glowing precision arm visible")
+
+	# Verify strike execution timing with Linh Tier 3
+	var prep: PrepStation = PrepStation.new()
+	prep.place_raw_item({"item_id": "pork_raw", "display_name": "Raw Pork Belly"})
+	prep.perform_strike(0.0, "", "linh", 0.85) # First strike
+	# Ideal interval for Tier 3 is 0.45s * 0.85 = 0.3825s!
+	var fast_strike: Dictionary = prep.perform_strike(0.385, "", "linh", 0.85)
+	_assert(fast_strike["grade"] == RecipeData.CadenceGrade.PERFECT, "Linh Tier 3 executes perfect cadence strikes at faster 0.38s intervals")
+
+	remove_child(player_linh)
+	player_linh.free()
+	prep.free()
+
+func _test_jiwon_delegation_part_time_crew() -> void:
+	print("\n[Suite 11] Jiwon Multitasking & Delegation: Part-Time Worker Hiring & State Machine")
+	ProgressionManager.coins = 100
+	ProgressionManager.jiwon_tier = 1
+
+	var kitchen: KitchenController = KitchenController.new()
+	add_child(kitchen)
+
+	var p2: PlayerController = kitchen.players_by_peer[2]
+	p2.character_tier = 1
+
+	# 1. Tier 1 (Burnt-out Executive): 0 part-timer slots -> hiring rejected
+	var t1_hire: Dictionary = kitchen.request_hire_worker(2, "prep_assistant")
+	_assert(not bool(t1_hire.get("ok", false)), "Jiwon Tier 1 cannot hire part-time crew (0 slots available)")
+
+	# 2. Tier 2 (Restaurant Manager): 1 part-timer slot -> can hire 1 worker for 20 coins
+	ProgressionManager.jiwon_tier = 2
+	p2.character_tier = 2
+
+	var t2_hire: Dictionary = kitchen.request_hire_worker(2, "prep_assistant")
+	_assert(bool(t2_hire.get("ok", false)), "Jiwon Tier 2 successfully hires Prep Assistant for 20 coins")
+	_assert(ProgressionManager.coins == 80, "20 coins deducted from restaurant vault (Balance: 80)")
+	_assert(kitchen.active_workers.size() == 1, "Exactly 1 active part-time worker in kitchen")
+
+	# 3. Attempting to hire second worker at Tier 2 is rejected (slot limit = 1)
+	var t2_second_hire: Dictionary = kitchen.request_hire_worker(2, "dishwasher")
+	_assert(not bool(t2_second_hire.get("ok", false)), "Hiring second worker rejected under Tier 2 (slot limit = 1)")
+
+	# 4. Verify worker state machine and automated prep strike
+	var worker_id: String = t2_hire["worker_id"]
+	var worker: PartTimeWorker = kitchen.active_workers[worker_id]
+	_assert(worker.current_state == PartTimeWorker.WorkerState.WALKING_IN, "Hired worker enters in WALKING_IN state")
+
+	# Place an unchopped item on East prep counter
+	var prep_east: PrepStation = kitchen.stations["prep_east"] as PrepStation
+	prep_east.place_raw_item({"item_id": "daikon_carrot_raw", "display_name": "Raw Daikon & Carrot"})
+
+	# Simulate worker reaching station and working
+	worker.position = prep_east.position + Vector3(0.0, 0.0, 0.9)
+	worker._process(0.1) # Triggers state switch to WORKING
+	_assert(worker.current_state == PartTimeWorker.WorkerState.WORKING, "Worker transitions to WORKING state upon reaching station")
+
+	# Tick worker task execution
+	worker._process(1.2) # Interval is 1.1s -> triggers strike
+	_assert(prep_east.strikes_completed >= 1, "Prep Assistant automated strike advanced prep progress on station")
+
+	# Contract expiration -> walking out
+	worker.contract_remaining_sec = 0.0
+	worker._process(0.1)
+	_assert(worker.current_state == PartTimeWorker.WorkerState.WALKING_OUT, "Worker transitions to WALKING_OUT when contract expires")
+
+	# Cooldown check: hiring prep_assistant again before 45s cooldown is rejected
+	var cd_hire: Dictionary = kitchen.request_hire_worker(2, "prep_assistant")
+	_assert(not bool(cd_hire.get("ok", false)), "Hiring worker on active agency cooldown is rejected")
+
+	# 5. Tier 3 (Business Operator): 2 simultaneous part-timer slots
+	ProgressionManager.jiwon_tier = 3
+	p2.character_tier = 3
+	kitchen.active_workers.clear()
+	kitchen.worker_cooldowns.clear()
+	var hire1: Dictionary = kitchen.request_hire_worker(2, "prep_assistant")
+	var hire2: Dictionary = kitchen.request_hire_worker(2, "dishwasher")
+	_assert(bool(hire1.get("ok", false)) and bool(hire2.get("ok", false)), "Jiwon Tier 3 can hire 2 simultaneous part-timers")
+	_assert(kitchen.active_workers.size() == 2, "Kitchen manages 2 simultaneous part-time workers at Tier 3")
+
+	kitchen.queue_free()
+
+func _test_campaign_levels_and_progression_unlocks() -> void:
+	print("\n[Suite 12] 5 Handcrafted Campaign Levels & Milestone 3 Character Tier Unlocks")
+	_assert(GameData.campaign_levels.size() == 5, "Exactly 5 handcrafted campaign levels registered")
+
+	var lvl1: CampaignLevelSpec = GameData.campaign_levels[1]
+	var lvl3: CampaignLevelSpec = GameData.campaign_levels[3]
+	var lvl5: CampaignLevelSpec = GameData.campaign_levels[5]
+
+	_assert(lvl1.allowed_recipes.size() == 2, "Level 1 starts with 2 starter recipes (First Customer)")
+	_assert("tteokbokki" in lvl3.allowed_recipes, "Level 3 introduces Korean Tteokbokki (Night Market)")
+	_assert(lvl5.allowed_recipes.size() == 4, "Level 5 combines all 4 authentic recipes (Grand Opening)")
+
+	# Verify Character Tier Unlocks based on campaign progress:
+	ProgressionManager.reset_progression_for_testing()
+	_assert(ProgressionManager.linh_tier == 1 and ProgressionManager.jiwon_tier == 1, "Chefs start at Tier 1")
+
+	# Complete Level 3 with 2 stars -> upgrades Linh & Jiwon to Tier 2!
+	var l3_res: Dictionary = ProgressionManager.record_shift_results(3, {
+		"total_score": 600,
+		"stars": 2,
+		"handoffs_completed": 4,
+		"rush_rhythms_triggered": 1
+	})
+	_assert(bool(l3_res.get("tier_upgraded", false)), "Completing Level 3 triggers character tier upgrade")
+	_assert(ProgressionManager.linh_tier == 2 and ProgressionManager.jiwon_tier == 2, "Linh & Jiwon upgraded to Tier 2 after Level 3")
+
+	# Complete Level 5 with 2 stars -> upgrades Linh & Jiwon to Tier 3!
+	var l5_res: Dictionary = ProgressionManager.record_shift_results(5, {
+		"total_score": 900,
+		"stars": 2,
+		"handoffs_completed": 6,
+		"rush_rhythms_triggered": 2
+	})
+	_assert(bool(l5_res.get("tier_upgraded", false)), "Completing Level 5 triggers Tier 3 upgrade")
+	_assert(ProgressionManager.linh_tier == 3 and ProgressionManager.jiwon_tier == 3, "Linh & Jiwon upgraded to Tier 3 (Precision Engineer & Business Operator)")
+
+func _test_endless_rush_mode() -> void:
+	print("\n[Suite 13] Endless Rush Mode: Dynamic Difficulty Scaling & Personal Best Tracking")
+	ProgressionManager.endless_best_score = 0
+	ProgressionManager.endless_best_orders = 0
+
+	ShiftManager.start_new_shift(9999.0, 1, ShiftManager.GameMode.ENDLESS_RUSH)
+	_assert(ShiftManager.game_mode == ShiftManager.GameMode.ENDLESS_RUSH, "ShiftManager initialized in ENDLESS_RUSH mode")
+	_assert(ShiftManager.dynamic_max_orders == 2, "Endless mode begins with 2 concurrent orders")
+
+	# Tick 65 seconds -> dynamic scaling increases pressure
+	ShiftManager.tick_shift(65.0)
+	_assert(ShiftManager.dynamic_max_orders >= 4, "Endless mode dynamically scales concurrent order pressure over time")
+	_assert(ShiftManager.order_spawn_interval < 12.0, "Endless mode dynamically accelerates order spawn tempo")
+
+	# Simulate 3 failed orders -> triggers Endless failure condition
+	ShiftManager.stats["orders_failed"] = 3
+	ShiftManager.tick_shift(1.0)
+	_assert(not ShiftManager.shift_active, "3 failed customer orders triggers Endless Mode shift end")
+
+	# Record endless results and personal best
+	var end_summary: Dictionary = ProgressionManager.record_endless_results(850, 7, 72.5)
+	_assert(bool(end_summary.get("new_high_score", false)), "First endless run recorded as new high score")
+	_assert(ProgressionManager.endless_best_score == 850, "Endless personal best score updated to 850")
+
+	# Lower score run does not overwrite personal best
+	var lower_summary: Dictionary = ProgressionManager.record_endless_results(500, 4, 45.0)
+	_assert(not bool(lower_summary.get("new_high_score", false)), "Lower score run does not overwrite personal best")
+	_assert(ProgressionManager.endless_best_score == 850, "Endless personal best preserved at 850")

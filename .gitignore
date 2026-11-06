@@ -32,4 +32,5 @@ signing.properties
 # Local portable toolchains & scratch
 tools/
 .tmp/
+.user/
 *.log

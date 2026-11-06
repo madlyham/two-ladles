@@ -13,9 +13,15 @@ func _ready() -> void:
 	super._ready()
 	_refresh_visual()
 
+func get_max_slots() -> int:
+	if ProgressionManager.is_upgrade_owned("extended_pass_counter"):
+		return int(ProgressionManager.get_upgrade_value("pass_slots", 4.0))
+	return MAX_SLOTS
+
 func place_item(item_data: Dictionary, placed_by_peer: int, current_time_ms: int = -1) -> Dictionary:
-	if slots.size() >= MAX_SLOTS:
-		return {"ok": false, "reason": "Pass Counter is full (3/3 items)!"}
+	var cap: int = get_max_slots()
+	if slots.size() >= cap:
+		return {"ok": false, "reason": "Pass Counter is full (%d/%d items)!" % [slots.size(), cap]}
 	if current_time_ms < 0:
 		current_time_ms = Time.get_ticks_msec()
 
@@ -83,4 +89,5 @@ func _refresh_visual() -> void:
 	for s: Dictionary in slots:
 		var it: Dictionary = s.get("item", {})
 		names.append(str(it.get("display_name", it.get("item_id", "Item"))))
-	update_label_text("PASS COUNTER (%d/%d)\n%s" % [slots.size(), MAX_SLOTS, " | ".join(names)], Color(0.35, 1.0, 0.75))
+	var cap: int = get_max_slots()
+	update_label_text("PASS COUNTER (%d/%d)\n%s" % [slots.size(), cap, " | ".join(names)], Color(0.35, 1.0, 0.75))

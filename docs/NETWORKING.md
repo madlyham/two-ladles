@@ -16,6 +16,7 @@
 | **Cooking Timers** | Host (`peer_id == 1`) | `reliable` | Host ticks `CookingStation.tick_cooking(delta)` and broadcasts state transitions. |
 | **Pass Counter Handoffs** | Host (`peer_id == 1`) | `reliable` | Host checks `placed_by_peer != retrieved_by_peer`, `elapsed_ms <= 4000`, and `claimed_handoff_orders`. |
 | **Orders, Score & Flow** | Host (`peer_id == 1`) | `reliable` | Host ticks order patience and Rush Rhythm (`15s`) and syncs every `0.25s` and on state-changing events. |
+| **Worker Hiring ("Call in the Crew")** | Host (`peer_id == 1`) | `reliable` | Client requests `_rpc_request_hire_worker(role_id)`. Host validates coins, role cooldown, and Jiwon tier slots, then broadcasts `_rpc_sync_spawn_worker(wid, role_id, st_id)`. |
 
 ## 3. Disconnection & Error Recovery
 

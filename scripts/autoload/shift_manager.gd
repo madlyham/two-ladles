@@ -1,6 +1,9 @@
 extends Node
 ## Authoritative Shift, Order Queue, Scoring, Kitchen Flow (0-100), Rush Rhythm (15s, 1.5x), and Plate Pool Manager.
 
+const CampaignLevelSpec = preload("res://scripts/data/campaign_level_spec.gd")
+const RecipeData = preload("res://scripts/data/recipe_data.gd")
+
 signal shift_state_updated(state: Dictionary)
 signal order_queue_updated(orders: Array)
 signal flow_updated(flow_value: float, rush_active: bool, rush_remaining: float)
@@ -49,8 +52,35 @@ var stats: Dictionary = {
 	"optimal_cooks": 0,
 }
 
-func start_new_shift(duration: float = DEFAULT_SHIFT_DURATION) -> void:
+enum GameMode {
+	CAMPAIGN = 0,
+	ENDLESS_RUSH = 1,
+}
+
+var game_mode: int = GameMode.CAMPAIGN
+var current_stage_id: int = 1
+var endless_elapsed_sec: float = 0.0
+var endless_allowed_failures: int = 3
+var dynamic_max_orders: int = MAX_ACTIVE_ORDERS
+
+func start_new_shift(duration: float = DEFAULT_SHIFT_DURATION, stage_id: int = 1, p_mode: int = GameMode.CAMPAIGN) -> void:
 	shift_active = true
+	game_mode = p_mode
+	current_stage_id = stage_id
+	endless_elapsed_sec = 0.0
+	dynamic_max_orders = MAX_ACTIVE_ORDERS
+
+	if game_mode == GameMode.CAMPAIGN and GameData.campaign_levels.has(stage_id):
+		var lvl: CampaignLevelSpec = GameData.campaign_levels[stage_id]
+		shift_time_remaining = lvl.shift_duration
+		order_spawn_interval = lvl.order_spawn_interval
+		dynamic_max_orders = lvl.max_concurrent_orders
+	elif game_mode == GameMode.ENDLESS_RUSH:
+		shift_time_remaining = 99999.0 # Effectively unlimited, ends on failures
+		order_spawn_interval = 14.0
+		dynamic_max_orders = 2
+	else:
+		shift_time_remaining = duration
 	shift_time_remaining = duration
 	total_score = 0
 	kitchen_flow = 0.0
@@ -115,12 +145,31 @@ func tick_shift(delta: float) -> void:
 		stats["orders_failed"] += 1
 		modify_flow(-15.0, "Order Expired: %s (-15 Flow)" % expired_order["display_name"])
 
+	# Endless Mode failure condition check
+	if game_mode == GameMode.ENDLESS_RUSH:
+		endless_elapsed_sec += delta
+		# Dynamic difficulty scaling: faster spawns & more concurrent tickets over time
+		order_spawn_interval = maxf(6.5, 14.0 - (endless_elapsed_sec / 30.0))
+		if endless_elapsed_sec > 120.0:
+			dynamic_max_orders = 5
+		elif endless_elapsed_sec > 60.0:
+			dynamic_max_orders = 4
+		elif endless_elapsed_sec > 30.0:
+			dynamic_max_orders = 3
+
+		if stats["orders_failed"] >= endless_allowed_failures:
+			feedback_banner.emit("Kitchen Overwhelmed! 3 Customer Orders Lost!", Color(1.0, 0.25, 0.25))
+			end_shift()
+			return
+
 	# Spawn new orders periodically
 	order_spawn_timer += delta
-	if order_spawn_timer >= order_spawn_interval and active_orders.size() < MAX_ACTIVE_ORDERS:
+	if order_spawn_timer >= order_spawn_interval and active_orders.size() < dynamic_max_orders:
 		order_spawn_timer = 0.0
-		var recipe_keys: Array = ["pho_bo", "banh_mi_thit", "tteokbokki", "bulgogi_banh_mi"]
-		var chosen_recipe: String = recipe_keys[(next_order_id - 1) % recipe_keys.size()]
+		var allowed: Array[String] = ["pho_bo", "banh_mi_thit", "tteokbokki", "bulgogi_banh_mi"]
+		if game_mode == GameMode.CAMPAIGN and GameData.campaign_levels.has(current_stage_id):
+			allowed = GameData.campaign_levels[current_stage_id].allowed_recipes
+		var chosen_recipe: String = allowed[(next_order_id - 1) % allowed.size()]
 		spawn_order(chosen_recipe)
 
 	if shift_time_remaining <= 0.0:
@@ -350,13 +399,20 @@ func return_washed_plate() -> void:
 func end_shift() -> Dictionary:
 	shift_active = false
 	var stars: int = 1
-	if total_score >= 650:
-		stars = 3
-	elif total_score >= 350:
-		stars = 2
+	if game_mode == GameMode.CAMPAIGN and GameData.campaign_levels.has(current_stage_id):
+		stars = GameData.campaign_levels[current_stage_id].evaluate_stars(total_score)
+	else:
+		if total_score >= 650:
+			stars = 3
+		elif total_score >= 350:
+			stars = 2
+
 	var summary: Dictionary = {
 		"total_score": total_score,
 		"stars": stars,
+		"stage_id": current_stage_id,
+		"game_mode": game_mode,
+		"endless_elapsed_sec": endless_elapsed_sec,
 		"orders_completed": stats["orders_completed"],
 		"orders_failed": stats["orders_failed"],
 		"handoffs_completed": stats["handoffs_completed"],
@@ -364,6 +420,27 @@ func end_shift() -> Dictionary:
 		"rush_rhythms_triggered": stats["rush_rhythms_triggered"],
 		"ingredients_wasted": stats["ingredients_wasted"],
 	}
+
+	if game_mode == GameMode.ENDLESS_RUSH:
+		var end_res: Dictionary = ProgressionManager.record_endless_results(
+			total_score,
+			stats["orders_completed"],
+			endless_elapsed_sec
+		)
+		summary["earned_coins"] = end_res.get("earned_coins", 0)
+		summary["new_balance"] = end_res.get("total_coins", 0)
+		summary["new_high_score"] = end_res.get("new_high_score", false)
+		summary["best_score"] = end_res.get("best_score", total_score)
+	else:
+		var prog_res: Dictionary = ProgressionManager.record_shift_results(current_stage_id, summary)
+		summary["earned_coins"] = prog_res.get("earned_coins", 0)
+		summary["new_balance"] = prog_res.get("new_balance", 0)
+		summary["newly_unlocked"] = prog_res.get("newly_unlocked", false)
+		summary["tier_upgraded"] = prog_res.get("tier_upgraded", false)
+		summary["linh_tier"] = prog_res.get("linh_tier", 1)
+		summary["jiwon_tier"] = prog_res.get("jiwon_tier", 1)
+		summary["highest_unlocked_stage"] = ProgressionManager.highest_unlocked_stage
+
 	_sync_shift_ended.rpc(summary)
 	return summary
 
@@ -371,7 +448,7 @@ func end_shift() -> Dictionary:
 func request_restart_shift() -> void:
 	if not NetworkManager.is_host():
 		return
-	start_new_shift(DEFAULT_SHIFT_DURATION)
+	start_new_shift(DEFAULT_SHIFT_DURATION, current_stage_id, game_mode)
 
 func _get_peer_character(peer_id: int) -> String:
 	if NetworkManager.players.has(peer_id):

@@ -102,8 +102,11 @@ func tick_cooking(delta: float) -> void:
 	var optimal_mult: float = 1.0
 	if active_flame_keeper and GameData.specializations.has("flame_keeper"):
 		optimal_mult = GameData.specializations["flame_keeper"].optimal_cook_window_multiplier
+	if appliance_id == "stockpot" and ProgressionManager.is_upgrade_owned("insulated_broth_pot"):
+		optimal_mult *= ProgressionManager.get_upgrade_value("stockpot_window", 1.50)
 
-	var t_cook: float = spec.cook_time_to_optimal
+	var cook_speed_mult: float = ProgressionManager.get_upgrade_value("cook_speed", 1.0) if ProgressionManager.is_upgrade_owned("cast_iron_seasoning") else 1.0
+	var t_cook: float = spec.cook_time_to_optimal * cook_speed_mult
 	var t_optimal_end: float = t_cook + (spec.optimal_window_duration * optimal_mult)
 	var t_overcooked_end: float = t_optimal_end + spec.overcooked_window_duration
 
@@ -126,7 +129,10 @@ func tick_cooking(delta: float) -> void:
 func get_remaining_phase_time() -> float:
 	var spec: RecipeData.ApplianceSpec = get_spec()
 	var optimal_mult: float = 1.35 if active_flame_keeper else 1.0
-	var t_cook: float = spec.cook_time_to_optimal
+	if appliance_id == "stockpot" and ProgressionManager.is_upgrade_owned("insulated_broth_pot"):
+		optimal_mult *= ProgressionManager.get_upgrade_value("stockpot_window", 1.50)
+	var cook_speed_mult: float = ProgressionManager.get_upgrade_value("cook_speed", 1.0) if ProgressionManager.is_upgrade_owned("cast_iron_seasoning") else 1.0
+	var t_cook: float = spec.cook_time_to_optimal * cook_speed_mult
 	var t_optimal_end: float = t_cook + (spec.optimal_window_duration * optimal_mult)
 	var t_overcooked_end: float = t_optimal_end + spec.overcooked_window_duration
 

@@ -6,12 +6,18 @@ extends Node3D
 ## - CENTER: Shared Pass Counter (3 slots, 4s handoff window for +15 Kitchen Flow) & Vessel Rack / Trash.
 ## - EAST ZONE (Jiwon's Home Side): Veg/Seafood/Sauce Crates, Prep Counter East, Grill/Sear Pan, Simmer Wok, Assembly East, Washing Sink.
 
+const CharacterProgressionData = preload("res://scripts/data/character_progression_data.gd")
+const RecipeData = preload("res://scripts/data/recipe_data.gd")
+
 signal local_prompt_changed(prompt_text: String)
 signal status_toast(message: String, color: Color)
 
 var players_by_peer: Dictionary = {} # peer_id (int) -> PlayerController
 var stations: Dictionary = {} # station_id (String) -> StationBase
 var crate_items: Dictionary = {} # station_id (String) -> String (raw item_id)
+var active_workers: Dictionary = {} # worker_id -> PartTimeWorker
+var worker_cooldowns: Dictionary = {} # role_id -> float
+static var _worker_uid_counter: int = 1
 
 var local_peer_id: int = 1
 var virtual_joystick_vec: Vector2 = Vector2.ZERO
@@ -220,7 +226,8 @@ func _spawn_players() -> void:
 		pc.name = "Player_%d" % pid
 		var char_id: String = str(info.get("character", "linh"))
 		var spec_id: String = str(info.get("specialization", "prep_master"))
-		pc.configure_chef(pid, char_id, spec_id)
+		var tier: int = ProgressionManager.linh_tier if char_id == "linh" else ProgressionManager.jiwon_tier
+		pc.configure_chef(pid, char_id, spec_id, tier)
 		pc.position = Vector3(-2.0, 0.0, 0.0) if char_id == "linh" else Vector3(2.0, 0.0, 0.0)
 		add_child(pc)
 		players_by_peer[pid] = pc
@@ -228,6 +235,11 @@ func _spawn_players() -> void:
 func _physics_process(delta: float) -> void:
 	if not ShiftManager.shift_active:
 		return
+
+	# Tick worker cooldowns
+	for rid: String in worker_cooldowns.keys():
+		if worker_cooldowns[rid] > 0.0:
+			worker_cooldowns[rid] = maxf(0.0, worker_cooldowns[rid] - delta)
 
 	# Tick cooking stations on authoritative host
 	if NetworkManager.is_host():
@@ -341,9 +353,10 @@ func _execute_station_interaction(peer_id: int, station_id: String, is_secondary
 	# 3. Prep Station
 	if st is PrepStation:
 		var prep: PrepStation = st as PrepStation
+		var speed_mult: float = player.get_task_speed_multiplier()
 		if is_secondary or (player.carried_item.is_empty() and not prep.current_item.is_empty() and GameData.get_prep_output(str(prep.current_item.get("item_id", ""))) != ""):
 			var now_sec: float = float(Time.get_ticks_msec()) / 1000.0
-			var res: Dictionary = prep.perform_strike(now_sec, player.specialization_id, player.character_id)
+			var res: Dictionary = prep.perform_strike(now_sec, player.specialization_id, player.character_id, speed_mult)
 			if not res.get("ok", false):
 				_emit_feedback_to_peer(peer_id, str(res.get("reason", "")), Color(0.95, 0.4, 0.4))
 		elif not player.carried_item.is_empty() and prep.current_item.is_empty():
@@ -514,3 +527,103 @@ func _sync_player_transform(peer_id: int, synced_pos: Vector3) -> void:
 		return
 	if players_by_peer.has(peer_id):
 		players_by_peer[peer_id].position = synced_pos
+
+## Jiwon's Signature Ability: "CALL IN THE CREW"
+## Authoritative host verifies hiring capacity, coin balance, and cooldown.
+func request_hire_worker(peer_id: int, role_id: String) -> Dictionary:
+	if not NetworkManager.is_host():
+		_rpc_request_hire_worker.rpc_id(1, role_id)
+		return {"ok": true, "pending_host_approval": true}
+
+	if not players_by_peer.has(peer_id):
+		return {"ok": false, "reason": "Unknown chef."}
+
+	var p: PlayerController = players_by_peer[peer_id]
+	if p.character_id != "jiwon":
+		return {"ok": false, "reason": "Only Jiwon has the delegation authority to hire part-time crew!"}
+
+	var tier_slots: int = 0
+	if GameData.jiwon_tiers.has(p.character_tier):
+		tier_slots = GameData.jiwon_tiers[p.character_tier].part_timer_slots
+
+	if tier_slots <= 0:
+		return {
+			"ok": false,
+			"reason": "Jiwon is Tier 1 (Burnt-out Executive). Complete Level 3 to unlock Part-Timer hiring!"
+		}
+
+	if active_workers.size() >= tier_slots:
+		return {
+			"ok": false,
+			"reason": "Maximum part-timer capacity reached (%d/%d slots active)!" % [active_workers.size(), tier_slots]
+		}
+
+	if not GameData.worker_catalog.has(role_id):
+		return {"ok": false, "reason": "Unknown worker role: %s" % role_id}
+
+	var spec: CharacterProgressionData.WorkerSpec = GameData.worker_catalog[role_id]
+	if worker_cooldowns.get(role_id, 0.0) > 0.0:
+		return {
+			"ok": false,
+			"reason": "%s contract agency is on cooldown (%.0fs left)!" % [spec.display_name, worker_cooldowns[role_id]]
+		}
+
+	if ProgressionManager.coins < spec.hire_cost:
+		return {
+			"ok": false,
+			"reason": "Not enough restaurant coins! Need %d coins (Have %d)." % [spec.hire_cost, ProgressionManager.coins]
+		}
+
+	# Determine station assignment
+	var target_st: StationBase = null
+	if role_id == "prep_assistant":
+		target_st = stations.get("prep_east", stations.get("prep_west", null))
+	elif role_id == "dishwasher":
+		target_st = stations.get("washing_station", null)
+
+	if target_st == null:
+		return {"ok": false, "reason": "No station available for %s." % spec.display_name}
+
+	# Deduct coins and start cooldown
+	ProgressionManager.coins -= spec.hire_cost
+	worker_cooldowns[role_id] = spec.cooldown_duration
+	ProgressionManager.save_progression()
+	ProgressionManager.progression_updated.emit()
+
+	_worker_uid_counter += 1
+	var wid: String = "worker_%d" % _worker_uid_counter
+	_spawn_worker_local(wid, role_id, target_st.station_id)
+
+	if NetworkManager.is_lan_active and multiplayer.multiplayer_peer != null:
+		_rpc_sync_spawn_worker.rpc(wid, role_id, target_st.station_id)
+
+	status_toast.emit("Hired %s for %.0fs! (-%d coins)" % [spec.display_name, spec.contract_duration, spec.hire_cost], Color(0.35, 1.0, 0.6))
+	return {"ok": true, "worker_id": wid}
+
+func _spawn_worker_local(worker_id_str: String, role_id: String, station_id_str: String) -> void:
+	if not stations.has(station_id_str):
+		return
+	var st: StationBase = stations[station_id_str]
+	var w: PartTimeWorker = PartTimeWorker.new()
+	w.name = worker_id_str
+	w.initialize_worker(worker_id_str, role_id, st)
+	w.worker_expired.connect(func(expired_id: String) -> void:
+		active_workers.erase(expired_id)
+	)
+	add_child(w)
+	active_workers[worker_id_str] = w
+
+@rpc("any_peer", "reliable")
+func _rpc_request_hire_worker(role_id: String) -> void:
+	if not NetworkManager.is_host():
+		return
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var res: Dictionary = request_hire_worker(sender_id, role_id)
+	if not res.get("ok", false):
+		_emit_feedback_to_peer(sender_id, res.get("reason", "Hiring rejected."), Color(1.0, 0.4, 0.4))
+
+@rpc("authority", "reliable")
+func _rpc_sync_spawn_worker(worker_id_str: String, role_id: String, station_id_str: String) -> void:
+	if NetworkManager.is_host():
+		return
+	_spawn_worker_local(worker_id_str, role_id, station_id_str)

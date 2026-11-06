@@ -4,10 +4,18 @@ extends Node
 ## - Linh's West Zone prepares Jiwon's cooking/assembly ingredients.
 ## - Jiwon's East Zone prepares Linh's cooking/assembly ingredients.
 
+const RecipeData = preload("res://scripts/data/recipe_data.gd")
+const CampaignLevelSpec = preload("res://scripts/data/campaign_level_spec.gd")
+const CharacterProgressionData = preload("res://scripts/data/character_progression_data.gd")
+
 var ingredients: Dictionary = {}
 var appliances: Dictionary = {}
 var recipes: Dictionary = {}
 var specializations: Dictionary = {}
+var campaign_levels: Dictionary = {}
+var linh_tiers: Dictionary = {}
+var jiwon_tiers: Dictionary = {}
+var worker_catalog: Dictionary = {}
 var characters: Dictionary = {
 	"linh": {
 		"id": "linh",
@@ -44,6 +52,9 @@ func _init_data() -> void:
 	_register_ingredients()
 	_register_appliances()
 	_register_recipes()
+	_register_campaign_levels()
+	_register_character_tiers()
+	_register_worker_catalog()
 
 func _register_specializations() -> void:
 	specializations["prep_master"] = RecipeData.SpecializationSpec.new(
@@ -284,3 +295,143 @@ func is_cross_partner_handoff(item_id: String, placer_character: String, retriev
 	if placer_character == retriever_character:
 		return false
 	return ingredients.has(item_id)
+
+func _register_campaign_levels() -> void:
+	campaign_levels[1] = CampaignLevelSpec.new(
+		1,
+		"First Customer",
+		"Rural Roadside Food Stand",
+		"Rural Vietnam",
+		180.0,
+		150, 300, 500,
+		["banh_mi_thit", "pho_bo"],
+		2,
+		16.0,
+		"Open the family food stall! Master basic movement, cross-prep, and initial service."
+	)
+	campaign_levels[2] = CampaignLevelSpec.new(
+		2,
+		"Lunch Rush",
+		"Village Market Restaurant",
+		"Village Market",
+		180.0,
+		220, 450, 650,
+		["banh_mi_thit", "pho_bo"],
+		3,
+		13.0,
+		"Multiple customer orders arrive together. Manage finite plates and scrub dirty dishes at the sink!"
+	)
+	campaign_levels[3] = CampaignLevelSpec.new(
+		3,
+		"Night Market",
+		"Busy Vietnam–Korea Street Stall",
+		"Night Market",
+		180.0,
+		300, 550, 800,
+		["pho_bo", "banh_mi_thit", "tteokbokki"],
+		3,
+		11.0,
+		"Introduce Korean Tteokbokki! Linh portions rice cakes for Jiwon's Wok. Completing unlocks Tier 2!"
+	)
+	campaign_levels[4] = CampaignLevelSpec.new(
+		4,
+		"Fusion Special",
+		"Growing Fusion Bistro",
+		"City Fringe",
+		180.0,
+		380, 700, 950,
+		["bulgogi_banh_mi", "tteokbokki", "banh_mi_thit"],
+		4,
+		10.0,
+		"Introduce Bulgogi Bánh Mì! Maximize Pass Counter handoffs and trigger Rush Rhythm."
+	)
+	campaign_levels[5] = CampaignLevelSpec.new(
+		5,
+		"Grand Opening",
+		"Prestigious Urban Restaurant",
+		"Downtown Metropolis",
+		180.0,
+		450, 850, 1200,
+		["pho_bo", "banh_mi_thit", "tteokbokki", "bulgogi_banh_mi"],
+		4,
+		8.5,
+		"Full menu under peak customer pressure! Combine all stations and abilities. Unlocks Tier 3!"
+	)
+
+func _register_character_tiers() -> void:
+	linh_tiers[1] = CharacterProgressionData.LinhTierSpec.new(
+		1,
+		"Ordinary Chef",
+		"Standard chef outfit, no robotic components, normal task speed.",
+		1.0,
+		"none",
+		Color(0.22, 0.68, 0.58)
+	)
+	linh_tiers[2] = CharacterProgressionData.LinhTierSpec.new(
+		2,
+		"Workshop Engineer",
+		"One mechanical third arm made of rustic brass gears, dark steel, and visible joints (~8% faster actions).",
+		0.92,
+		"rustic_mechanical",
+		Color(0.68, 0.52, 0.28),
+		Color(0.85, 0.65, 0.3)
+	)
+	linh_tiers[3] = CharacterProgressionData.LinhTierSpec.new(
+		3,
+		"Precision Engineer",
+		"One mechanical third arm with clean white exterior and glowing blue lines (~15% faster actions).",
+		0.85,
+		"precision_white_blue",
+		Color(0.92, 0.95, 1.0),
+		Color(0.2, 0.6, 1.0)
+	)
+
+	jiwon_tiers[1] = CharacterProgressionData.JiwonTierSpec.new(
+		1,
+		"Burnt-out Executive",
+		"Practical casual clothes, kitchen apron, former corporate executive. 0 part-timer slots.",
+		0,
+		"casual_apron",
+		Color(0.88, 0.42, 0.24)
+	)
+	jiwon_tiers[2] = CharacterProgressionData.JiwonTierSpec.new(
+		2,
+		"Restaurant Manager",
+		"Crisp dress shirt with rolled sleeves, no suit/tie. 1 part-timer slot.",
+		1,
+		"rolled_dress_shirt",
+		Color(0.92, 0.55, 0.32)
+	)
+	jiwon_tiers[3] = CharacterProgressionData.JiwonTierSpec.new(
+		3,
+		"Business Operator",
+		"Formal executive business suit with tie and briefcase. 2 simultaneous part-timer slots.",
+		2,
+		"business_suit",
+		Color(0.22, 0.28, 0.42)
+	)
+
+func _register_worker_catalog() -> void:
+	worker_catalog["prep_assistant"] = CharacterProgressionData.WorkerSpec.new(
+		"prep_assistant",
+		"Prep Assistant",
+		"Assists at designated Prep Counter by performing steady chop strikes.",
+		20,
+		20.0,
+		45.0,
+		"prep_station",
+		1.1,
+		Color(0.35, 0.75, 0.45)
+	)
+	worker_catalog["dishwasher"] = CharacterProgressionData.WorkerSpec.new(
+		"dishwasher",
+		"Dishwasher",
+		"Works at Washing Station to scrub dirty plates into clean dishes.",
+		20,
+		20.0,
+		45.0,
+		"washing_station",
+		1.0,
+		Color(0.28, 0.65, 0.90)
+	)
+

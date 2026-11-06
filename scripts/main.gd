@@ -2,6 +2,9 @@ extends Node
 ## Root Coordinator for Two Ladles.
 ## Manages transitions between the LAN Multiplayer Lobby, the 2.5D Kitchen Shift, HUD (Touch + Desktop), and End-of-Shift Summary.
 
+const CampaignLevelSpec = preload("res://scripts/data/campaign_level_spec.gd")
+const RecipeData = preload("res://scripts/data/recipe_data.gd")
+
 var lobby_panel: PanelContainer = null
 var hud_layer: CanvasLayer = null
 var kitchen_instance: KitchenController = null
@@ -16,6 +19,14 @@ var char_select_btn: OptionButton = null
 var spec_select_btn: OptionButton = null
 var ready_btn: Button = null
 var start_shift_btn: Button = null
+var stage_select_btn: OptionButton = null
+var progression_header_lbl: Label = null
+var shop_container: HBoxContainer = null
+var endless_mode_toggle: CheckButton = null
+var is_endless_selected: bool = false
+var jiwon_crew_bar: HBoxContainer = null
+var hire_prep_btn: Button = null
+var hire_dish_btn: Button = null
 
 # HUD controls
 var hud_score_label: Label = null
@@ -41,6 +52,7 @@ func _ready() -> void:
 	ShiftManager.flow_updated.connect(_on_flow_updated)
 	ShiftManager.feedback_banner.connect(_on_feedback_banner)
 	ShiftManager.shift_ended.connect(_on_shift_ended)
+	ProgressionManager.progression_updated.connect(_on_progression_updated)
 
 	# Support command-line auto-host / auto-join / test-suite execution
 	var args: PackedStringArray = OS.get_cmdline_user_args()
@@ -249,6 +261,49 @@ func _build_ui() -> void:
 	)
 	loadout_row.add_child(start_shift_btn)
 
+	# Progression & Stage Selection Row
+	var prog_row: HBoxContainer = HBoxContainer.new()
+	prog_row.add_theme_constant_override("separation", 14)
+	vbox.add_child(prog_row)
+
+	progression_header_lbl = Label.new()
+	prog_row.add_child(progression_header_lbl)
+
+	var stage_lbl: Label = Label.new()
+	stage_lbl.text = "Select Stage:"
+	prog_row.add_child(stage_lbl)
+
+	stage_select_btn = OptionButton.new()
+	stage_select_btn.item_selected.connect(func(idx: int) -> void:
+		var st_id: int = int(stage_select_btn.get_item_metadata(idx))
+		ProgressionManager.selected_stage = st_id
+	)
+	prog_row.add_child(stage_select_btn)
+
+	endless_mode_toggle = CheckButton.new()
+	endless_mode_toggle.text = "ENDLESS RUSH MODE (Survival)"
+	endless_mode_toggle.toggled.connect(func(toggled_on: bool) -> void:
+		is_endless_selected = toggled_on
+		stage_select_btn.disabled = toggled_on
+	)
+	prog_row.add_child(endless_mode_toggle)
+
+	# Kitchen Upgrades Row
+	var shop_vbox: VBoxContainer = VBoxContainer.new()
+	shop_vbox.add_theme_constant_override("separation", 4)
+	vbox.add_child(shop_vbox)
+
+	var shop_title: Label = Label.new()
+	shop_title.text = "KITCHEN UPGRADE WORKSHOP (Persistent Restaurant Improvements):"
+	shop_title.modulate = Color(1.0, 0.85, 0.4)
+	shop_vbox.add_child(shop_title)
+
+	shop_container = HBoxContainer.new()
+	shop_container.add_theme_constant_override("separation", 10)
+	shop_vbox.add_child(shop_container)
+
+	_refresh_progression_ui()
+
 	players_list_label = Label.new()
 	players_list_label.text = "Lobby Roster:\n  (Host or Join a LAN session to populate players)"
 	players_list_label.modulate = Color(0.95, 0.96, 0.85)
@@ -330,6 +385,35 @@ func _build_ui() -> void:
 	hud_prompt_label.modulate = Color(0.9, 0.95, 1.0)
 	hud_layer.add_child(hud_prompt_label)
 
+	# Jiwon's Signature Delegation Ability Bar: "CALL IN THE CREW"
+	jiwon_crew_bar = HBoxContainer.new()
+	jiwon_crew_bar.name = "JiwonCrewBar"
+	jiwon_crew_bar.visible = false
+	jiwon_crew_bar.position = Vector2(370, 620)
+	jiwon_crew_bar.add_theme_constant_override("separation", 10)
+	hud_layer.add_child(jiwon_crew_bar)
+
+	var crew_lbl: Label = Label.new()
+	crew_lbl.text = "CALL CREW:"
+	crew_lbl.modulate = Color(1.0, 0.85, 0.35)
+	jiwon_crew_bar.add_child(crew_lbl)
+
+	hire_prep_btn = Button.new()
+	hire_prep_btn.text = "Hire Prep Assistant (20c)"
+	hire_prep_btn.pressed.connect(func() -> void:
+		if kitchen_instance != null:
+			kitchen_instance.request_hire_worker(kitchen_instance.local_peer_id, "prep_assistant")
+	)
+	jiwon_crew_bar.add_child(hire_prep_btn)
+
+	hire_dish_btn = Button.new()
+	hire_dish_btn.text = "Hire Dishwasher (20c)"
+	hire_dish_btn.pressed.connect(func() -> void:
+		if kitchen_instance != null:
+			kitchen_instance.request_hire_worker(kitchen_instance.local_peer_id, "dishwasher")
+	)
+	jiwon_crew_bar.add_child(hire_dish_btn)
+
 	# Mobile Touch Controls (Left D-Pad / Virtual Joystick + Right Action Buttons)
 	var touch_container: Control = Control.new()
 	touch_container.name = "MobileTouchControls"
@@ -406,6 +490,64 @@ func _create_dpad_button(parent: Control, label: String, pos: Vector2, dir: Vect
 	)
 	parent.add_child(btn)
 
+func _on_progression_updated() -> void:
+	_refresh_progression_ui()
+
+func _refresh_progression_ui() -> void:
+	if progression_header_lbl != null:
+		var linh_desc: String = GameData.linh_tiers[ProgressionManager.linh_tier].title
+		var jiwon_desc: String = GameData.jiwon_tiers[ProgressionManager.jiwon_tier].title
+		var endless_txt: String = " | Endless Best: %d pts (%d orders)" % [ProgressionManager.endless_best_score, ProgressionManager.endless_best_orders] if ProgressionManager.endless_best_score > 0 else ""
+		progression_header_lbl.text = "Vault: %d Coins | Linh: %s (Tier %d) | Jiwon: %s (Tier %d)%s" % [
+			ProgressionManager.coins,
+			linh_desc,
+			ProgressionManager.linh_tier,
+			jiwon_desc,
+			ProgressionManager.jiwon_tier,
+			endless_txt
+		]
+		progression_header_lbl.modulate = Color(1.0, 0.88, 0.35)
+
+	if stage_select_btn != null:
+		stage_select_btn.clear()
+		for lvl_id: int in range(1, 6):
+			var lvl: CampaignLevelSpec = GameData.campaign_levels.get(lvl_id, null)
+			var lvl_title: String = lvl.title if lvl != null else "Level %d" % lvl_id
+			var setting: String = lvl.setting_name if lvl != null else ""
+			var rec: Dictionary = ProgressionManager.stage_records.get(lvl_id, {})
+			var stars_txt: String = " (" + "★".repeat(int(rec.get("stars", 0))) + ")" if int(rec.get("stars", 0)) > 0 else ""
+			var locked_tag: String = " [LOCKED - Complete Level %d]" % (lvl_id - 1) if lvl_id > ProgressionManager.highest_unlocked_stage else ""
+			var label: String = "Level %d: %s — %s%s%s" % [lvl_id, lvl_title, setting, stars_txt, locked_tag]
+			stage_select_btn.add_item(label, lvl_id - 1)
+			stage_select_btn.set_item_metadata(lvl_id - 1, lvl_id)
+			stage_select_btn.set_item_disabled(lvl_id - 1, lvl_id > ProgressionManager.highest_unlocked_stage)
+		var current_sel: int = clamp(ProgressionManager.selected_stage, 1, 5)
+		stage_select_btn.select(current_sel - 1)
+
+	if shop_container != null:
+		for ch: Node in shop_container.get_children():
+			ch.queue_free()
+		for up_id: String in ProgressionManager.catalog_upgrades.keys():
+			var up: Dictionary = ProgressionManager.catalog_upgrades[up_id]
+			var up_btn: Button = Button.new()
+			var owned: bool = bool(up.get("purchased", false))
+			if owned:
+				up_btn.text = "✓ %s\n(OWNED)" % up.get("display_name", "")
+				up_btn.disabled = true
+			else:
+				up_btn.text = "%s\n(Buy: %d Coins)" % [up.get("display_name", ""), int(up.get("cost", 0))]
+				up_btn.disabled = (ProgressionManager.coins < int(up.get("cost", 0)))
+			up_btn.custom_minimum_size = Vector2(240, 52)
+			var cur_uid: String = up_id
+			up_btn.pressed.connect(func() -> void:
+				var res: Dictionary = ProgressionManager.purchase_upgrade(cur_uid)
+				if not res.get("ok", false):
+					_on_feedback_banner(res.get("reason", "Cannot buy upgrade."), Color(1.0, 0.4, 0.4))
+				else:
+					_on_feedback_banner("Purchased %s!" % up.get("display_name", ""), Color(0.3, 1.0, 0.5))
+			)
+			shop_container.add_child(up_btn)
+
 func _submit_lobby_loadout() -> void:
 	var c_id: String = str(char_select_btn.get_selected_metadata())
 	var s_id: String = str(spec_select_btn.get_selected_metadata())
@@ -444,6 +586,11 @@ func _on_shift_start_requested() -> void:
 	hud_toast_label.visible = true
 	(hud_layer.get_node("MobileTouchControls") as Control).visible = true
 
+	var my_peer: int = multiplayer.get_unique_id() if (NetworkManager.is_lan_active and multiplayer.multiplayer_peer != null) else 1
+	var my_char: String = str(NetworkManager.players.get(my_peer, {}).get("character", "linh"))
+	if jiwon_crew_bar != null:
+		jiwon_crew_bar.visible = (my_char == "jiwon")
+
 	if kitchen_instance != null:
 		kitchen_instance.queue_free()
 	kitchen_instance = KitchenController.new()
@@ -454,7 +601,8 @@ func _on_shift_start_requested() -> void:
 	add_child(kitchen_instance)
 
 	if NetworkManager.is_host():
-		ShiftManager.start_new_shift(ShiftManager.DEFAULT_SHIFT_DURATION)
+		var mode: int = ShiftManager.GameMode.ENDLESS_RUSH if is_endless_selected else ShiftManager.GameMode.CAMPAIGN
+		ShiftManager.start_new_shift(ShiftManager.DEFAULT_SHIFT_DURATION, ProgressionManager.selected_stage, mode)
 
 func _on_returned_to_menu(reason: String) -> void:
 	_return_to_lobby_ui(reason)
@@ -470,6 +618,8 @@ func _return_to_lobby_ui(reason: String) -> void:
 	hud_orders_label.visible = false
 	hud_prompt_label.visible = false
 	hud_toast_label.visible = false
+	if jiwon_crew_bar != null:
+		jiwon_crew_bar.visible = false
 	(hud_layer.get_node("MobileTouchControls") as Control).visible = false
 	_on_connection_status_changed(reason, true)
 
@@ -512,23 +662,62 @@ func _on_feedback_banner(message: String, color: Color) -> void:
 
 func _on_shift_ended(summary: Dictionary) -> void:
 	end_shift_modal.visible = true
-	var stars_str: String = "★".repeat(int(summary.get("stars", 1)))
-	end_shift_details.text = (
-		"Rating: %s (%d Stars)\n" +
-		"Final Score: %d\n" +
-		"Orders Served: %d | Orders Expired: %d\n" +
-		"Coordinated Pass Counter Handoffs: %d\n" +
-		"Linh <-> Jiwon Cross-Prep Transfers: %d\n" +
-		"Rush Rhythms Triggered: %d\n" +
-		"Ingredients Wasted: %d"
-	) % [
-		stars_str,
-		int(summary.get("stars", 1)),
-		int(summary.get("total_score", 0)),
-		int(summary.get("orders_completed", 0)),
-		int(summary.get("orders_failed", 0)),
-		int(summary.get("handoffs_completed", 0)),
-		int(summary.get("cross_prep_transfers", 0)),
-		int(summary.get("rush_rhythms_triggered", 0)),
-		int(summary.get("ingredients_wasted", 0)),
-	]
+	var mode: int = int(summary.get("game_mode", ShiftManager.GameMode.CAMPAIGN))
+
+	if mode == ShiftManager.GameMode.ENDLESS_RUSH:
+		var new_high_tag: String = " 🎉 NEW PERSONAL BEST!" if bool(summary.get("new_high_score", false)) else ""
+		end_shift_details.text = (
+			"MODE: ENDLESS RUSH (Survival)%s\n" +
+			"Time Survived: %.1fs\n" +
+			"Final Score: %d (All-Time Best: %d)\n" +
+			"Coins Earned: +%d (Balance: %d Coins)\n" +
+			"Orders Served: %d | Orders Lost: %d\n" +
+			"Coordinated Pass Counter Handoffs: %d\n" +
+			"Rush Rhythms Triggered: %d"
+		) % [
+			new_high_tag,
+			float(summary.get("endless_elapsed_sec", 0.0)),
+			int(summary.get("total_score", 0)),
+			int(summary.get("best_score", 0)),
+			int(summary.get("earned_coins", 0)),
+			int(summary.get("new_balance", ProgressionManager.coins)),
+			int(summary.get("orders_completed", 0)),
+			int(summary.get("orders_failed", 0)),
+			int(summary.get("handoffs_completed", 0)),
+			int(summary.get("rush_rhythms_triggered", 0)),
+		]
+	else:
+		var stars_str: String = "★".repeat(int(summary.get("stars", 1)))
+		var lvl: CampaignLevelSpec = GameData.campaign_levels.get(int(summary.get("stage_id", 1)), null)
+		var stage_name: String = lvl.title if lvl != null else "Level %d" % int(summary.get("stage_id", 1))
+		var unlock_msg: String = "\n🎉 NEXT LEVEL UNLOCKED!" if bool(summary.get("newly_unlocked", false)) else ""
+		var tier_msg: String = "\n⭐ CHARACTER TIER UPGRADED! (Linh Tier %d | Jiwon Tier %d)" % [
+			int(summary.get("linh_tier", 1)),
+			int(summary.get("jiwon_tier", 1))
+		] if bool(summary.get("tier_upgraded", false)) else ""
+		end_shift_details.text = (
+			"Level: %s\n" +
+			"Rating: %s (%d Stars)\n" +
+			"Final Score: %d\n" +
+			"Coins Earned: +%d (Balance: %d Coins)%s%s\n" +
+			"Orders Served: %d | Orders Expired: %d\n" +
+			"Coordinated Pass Counter Handoffs: %d\n" +
+			"Linh <-> Jiwon Cross-Prep Transfers: %d\n" +
+			"Rush Rhythms Triggered: %d\n" +
+			"Ingredients Wasted: %d"
+		) % [
+			stage_name,
+			stars_str,
+			int(summary.get("stars", 1)),
+			int(summary.get("total_score", 0)),
+			int(summary.get("earned_coins", 0)),
+			int(summary.get("new_balance", ProgressionManager.coins)),
+			unlock_msg,
+			tier_msg,
+			int(summary.get("orders_completed", 0)),
+			int(summary.get("orders_failed", 0)),
+			int(summary.get("handoffs_completed", 0)),
+			int(summary.get("cross_prep_transfers", 0)),
+			int(summary.get("rush_rhythms_triggered", 0)),
+			int(summary.get("ingredients_wasted", 0)),
+		]

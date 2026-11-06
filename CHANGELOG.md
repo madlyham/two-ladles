@@ -2,6 +2,35 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## [0.3.0] - 2026-11-06 (Milestone 3 Character Signature Abilities, Campaign & Endless Mode)
+
+### Added
+- **Linh Execution Specialist Progression (Tiers 1–3):**
+  - Tier 1 (Ordinary Chef): Standard 1.0x task cadence, no mechanical arm.
+  - Tier 2 (Workshop Engineer): Unlocks after Level 3; 0.92x prep interval (~8% faster) with visible rustic brass/steel mechanical third arm.
+  - Tier 3 (Precision Engineer): Unlocks after Level 5; 0.85x prep interval (~15% faster; 0.38s cadence) with sleek glowing precision white-and-blue robotic arm.
+- **Jiwon Multitasking & Delegation Specialist ("Call in the Crew"):**
+  - Host-authoritative hiring system with coin deduction (20 coins), contract duration (20s), and role agency cooldown (45s).
+  - Tier 1: 0 slots; Tier 2: 1 slot; Tier 3: 2 simultaneous slots.
+  - Deterministic 4-state `PartTimeWorker` agent (`WALKING_IN -> WORKING -> WALKING_OUT -> EXPIRED`) performing automated chops (`prep_assistant`) and scrubs (`dishwasher`).
+  - Added "Call in the Crew" HUD bar with real-time status and cooldown badges.
+- **5 Handcrafted Campaign Levels:**
+  - Level 1: *First Customer* (Rural Vietnam food stand reopening; 2 orders max, 16s pacing).
+  - Level 2: *Lunch Rush* (Village Market; introduces washing dirty plates under multi-order pressure).
+  - Level 3: *Night Market* (Introduces Korean *Tteokbokki*; unlocks Character Tier 2!).
+  - Level 4: *Fusion Special* (Street Food Market; introduces *Bulgogi Bánh Mì* fusion recipe).
+  - Level 5: *Grand Opening* (Modern Fusion Restaurant; all 4 recipes; unlocks Character Tier 3!).
+- **Endless Rush Mode:**
+  - Unlimited continuous shift with dynamic difficulty scaling (spawn interval accelerates from 14s to 6.5s; concurrency scales from 2 to 4).
+  - 3 lost tickets failure condition with persistent personal best tracking (score, orders, duration).
+- **Persistent Progression & Kitchen Upgrade Shop (`ProgressionManager`):**
+  - Persistent JSON save/load with dual-path resilience (`user://` and sandboxed workspace fallback).
+  - Stage records (stars, best scores, unlock requirements).
+  - Upgrade catalog with purchase transactions (e.g. Sharp Santoku Knives, Double-Walled Stockpot).
+- **Automated Verification:**
+  - Expanded test suite to **114 automated assertions across 13 suites** (`tests/test_suite_node.gd`), all passing with 100% success.
+  - Re-exported Windows Desktop debug binary (`build/windows/two-ladles.exe`).
+
 ## [0.2.0] - 2026-11-06 (Milestones 0, 1 & 2 Vertical Slice)
 
 ### Added

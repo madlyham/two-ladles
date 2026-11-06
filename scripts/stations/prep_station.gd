@@ -38,7 +38,12 @@ func place_raw_item(item_data: Dictionary, _peer_id: int = 1) -> Dictionary:
 
 ## Performs one discrete strike at timestamp_sec.
 ## Cadence is evaluated relative to the previous strike (first strike is always GOOD or PERFECT start).
-func perform_strike(timestamp_sec: float, player_specialization: String = "", player_character: String = "linh") -> Dictionary:
+func perform_strike(
+	timestamp_sec: float,
+	player_specialization: String = "",
+	player_character: String = "linh",
+	character_speed_mult: float = 1.0
+) -> Dictionary:
 	if current_item.is_empty():
 		return {"ok": false, "reason": "No raw ingredient on Prep Counter."}
 
@@ -51,6 +56,10 @@ func perform_strike(timestamp_sec: float, player_specialization: String = "", pl
 	var window_mult: float = 1.0
 	if player_specialization == "prep_master" and GameData.specializations.has("prep_master"):
 		window_mult = GameData.specializations["prep_master"].prep_window_multiplier
+	if ProgressionManager.is_upgrade_owned("sharp_santoku_knives"):
+		window_mult *= ProgressionManager.get_upgrade_value("prep_window", 1.15)
+
+	var target_interval: float = IDEAL_CADENCE_SEC * character_speed_mult
 
 	if last_strike_time_sec < 0.0:
 		# First strike starts the rhythm beat cleanly
@@ -58,7 +67,7 @@ func perform_strike(timestamp_sec: float, player_specialization: String = "", pl
 		perfect_strikes += 1
 	else:
 		var interval: float = timestamp_sec - last_strike_time_sec
-		var diff: float = absf(interval - IDEAL_CADENCE_SEC)
+		var diff: float = absf(interval - target_interval)
 		if diff <= BASE_PERFECT_DELTA * window_mult:
 			grade = RecipeData.CadenceGrade.PERFECT
 			perfect_strikes += 1

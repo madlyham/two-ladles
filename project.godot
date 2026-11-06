@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameData="*res://scripts/autoload/game_data.gd"
+ProgressionManager="*res://scripts/autoload/progression_manager.gd"
 NetworkManager="*res://scripts/autoload/network_manager.gd"
 ShiftManager="*res://scripts/autoload/shift_manager.gd"
 

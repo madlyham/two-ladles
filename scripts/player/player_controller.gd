@@ -4,6 +4,9 @@ extends CharacterBody3D
 ## and Desktop WASD/Arrow + E/Space/F controls.
 ## Synchronizes position and carried item state through the authoritative host.
 
+const CharacterProgressionData = preload("res://scripts/data/character_progression_data.gd")
+const RecipeData = preload("res://scripts/data/recipe_data.gd")
+
 const BASE_MOVE_SPEED: float = 6.2
 const KITCHEN_BOUNDS_X: float = 8.8
 const KITCHEN_BOUNDS_Z: float = 5.2
@@ -11,11 +14,14 @@ const KITCHEN_BOUNDS_Z: float = 5.2
 @export var peer_id: int = 1
 @export var character_id: String = "linh"
 @export var specialization_id: String = "prep_master"
+@export var character_tier: int = 1
 
 var carried_item: Dictionary = {}
 var external_move_vector: Vector2 = Vector2.ZERO # Set by mobile virtual joystick or client input
 var body_mesh: MeshInstance3D = null
 var carried_mesh: MeshInstance3D = null
+var third_arm_mesh: MeshInstance3D = null
+var third_arm_glow_mesh: MeshInstance3D = null
 var name_label: Label3D = null
 
 func _ready() -> void:
@@ -47,6 +53,24 @@ func _build_visuals() -> void:
 	carried_mesh.visible = false
 	add_child(carried_mesh)
 
+	# Linh's Visual 3rd Arm (Evolves from Rustic Mechanical at Tier 2 to Precision White-and-Blue at Tier 3)
+	third_arm_mesh = MeshInstance3D.new()
+	var arm_box: BoxMesh = BoxMesh.new()
+	arm_box.size = Vector3(0.18, 0.55, 0.18)
+	third_arm_mesh.mesh = arm_box
+	third_arm_mesh.position = Vector3(0.38, 1.15, -0.22)
+	third_arm_mesh.rotation_degrees = Vector3(18.0, 0.0, -24.0)
+	third_arm_mesh.visible = false
+	add_child(third_arm_mesh)
+
+	third_arm_glow_mesh = MeshInstance3D.new()
+	var glow_box: BoxMesh = BoxMesh.new()
+	glow_box.size = Vector3(0.06, 0.48, 0.06)
+	third_arm_glow_mesh.mesh = glow_box
+	third_arm_glow_mesh.position = Vector3(0.42, 1.15, -0.22)
+	third_arm_glow_mesh.visible = false
+	add_child(third_arm_glow_mesh)
+
 	name_label = Label3D.new()
 	name_label.position = Vector3(0.0, 1.9, 0.0)
 	name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -54,11 +78,17 @@ func _build_visuals() -> void:
 	name_label.outline_size = 8
 	add_child(name_label)
 
-func configure_chef(p_peer_id: int, p_char_id: String, p_spec_id: String) -> void:
+func configure_chef(p_peer_id: int, p_char_id: String, p_spec_id: String, p_tier: int = 1) -> void:
 	peer_id = p_peer_id
 	character_id = p_char_id
 	specialization_id = p_spec_id
+	character_tier = p_tier
 	_refresh_visuals()
+
+func get_task_speed_multiplier() -> float:
+	if character_id == "linh" and GameData.linh_tiers.has(character_tier):
+		return float(GameData.linh_tiers[character_tier].task_speed_multiplier)
+	return 1.0
 
 func get_effective_move_speed() -> float:
 	var mult: float = 1.0
@@ -91,9 +121,47 @@ func clear_carried_item() -> Dictionary:
 func _refresh_visuals() -> void:
 	if body_mesh == null:
 		return
-	var char_info: Dictionary = GameData.characters.get(character_id, GameData.characters["linh"])
+
+	var char_color: Color = Color(0.2, 0.7, 0.6)
+	if character_id == "linh":
+		char_color = GameData.characters["linh"]["color"]
+		# Linh's Visual 3rd Arm Evolution
+		if character_tier >= 2 and GameData.linh_tiers.has(character_tier):
+			var tier_info: CharacterProgressionData.LinhTierSpec = GameData.linh_tiers[character_tier]
+			third_arm_mesh.visible = true
+			var arm_mat: StandardMaterial3D = StandardMaterial3D.new()
+			arm_mat.albedo_color = tier_info.arm_color_primary
+			arm_mat.metallic = 0.8 if character_tier == 2 else 0.2
+			arm_mat.roughness = 0.5 if character_tier == 2 else 0.1
+			third_arm_mesh.material_override = arm_mat
+
+			if character_tier == 3:
+				third_arm_glow_mesh.visible = true
+				var glow_mat: StandardMaterial3D = StandardMaterial3D.new()
+				glow_mat.albedo_color = tier_info.arm_color_glow
+				glow_mat.emission_enabled = true
+				glow_mat.emission = tier_info.arm_color_glow
+				glow_mat.emission_energy_multiplier = 2.5
+				third_arm_glow_mesh.material_override = glow_mat
+			else:
+				third_arm_glow_mesh.visible = false
+		else:
+			if third_arm_mesh != null:
+				third_arm_mesh.visible = false
+			if third_arm_glow_mesh != null:
+				third_arm_glow_mesh.visible = false
+	elif character_id == "jiwon":
+		if GameData.jiwon_tiers.has(character_tier):
+			char_color = GameData.jiwon_tiers[character_tier].outfit_color
+		else:
+			char_color = GameData.characters["jiwon"]["color"]
+		if third_arm_mesh != null:
+			third_arm_mesh.visible = false
+		if third_arm_glow_mesh != null:
+			third_arm_glow_mesh.visible = false
+
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.albedo_color = char_info.get("color", Color(0.2, 0.7, 0.6))
+	mat.albedo_color = char_color
 	mat.roughness = 0.45
 	body_mesh.material_override = mat
 
@@ -101,6 +169,7 @@ func _refresh_visuals() -> void:
 	if GameData.specializations.has(specialization_id):
 		spec_name = GameData.specializations[specialization_id].display_name
 
+	var tier_label: String = "Tier %d" % character_tier
 	var item_str: String = "Hands Empty"
 	if not carried_item.is_empty():
 		item_str = "Carrying: %s" % carried_item.get("display_name", carried_item.get("item_id", "Item"))
@@ -116,4 +185,5 @@ func _refresh_visuals() -> void:
 		carried_mesh.visible = false
 
 	if name_label != null:
-		name_label.text = "%s [%s]\n%s" % [char_info.get("display_name", "Chef"), spec_name, item_str]
+		var display_cname: String = "Linh" if character_id == "linh" else "Jiwon"
+		name_label.text = "%s [%s - %s]\n%s" % [display_cname, spec_name, tier_label, item_str]

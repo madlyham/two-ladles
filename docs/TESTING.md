@@ -12,14 +12,27 @@ This guide explains how to test **Two Ladles** at every verification level witho
 ## Level 1: Headless Automated Logic Tests
 
 ### What It Tests
-Verifies all 62 automated assertions covering the 4 recipes, Linh/Jiwon cross-prep interdependence, 4-strike Prep cadence, Cooking state machine (`RAW -> COOKING -> OPTIMAL -> OVERCOOKED -> BURNT`), Assembly rules, Pass Counter anti-exploit rules, Rush Rhythm (`100` Flow → `0`, `15s` `1.5x` score), finite 4-plate washing cycle, and Lobby character exclusivity.
+Verifies all **114 automated assertions across 13 comprehensive test suites**:
+1. Starter recipes & cross-prep interdependence (*Phở Bò*, *Bánh Mì Thịt*, *Tteokbokki*, *Bulgogi Bánh Mì*).
+2. Preparation Counter 4-strike cadence & non-blocking misses.
+3. Cooking state machine (`RAW -> COOKING -> OPTIMAL -> OVERCOOKED -> BURNT`) and Phở blanching separation.
+4. Recipe assembly validation and broth-last sequence.
+5. Pass Counter handoff bonuses (+15 Flow within 4s) and anti-exploit guards.
+6. Kitchen Flow (0–100) and Rush Rhythm (15s, 1.5x score, paused Flow).
+7. Washing station and finite 4-plate lifecycle.
+8. Multiplayer lobby character exclusivity and readiness reset.
+9. Persistent progression, stage unlocks, and kitchen upgrades.
+10. Linh Execution Specialist: Tiers 1–3 speed multipliers (1.0x, 0.92x, 0.85x) and visual third arm evolution.
+11. Jiwon Multitasking & Delegation: Part-time worker hiring ("Call in the Crew"), coin balance deduction, cooldowns, and worker state machine.
+12. 5 Handcrafted Campaign Levels & Milestone 3 Character Tier Unlocks.
+13. Endless Rush Mode: Dynamic pressure scaling and personal best tracking.
 
 ### Steps to Run
 Open **PowerShell** in `C:\Users\madly\OneDrive\Desktop\Projects\two-ladles` and run (read-only verification):
 ```powershell
 & "$env:LOCALAPPDATA\Programs\two-ladles-tools\godot\Godot_v4.7.2-stable_win64_console.exe" --headless -- --run-tests
 ```
-**Expected Output:** Ends with `RESULTS: 62 / 62 Passed | 0 Failed` and `ALL AUTOMATED TESTS PASSED CLEANLY.`
+**Expected Output:** Ends with `RESULTS: 114 / 114 Passed | 0 Failed` and `ALL AUTOMATED TESTS PASSED CLEANLY.`
 
 ---
 

@@ -14,3 +14,8 @@ Canonical terms used across codebase, design documents, and automated tests.
 | **Prep Cadence** | Discrete 4-strike rhythm input on a `PrepStation` (`IDEAL_CADENCE_SEC = 0.45s`). Graded per strike as `PERFECT`, `GOOD`, or `MISS`. Misses never block completion. |
 | **Cooking State Machine** | 5-phase appliance lifecycle: `RAW -> COOKING -> OPTIMAL -> OVERCOOKED -> BURNT`. |
 | **Specialization** | Pre-shift passive perk (`PREP MASTER`, `FLAME KEEPER`, `MARKET RUNNER`, `FUSION ARTIST`) selectable by either character in the lobby. Both players may equip the same specialization. |
+| **Execution Specialist** | Linh's character progression identity: unlocks speed multipliers (1.0x → 0.92x → 0.85x) and a visual third mechanical arm evolving from none to rustic brass/steel (Tier 2) to sleek glowing precision white-and-blue (Tier 3). |
+| **Call in the Crew** | Jiwon's character signature ability: spends restaurant currency to hire temporary part-time helpers (`prep_assistant`, `dishwasher`) for 20s contracts (45s cooldown) via host-authoritative validation. |
+| **Part-Time Worker** | Host-authoritative 3D agent hired by Jiwon governed by a 4-state machine (`WALKING_IN -> WORKING -> WALKING_OUT -> EXPIRED`) that performs automated chops or plate scrubs at fixed stations. |
+| **Campaign Level** | One of 5 handcrafted sequential levels (`First Customer`, `Lunch Rush`, `Night Market`, `Fusion Special`, `Grand Opening`) with specific target scores, allowed recipes, and progression unlock thresholds. |
+| **Endless Rush Mode** | Game mode featuring continuous dynamic difficulty scaling (intervals shrink from 14s to 6.5s, concurrent orders scale from 2 to 4), concluding when 3 tickets are missed. Tracks personal bests in persistent storage. |

@@ -9,9 +9,18 @@ Two players (**Linh**, a Vietnamese former software programmer, and **Jiwon**, a
 
 ---
 
-## Key Features (Milestones 0–2 Vertical Slice)
+## Key Features (Milestones 0–3 Vertical Slice)
 
 - **Mandatory 2-Player Local Network Co-Op:** Built on Godot's `ENetMultiplayerPeer` (UDP port `24567`). One device hosts, the second joins via LAN IPv4 (or `127.0.0.1` for 2-window desktop testing).
+- **Character Signature Abilities & Progression Tiers:**
+  - **Linh (Execution Specialist):** Tiers 1–3 speed multipliers (1.0x, 0.92x, 0.85x; up to 0.38s cadence) with visual mechanical third arm evolving from rustic brass/steel to futuristic glowing precision white-and-blue.
+  - **Jiwon (Multitasking & Delegation Specialist):** "Call in the Crew" ability allowing Jiwon to spend restaurant coins to hire temporary part-time helpers (`prep_assistant`, `dishwasher`) with automated chopping and scrubbing behaviors.
+- **5 Handcrafted Campaign Levels:**
+  - *First Customer* (Rural Food Stand) → *Lunch Rush* (Village Market) → *Night Market* (Tteokbokki introduced; Tier 2 unlocked) → *Fusion Special* (Bulgogi Bánh Mì introduced) → *Grand Opening* (All 4 recipes; Tier 3 unlocked).
+- **Endless Rush Mode:**
+  - Dynamic difficulty scaling with shrinking intervals and expanding order concurrency; failure upon 3 missed orders; persistent personal best tracking.
+- **Persistent Progression & Kitchen Upgrades:**
+  - Restaurant vault coins, 1–3 star ratings, and kitchen appliance upgrades (e.g. Sharp Santoku Knives, Double-Walled Stockpot) saved persistently.
 - **Cross-Kitchen Partner Interdependence:**
   - **Linh's Side (West Zone):** Houses raw meats & starches (*Pork Belly*, *Marinated Bulgogi*, *Rice Cakes*, *Beef*, *Dry Rice Noodles*, *Baguettes*), the West Prep Counter, the **Dedicated Phở Stockpot**, the **Noodle Blancher**, Assembly West, and the Serving Window.
   - **Jiwon's Side (East Zone):** Houses vegetables, sauces & fish cakes (*Daikon & Carrot*, *Aged Kimchi*, *Fish Cakes*, *Gochujang*), the East Prep Counter, the **Cast-Iron Grill/Sear Pan**, the **Gochujang Simmer Wok**, Assembly East, and the **Washing Sink & Dish Rack**.

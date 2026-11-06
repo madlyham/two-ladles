@@ -228,6 +228,7 @@ func save_progression() -> bool:
 		# If user:// fails, try absolute fallback
 		var fallback_path: String = ProjectSettings.globalize_path("res://.user/progression.json")
 		if save_path != fallback_path:
+			DirAccess.make_dir_recursive_absolute(fallback_path.get_base_dir())
 			save_path = fallback_path
 			file = FileAccess.open(save_path, FileAccess.WRITE)
 		if file == null:

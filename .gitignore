@@ -1,0 +1,35 @@
+# Git & OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Godot 4+ specific ignores
+.godot/
+.import/
+*.import
+*.translation
+
+# Build outputs and artifacts
+build/
+exports/
+*.apk
+*.aab
+*.exe
+*.pck
+*.x86_64
+*.dmg
+
+# Android signing keys & secrets (NEVER COMMIT)
+*.keystore
+*.jks
+*.pem
+*.key
+.env
+.env.*
+local.properties
+signing.properties
+
+# Local portable toolchains & scratch
+tools/
+.tmp/
+*.log

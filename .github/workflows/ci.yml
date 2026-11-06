@@ -1,0 +1,81 @@
+name: Two Ladles CI (Headless Tests & Desktop Build)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  GODOT_VERSION: "4.7.2-stable"
+  GODOT_TEMPLATE_DIR: "4.7.2.stable"
+
+jobs:
+  validate-test-and-build:
+    name: Godot 4.7.2 Headless Test & Linux/Windows Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Cache Godot 4.7.2 Binary & Export Templates
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/godot-bin
+            ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_DIR }}
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-v1
+
+      - name: Download & Verify Godot 4.7.2-stable & Export Templates
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "${{ runner.temp }}/godot-bin"
+          mkdir -p ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_DIR }}
+          BASE_URL="https://github.com/godotengine/godot/releases/download/${{ env.GODOT_VERSION }}"
+
+          curl -fsSL "${BASE_URL}/SHA512-SUMS.txt" -o "${{ runner.temp }}/SHA512-SUMS.txt"
+          curl -fsSL "${BASE_URL}/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64.zip" -o "${{ runner.temp }}/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64.zip"
+          curl -fsSL "${BASE_URL}/Godot_v${{ env.GODOT_VERSION }}_export_templates.tpz" -o "${{ runner.temp }}/Godot_v${{ env.GODOT_VERSION }}_export_templates.tpz"
+
+          cd "${{ runner.temp }}"
+          grep "Godot_v${{ env.GODOT_VERSION }}_linux.x86_64.zip" SHA512-SUMS.txt | sha512sum -c -
+          grep "Godot_v${{ env.GODOT_VERSION }}_export_templates.tpz" SHA512-SUMS.txt | sha512sum -c -
+
+          unzip -q "Godot_v${{ env.GODOT_VERSION }}_linux.x86_64.zip" -d "${{ runner.temp }}/godot-bin"
+          chmod +x "${{ runner.temp }}/godot-bin/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64"
+
+          unzip -q "Godot_v${{ env.GODOT_VERSION }}_export_templates.tpz" -d "${{ runner.temp }}/tpz-extract"
+          mv "${{ runner.temp }}/tpz-extract/templates/"* ~/.local/share/godot/export_templates/${{ env.GODOT_TEMPLATE_DIR }}/
+
+      - name: Import Project in Headless Mode
+        run: |
+          GODOT="${{ runner.temp }}/godot-bin/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64"
+          "$GODOT" --version
+          "$GODOT" --headless --import
+
+      - name: Run Automated Headless Gameplay & Anti-Exploit Tests
+        run: |
+          GODOT="${{ runner.temp }}/godot-bin/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64"
+          "$GODOT" --headless -- --run-tests | tee test_results.log
+
+      - name: Export Desktop Development Builds (Windows & Linux)
+        run: |
+          GODOT="${{ runner.temp }}/godot-bin/Godot_v${{ env.GODOT_VERSION }}_linux.x86_64"
+          mkdir -p build/windows build/linux
+          "$GODOT" --headless --export-debug "Windows Desktop" build/windows/two-ladles.exe
+          "$GODOT" --headless --export-debug "Linux" build/linux/two-ladles.x86_64
+          ls -lh build/windows/two-ladles.exe build/linux/two-ladles.x86_64
+
+      - name: Upload Desktop Builds & Test Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: two-ladles-desktop-builds-${{ github.sha }}
+          path: |
+            test_results.log
+            build/windows/two-ladles.exe
+            build/linux/two-ladles.x86_64
+          retention-days: 14

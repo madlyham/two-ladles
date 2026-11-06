@@ -18,7 +18,7 @@ namespace TwoLadles.Networking
 
     public class NetworkManager : MonoBehaviour
     {
-        public static NetworkManager Instance { get; private set; }
+        public static NetworkManager Instance { get; set; }
 
         public const int DEFAULT_PORT = 24567;
         public const int MAX_CLIENTS = 1; // Exactly 2 players total

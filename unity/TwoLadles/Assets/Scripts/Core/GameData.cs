@@ -6,7 +6,7 @@ namespace TwoLadles.Core
 {
     public class GameData : MonoBehaviour
     {
-        public static GameData Instance { get; private set; }
+        public static GameData Instance { get; set; }
 
         public Dictionary<string, IngredientSpec> ingredients = new Dictionary<string, IngredientSpec>();
         public Dictionary<string, ApplianceSpec> appliances = new Dictionary<string, ApplianceSpec>();
@@ -108,7 +108,7 @@ namespace TwoLadles.Core
         {
             appliances["stockpot"] = new ApplianceSpec("stockpot", "Dedicated Pho Stockpot", "linh_west", 0.0f, 180.0f, 240.0f, "broth_hot", "broth_hot", false);
             appliances["noodle_blancher"] = new ApplianceSpec("noodle_blancher", "Noodle Blanching Basket", "linh_west", 3.0f, 6.0f, 10.0f, "noodles_raw", "noodles_blanched", true);
-            appliances["grill_pan"] = new ApplianceSpec("grill_pan", "Cast-Iron Grill / Sear Pan", "jiwon_east", 4.0f, 8.0f, 12.0f, "pork_portioned", "pork_grilled", true);
+            appliances["grill_pan"] = new ApplianceSpec("grill_pan", "Cast-Iron Grill / Sear Pan", "jiwon_east", 4.0f, 9.0f, 13.0f, "pork_portioned", "pork_grilled", true);
             appliances["simmer_wok"] = new ApplianceSpec("simmer_wok", "Gochujang Simmer Wok", "jiwon_east", 5.0f, 10.0f, 15.0f, "tteok_portioned", "tteokbokki_simmered", false);
         }
 

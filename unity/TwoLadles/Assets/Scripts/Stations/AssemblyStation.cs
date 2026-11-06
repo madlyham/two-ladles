@@ -9,6 +9,9 @@ namespace TwoLadles.Stations
     {
         public List<string> placedComponents = new List<string>();
 
+        public KitchenItem currentVessel { get => heldItem; set => heldItem = value; }
+        public List<string> assembledIngredients => placedComponents;
+
         public (bool ok, string reason) PlaceVessel(KitchenItem vesselItem)
         {
             if (heldItem != null)
@@ -29,6 +32,12 @@ namespace TwoLadles.Stations
 
             if (heldItem.vesselType == "none")
                 return (false, "Must place a Plate or Bowl before adding ingredients.", false, "");
+
+            // Tteokbokki rejection on flat plate
+            if (ingredient.itemId == "tteok_cooked" && heldItem.vesselType == "plate")
+            {
+                return (false, "Assembly rejects Tteokbokki on a flat Plate", false, "");
+            }
 
             // Pho Bo specific rule: rejects hot broth before blanched noodles and beef are placed!
             if (ingredient.itemId == "broth_hot")

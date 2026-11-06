@@ -28,17 +28,17 @@ namespace TwoLadles.Stations
             return true;
         }
 
-        public (bool ok, string reason, CadenceGrade grade, QualityTier quality, bool finished) PerformStrike(
+        public (bool ok, string reason, CadenceGrade grade, QualityTier quality, bool finished, int scoreBonus) PerformStrike(
             float currentTime,
             string specializationId = "",
             string characterId = "linh",
             float customSpeedMultiplier = 1.0f)
         {
             if (heldItem == null)
-                return (false, "No item on preparation counter.", CadenceGrade.MISS, QualityTier.STANDARD, false);
+                return (false, "No item on preparation counter.", CadenceGrade.MISS, QualityTier.STANDARD, false, 0);
 
             if (strikesCompleted >= REQUIRED_STRIKES)
-                return (false, "Item preparation already completed.", CadenceGrade.MISS, QualityTier.STANDARD, true);
+                return (false, "Item preparation already completed.", CadenceGrade.MISS, QualityTier.STANDARD, true, 0);
 
             // Calculate speed multiplier
             float speedMult = customSpeedMultiplier;
@@ -111,7 +111,8 @@ namespace TwoLadles.Stations
                 heldItem.quality = quality;
             }
 
-            return (true, "", grade, quality, finished);
+            int scoreBonus = (grade == CadenceGrade.PERFECT ? 10 : 0) + (specializationId == "prep_master" ? 15 : 0);
+            return (true, "", grade, quality, finished, scoreBonus);
         }
 
         public override (bool ok, string reason) InteractPrimary(ref KitchenItem playerItem, int peerId, string characterId)

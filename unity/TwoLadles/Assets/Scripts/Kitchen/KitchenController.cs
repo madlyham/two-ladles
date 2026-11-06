@@ -10,7 +10,7 @@ namespace TwoLadles.Kitchen
 {
     public class KitchenController : MonoBehaviour
     {
-        public static KitchenController Instance { get; private set; }
+        public static KitchenController Instance { get; set; }
 
         public event Action<string, Color> OnStatusToast;
 

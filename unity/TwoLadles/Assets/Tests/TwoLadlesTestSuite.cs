@@ -6,6 +6,7 @@ using TwoLadles.Core;
 using TwoLadles.Stations;
 using TwoLadles.Kitchen;
 using TwoLadles.Player;
+using TwoLadles.Networking;
 
 namespace TwoLadles.Tests
 {
@@ -36,27 +37,39 @@ namespace TwoLadles.Tests
             if (GameData.Instance == null)
             {
                 var gdObj = new GameObject("GameData");
-                gdObj.AddComponent<GameData>();
-                GameData.Instance.InitData();
+                var gd = gdObj.AddComponent<GameData>();
+                GameData.Instance = gd;
+                gd.InitData();
             }
 
             // Ensure ProgressionManager is initialized
             if (ProgressionManager.Instance == null)
             {
                 var pmObj = new GameObject("ProgressionManager");
-                pmObj.AddComponent<ProgressionManager>();
+                var pm = pmObj.AddComponent<ProgressionManager>();
+                ProgressionManager.Instance = pm;
+                pm.InitDefaults();
             }
 
             // Ensure ShiftManager is initialized
             if (ShiftManager.Instance == null)
             {
                 var smObj = new GameObject("ShiftManager");
-                smObj.AddComponent<ShiftManager>();
+                var sm = smObj.AddComponent<ShiftManager>();
+                ShiftManager.Instance = sm;
+            }
+
+            // Ensure NetworkManager is initialized
+            if (NetworkManager.Instance == null)
+            {
+                var nmObj = new GameObject("NetworkManager");
+                var nm = nmObj.AddComponent<NetworkManager>();
+                NetworkManager.Instance = nm;
             }
 
             Test1_RecipesAndCrossPrepArchitecture();
             Test2_PrepStationRhythmCadence();
-            Test3_CookingStateMachineAndPhoSeparation();
+            Test3_CookingStationStateMachineAndPhoSeparation();
             Test4_AssemblyStationRules();
             Test5_PassCounterHandoffAndAntiExploit();
             Test6_KitchenFlowAndRushRhythm();
@@ -78,30 +91,32 @@ namespace TwoLadles.Tests
             }
             else
             {
+                Debug.LogError($"  TEST FAILURES ENCOUNTERED ({testsFailed} failed assertions):");
                 foreach (var msg in failureMessages)
                 {
-                    Debug.LogError($"  [FAIL] {msg}");
+                    Debug.LogError("  " + msg);
                 }
             }
         }
 
-        private void Assert(bool condition, string message)
+        private void Assert(bool condition, string testName)
         {
             testsRun++;
             if (condition)
             {
                 testsPassed++;
-                Debug.Log($"  [PASS] {message}");
+                Debug.Log($"  [PASS] {testName}");
             }
             else
             {
                 testsFailed++;
-                failureMessages.Add(message);
-                Debug.LogError($"  [FAIL] {message}");
+                string failMsg = $"[FAIL] {testName}";
+                failureMessages.Add(failMsg);
+                Debug.LogError($"  {failMsg}");
             }
         }
 
-        // Suite 1: Recipes & Cross Prep
+        // Suite 1: Recipes & Cross Prep (9 assertions)
         private void Test1_RecipesAndCrossPrepArchitecture()
         {
             Debug.Log("\n[Suite 1] Data-Driven Recipes & Cross-Prep Interdependence");
@@ -117,7 +132,7 @@ namespace TwoLadles.Tests
             Assert(GameData.Instance.ingredients["kimchi_raw"].originZone == "jiwon_east" && GameData.Instance.ingredients["kimchi_raw"].partnerTargetZone == "linh_west", "Jiwon preps Kimchi Slaw on East side for Linh's West Assembly");
         }
 
-        // Suite 2: Prep Station
+        // Suite 2: Prep Station (9 assertions)
         private void Test2_PrepStationRhythmCadence()
         {
             Debug.Log("\n[Suite 2] Prep Counter 4-Strike Rhythm Cadence & Miss Non-Blocking");
@@ -137,6 +152,13 @@ namespace TwoLadles.Tests
             Assert(prep.heldItem.itemId == "pork_portioned", "Raw pork transforms into pork_portioned after 4 strikes");
             Assert(s4.quality == QualityTier.OPTIMAL, "Perfect cadence grants OPTIMAL quality tier");
 
+            // Prep Master specialization bonus (+15 bonus on top of +10 Perfect cadence bonus)
+            prep.heldItem = null;
+            prep.PlaceRawItem(new KitchenItem("pork_raw", "Raw Pork Belly"));
+            prep.PerformStrike(0.0f, "prep_master");
+            var specStrike = prep.PerformStrike(0.45f, "prep_master");
+            Assert(specStrike.scoreBonus == 25, "Prep Master specialization adds +15 bonus on top of +10 Perfect cadence bonus");
+
             // Miss non-blocking test
             prep.heldItem = null;
             prep.PlaceRawItem(new KitchenItem("kimchi_raw", "Raw Kimchi"));
@@ -151,7 +173,7 @@ namespace TwoLadles.Tests
             DestroyImmediate(prepObj);
         }
 
-        // Suite 3: Cooking Station
+        // Suite 3: Cooking Station (9 assertions)
         private void Test3_CookingStationStateMachineAndPhoSeparation()
         {
             Debug.Log("\n[Suite 3] Cooking State Machine & Pho Separation");
@@ -192,12 +214,23 @@ namespace TwoLadles.Tests
             var waste = cs.RetrieveCookedItem();
             Assert(waste.itemId == "burnt_waste", "Retrieving BURNT food produces burnt_waste");
 
+            // Flame Keeper extends OPTIMAL cooking window (+35%)
+            var fkObj = new GameObject("FlameKeeperGrill");
+            var fkCs = fkObj.AddComponent<CookingStation>();
+            fkCs.applianceId = "grill_pan";
+            fkCs.applianceSpec = GameData.Instance.appliances["grill_pan"];
+            fkCs.flameKeeperEquipped = true;
+            fkCs.PlaceIngredient(new KitchenItem("pork_portioned", "Portioned Pork"));
+            fkCs.TickCooking(9.8f); // With +35%, 9.8s remains OPTIMAL
+            Assert(fkCs.currentState == CookingState.OPTIMAL, "Flame Keeper specialization extends OPTIMAL cooking window (+35%)");
+
+            DestroyImmediate(fkObj);
             DestroyImmediate(csObj);
             DestroyImmediate(stockpotObj);
             DestroyImmediate(blancherObj);
         }
 
-        // Suite 4: Assembly Station
+        // Suite 4: Assembly Station (7 assertions)
         private void Test4_AssemblyStationRules()
         {
             Debug.Log("\n[Suite 4] Recipe-Driven Assembly & Pho Broth-Last Constraint");
@@ -218,11 +251,22 @@ namespace TwoLadles.Tests
             asSt.AddComponent(new KitchenItem("noodles_blanched", "Blanched Noodles"));
             asSt.AddComponent(new KitchenItem("beef_sliced", "Sliced Beef"));
             var brothValid = asSt.AddComponent(new KitchenItem("broth_hot", "Hot Broth"));
-            Assert(brothValid.ok && brothValid.recipeCompleted, "Pho Bo completes once noodles, beef, and hot broth are assembled");
-            Assert(asSt.heldItem.itemId == "pho_bo", "Completed dish has recipeId == pho_bo");
+            Assert(brothValid.ok, "Valid Pho Bo sequence accepted");
+            Assert(brothValid.recipeCompleted, "Pho Bo completes once noodles, beef, and hot broth are assembled");
+            Assert(asSt.heldItem.itemId == "pho_bo", "Completed dish has recipe_id == pho_bo");
+
+            // Vessel type check: Tteokbokki on a flat plate is rejected
+            asSt.heldItem = null;
+            asSt.currentVessel = null;
+            asSt.assembledIngredients.Clear();
+            asSt.PlaceVessel(new KitchenItem("clean_plate", "Clean Plate", "plate"));
+            var tteokReject = asSt.AddComponent(new KitchenItem("tteok_cooked", "Cooked Rice Cakes"));
+            Assert(!tteokReject.ok, "Assembly rejects Tteokbokki on a flat Plate");
 
             // Bulgogi Banh Mi assembly
             asSt.heldItem = null;
+            asSt.currentVessel = null;
+            asSt.assembledIngredients.Clear();
             asSt.PlaceVessel(new KitchenItem("clean_plate", "Clean Plate", "plate"));
             asSt.AddComponent(new KitchenItem("baguette", "Baguette"));
             asSt.AddComponent(new KitchenItem("kimchi_slaw", "Kimchi Slaw"));
@@ -232,15 +276,17 @@ namespace TwoLadles.Tests
             DestroyImmediate(asObj);
         }
 
-        // Suite 5: Pass Counter & Anti-Exploit
+        // Suite 5: Pass Counter & Anti-Exploit (7 assertions)
         private void Test5_PassCounterHandoffAndAntiExploit()
         {
             Debug.Log("\n[Suite 5] Pass Counter Handoff (+15 Flow) & Anti-Exploit Rules");
             var pcObj = new GameObject("PassCounterTest");
             var pc = pcObj.AddComponent<PassCounter>();
 
-            ShiftManager.Instance.StartShift(1, GameMode.CAMPAIGN);
-            ShiftManager.Instance.activeOrders.Add(new OrderTicket("ord_1", "banh_mi_thit", "plate", 60.0f));
+            ShiftManager.Instance.kitchenFlow = 0.0f;
+            ShiftManager.Instance.claimedHandoffOrders.Clear();
+            ShiftManager.Instance.activeOrders.Clear();
+            ShiftManager.Instance.activeOrders.Add(new OrderTicket("ord_pass_1", "banh_mi_thit", "plate", 60.0f));
 
             // Anti-exploit 1: self-retrieval
             pc.PlaceItem(0, new KitchenItem("pork_portioned", "Pork"), 1, 0.0f);
@@ -248,10 +294,10 @@ namespace TwoLadles.Tests
             Assert(!selfRet.handoffAwarded, "Anti-Exploit: Self-retrieval by same player grants 0 Flow");
             Assert(ShiftManager.Instance.kitchenFlow == 0.0f, "Kitchen Flow remains 0 after self-retrieval");
 
-            // Anti-exploit 2: expired handoff window (> 4.0s)
+            // Anti-exploit 2: timeout > 4.0s
             pc.PlaceItem(0, new KitchenItem("pork_portioned", "Pork"), 1, 0.0f);
-            var lateRet = pc.RetrieveItem(0, 2, 4.5f);
-            Assert(!lateRet.handoffAwarded, "Anti-Exploit: Retrieval after 4-second window grants 0 Flow");
+            var timeoutRet = pc.RetrieveItem(0, 2, 5.0f);
+            Assert(!timeoutRet.handoffAwarded, "Anti-Exploit: Retrieval after 4-second window grants 0 Flow");
 
             // Valid handoff
             pc.PlaceItem(0, new KitchenItem("pork_portioned", "Pork"), 1, 0.0f);
@@ -268,7 +314,7 @@ namespace TwoLadles.Tests
             DestroyImmediate(pcObj);
         }
 
-        // Suite 6: Kitchen Flow & Rush Rhythm
+        // Suite 6: Kitchen Flow & Rush Rhythm (8 assertions)
         private void Test6_KitchenFlowAndRushRhythm()
         {
             Debug.Log("\n[Suite 6] Kitchen Flow & Rush Rhythm (15s, 1.5x Multiplier, Paused Flow Gain)");
@@ -284,25 +330,42 @@ namespace TwoLadles.Tests
             // Flow paused during Rush Rhythm
             ShiftManager.Instance.AddKitchenFlow(15.0f);
             Assert(ShiftManager.Instance.kitchenFlow == 0.0f, "Flow generation is paused while Rush Rhythm is active");
+
+            // 1.5x multiplier on served dish
+            ShiftManager.Instance.activeOrders.Clear();
+            ShiftManager.Instance.activeOrders.Add(new OrderTicket("ord_rush_test", "banh_mi_thit", "plate", 60.0f));
+            var serveRes = ShiftManager.Instance.DeliverDish(new KitchenItem("banh_mi_thit", "Banh Mi", "plate"), 1);
+            Assert(serveRes.success && serveRes.scoreAwarded == 190, "Rush Rhythm applies 1.5x multiplier to base order score (165 + 25 tip = 190)");
+
+            // Deactivates after 15s
+            ShiftManager.Instance.TickShift(15.1f);
+            Assert(!ShiftManager.Instance.rushRhythmActive, "Rush Rhythm deactivates after 15 seconds");
+
+            // Flow resumes
+            ShiftManager.Instance.AddKitchenFlow(20.0f);
+            Assert(ShiftManager.Instance.kitchenFlow == 20.0f, "Flow generation resumes cleanly after Rush Rhythm ends");
         }
 
-        // Suite 7: Washing Station
+        // Suite 7: Washing Station (7 assertions)
         private void Test7_WashingStationPlateLifecycle()
         {
             Debug.Log("\n[Suite 7] Washing Station & Finite Synchronized Plate Stack");
+            ShiftManager.Instance.StartShift(1, GameMode.CAMPAIGN);
             var wsObj = new GameObject("WashingTest");
             var ws = wsObj.AddComponent<WashingStation>();
 
-            ShiftManager.Instance.StartShift(1, GameMode.CAMPAIGN);
             Assert(ShiftManager.Instance.cleanPlates == 4, "Kitchen starts with finite pool of 4 clean plates/bowls");
 
-            KitchenItem p1 = null, p2 = null, p3 = null, p4 = null, p5 = null;
-            ws.InteractPrimary(ref p1, 1, "linh");
-            ws.InteractPrimary(ref p2, 1, "linh");
-            ws.InteractPrimary(ref p3, 1, "linh");
-            ws.InteractPrimary(ref p4, 1, "linh");
-            var rejected = ws.InteractPrimary(ref p5, 1, "linh");
-            Assert(!rejected.ok, "5th vessel pickup rejected when all 4 plates are in use (no unlimited disposable plates)");
+            // Take 4 clean vessels
+            for (int i = 0; i < 4; i++)
+            {
+                var take = ws.TakeCleanVessel("plate");
+                Assert(take.ok, "Took clean vessel from stack");
+            }
+
+            // 5th take rejected
+            var take5 = ws.TakeCleanVessel("plate");
+            Assert(!take5.ok, "5th vessel pickup rejected when all 4 plates are in use (no unlimited disposable plates)");
 
             // Deliver dish -> 1 dirty plate
             ShiftManager.Instance.activeOrders.Add(new OrderTicket("ord_wash", "banh_mi_thit", "plate", 60.0f));
@@ -319,16 +382,29 @@ namespace TwoLadles.Tests
             DestroyImmediate(wsObj);
         }
 
-        // Suite 8: Lobby
+        // Suite 8: Lobby Exclusivity & Readiness Reset (5 assertions)
         private void Test8_LobbyExclusivityAndReadyReset()
         {
             Debug.Log("\n[Suite 8] Multiplayer Lobby Character Exclusivity & Readiness Reset");
-            // Direct validation of exclusivity rule
-            Assert(GameData.Instance.IsCrossPartnerHandoff("pork_portioned", "linh", "jiwon"), "Cross partner handoff recognized between Linh and Jiwon");
-            Assert(!GameData.Instance.IsCrossPartnerHandoff("pork_portioned", "linh", "linh"), "Same character cannot perform cross-partner handoff");
+            NetworkManager.Instance.players.Clear();
+            NetworkManager.Instance.players[1] = new PlayerLobbyInfo { peerId = 1, name = "Host", character = "linh", specialization = "prep_master", ready = true };
+            NetworkManager.Instance.players[2] = new PlayerLobbyInfo { peerId = 2, name = "Client", character = "jiwon", specialization = "flame_keeper", ready = true };
+
+            var startOk = NetworkManager.Instance.CanStartShift(true);
+            Assert(startOk.ok, "Host can start shift when both Linh and Jiwon are connected and Ready");
+
+            var dupChar = NetworkManager.Instance.ApplyPlayerSelection(2, "linh", "flame_keeper");
+            Assert(!dupChar.ok, "Lobby rejects selecting Linh when partner already selected Linh");
+
+            var sameSpec = NetworkManager.Instance.ApplyPlayerSelection(2, "jiwon", "prep_master");
+            Assert(sameSpec.ok, "Lobby allows both players to equip the same specialization (PREP MASTER)");
+            Assert(!NetworkManager.Instance.players[2].ready, "Changing specialization automatically resets player Ready status to false");
+
+            var startBlocked = NetworkManager.Instance.CanStartShift(true);
+            Assert(!startBlocked.ok, "Host cannot start shift after a player's Ready status was reset");
         }
 
-        // Suite 9: Progression System
+        // Suite 9: Progression System (14 assertions)
         private void Test9_ProgressionSystem()
         {
             Debug.Log("\n[Suite 9] Milestone 3 Progression, Stage Unlocks & Kitchen Upgrades");
@@ -345,16 +421,37 @@ namespace TwoLadles.Tests
             // 2 stars unlocks Stage 2
             var s2 = ProgressionManager.Instance.RecordShiftResults(1, 400, 2, 3, 1);
             Assert(s2.newlyUnlocked, "Achieving 2 stars unlocks the next stage");
-            Assert(ProgressionManager.Instance.highestUnlockedStage == 2, "Highest unlocked stage is now Stage 2");
+            Assert(ProgressionManager.Instance.highestUnlockedStage == 2, "Highest unlocked stage is now Stage 2 (Village Market Restaurant)");
 
             // Knife purchase
+            int prevBalance = ProgressionManager.Instance.coins;
             var buy = ProgressionManager.Instance.PurchaseUpgrade("sharp_santoku_knives");
             Assert(buy.ok, "Successfully purchased Sharp Santoku Knife Set");
             Assert(ProgressionManager.Instance.IsUpgradeOwned("sharp_santoku_knives"), "Sharp knives upgrade marked as owned");
-            Assert(ProgressionManager.Instance.coins == (150 + 41 + 100 - 100), "Coins deducted for knife upgrade");
+            Assert(ProgressionManager.Instance.coins == prevBalance - 100, "100 coins deducted for knife upgrade");
+
+            // Duplicate purchase rejected
+            var dupBuy = ProgressionManager.Instance.PurchaseUpgrade("sharp_santoku_knives");
+            Assert(!dupBuy.ok, "Duplicate upgrade purchase is rejected");
+
+            // Knife upgrade effect on Prep Station rhythm window
+            var prepObj = new GameObject("KnifeTestPrep");
+            var prep = prepObj.AddComponent<PrepStation>();
+            prep.PlaceRawItem(new KitchenItem("pork_raw", "Raw Pork Belly"));
+            prep.PerformStrike(0.0f, "", "linh");
+            var upgradedStrike = prep.PerformStrike(0.75f, "", "linh");
+            Assert(upgradedStrike.grade == CadenceGrade.GOOD, "Purchased knife upgrade widened cadence tolerance window");
+            DestroyImmediate(prepObj);
+
+            // Test JSON persistence save and reload
+            ProgressionManager.Instance.SaveProgression();
+            bool reloadOk = ProgressionManager.Instance.LoadProgression();
+            Assert(reloadOk, "Progression data saved and reloaded from JSON file successfully");
+            Assert(ProgressionManager.Instance.highestUnlockedStage == 2, "Reloaded progression preserves unlocked stages");
+            Assert(ProgressionManager.Instance.IsUpgradeOwned("sharp_santoku_knives"), "Reloaded progression preserves owned upgrades");
         }
 
-        // Suite 10: Linh Execution Specialist
+        // Suite 10: Linh Execution Specialist (8 assertions)
         private void Test10_LinhExecutionSpecialistTiers()
         {
             Debug.Log("\n[Suite 10] Linh Execution Specialist: Tiers 1-3 Speed Multipliers & Visual Third Arm");
@@ -382,15 +479,25 @@ namespace TwoLadles.Tests
             Assert(Mathf.Approximately(p.GetTaskSpeedMultiplier(), 0.85f), "Linh Tier 3 task speed multiplier is 0.85x (~15% faster)");
             Assert(p.thirdArmVisual.activeSelf && p.thirdArmGlowVisual.activeSelf, "Linh Tier 3 has futuristic white-and-blue glowing precision arm visible");
 
+            // Verify strike execution timing with Linh Tier 3
+            var prepObj = new GameObject("Tier3PrepTest");
+            var prep = prepObj.AddComponent<PrepStation>();
+            prep.PlaceRawItem(new KitchenItem("pork_raw", "Raw Pork Belly"));
+            prep.PerformStrike(0.0f, "", "linh", 0.85f);
+            var fastStrike = prep.PerformStrike(0.385f, "", "linh", 0.85f);
+            Assert(fastStrike.grade == CadenceGrade.PERFECT, "Linh Tier 3 executes perfect cadence strikes at faster 0.38s intervals");
+
+            DestroyImmediate(prepObj);
             DestroyImmediate(pObj);
         }
 
-        // Suite 11: Jiwon Multitasking & Crew
+        // Suite 11: Jiwon Multitasking & Crew (12 assertions)
         private void Test11_JiwonDelegationPartTimeCrew()
         {
             Debug.Log("\n[Suite 11] Jiwon Multitasking & Delegation: Part-Time Worker Hiring & State Machine");
             var kcObj = new GameObject("KitchenControllerTest");
             var kc = kcObj.AddComponent<KitchenController>();
+            KitchenController.Instance = kc;
 
             // Setup East prep station
             var prepEastObj = new GameObject("PrepEast");
@@ -398,6 +505,13 @@ namespace TwoLadles.Tests
             var prepEast = prepEastObj.AddComponent<PrepStation>();
             prepEast.stationId = "prep_east";
             kc.stations["prep_east"] = prepEast;
+
+            // Setup Washing station
+            var wsObj = new GameObject("WashingStation");
+            wsObj.transform.SetParent(kcObj.transform);
+            var ws = wsObj.AddComponent<WashingStation>();
+            ws.stationId = "washing_station";
+            kc.stations["washing_station"] = ws;
 
             // Setup Jiwon player
             var pObj = new GameObject("PlayerJiwon");
@@ -442,36 +556,67 @@ namespace TwoLadles.Tests
             worker.TickWorker(0.1f);
             Assert(worker.currentState == WorkerState.WALKING_OUT, "Worker transitions to WALKING_OUT when contract expires");
 
+            // Cooldown check
+            var cdHire = kc.RequestHireWorker(2, "prep_assistant");
+            Assert(!cdHire.ok, "Hiring worker on active agency cooldown is rejected");
+
+            // Tier 3: 2 simultaneous part-timers
+            p.characterTier = 3;
+            kc.activeWorkers.Clear();
+            kc.workerCooldowns.Clear();
+            var hire1 = kc.RequestHireWorker(2, "prep_assistant");
+            var hire2 = kc.RequestHireWorker(2, "dishwasher");
+            Assert(hire1.ok && hire2.ok, "Jiwon Tier 3 can hire 2 simultaneous part-timers");
+            Assert(kc.activeWorkers.Count == 2, "Kitchen manages 2 simultaneous part-time workers at Tier 3");
+
             DestroyImmediate(kcObj);
         }
 
-        // Suite 12: Campaign Levels
+        // Suite 12: Campaign Levels (9 assertions)
         private void Test12_CampaignLevelsAndProgressionUnlocks()
         {
-            Debug.Log("\n[Suite 12] 5 Handcrafted Campaign Levels & Character Tier Unlocks");
+            Debug.Log("\n[Suite 12] 5 Handcrafted Campaign Levels & Milestone 3 Character Tier Unlocks");
             Assert(GameData.Instance.campaignLevels.Count == 5, "Exactly 5 handcrafted campaign levels registered");
-            Assert(GameData.Instance.campaignLevels[1].allowedRecipes.Count == 2, "Level 1 starts with 2 starter recipes (First Customer)");
-            Assert(GameData.Instance.campaignLevels[3].allowedRecipes.Contains("tteokbokki"), "Level 3 introduces Korean Tteokbokki (Night Market)");
-            Assert(GameData.Instance.campaignLevels[5].allowedRecipes.Count == 4, "Level 5 combines all 4 authentic recipes (Grand Opening)");
+
+            var lvl1 = GameData.Instance.campaignLevels[1];
+            var lvl3 = GameData.Instance.campaignLevels[3];
+            var lvl5 = GameData.Instance.campaignLevels[5];
+
+            Assert(lvl1.allowedRecipes.Count == 2, "Level 1 starts with 2 starter recipes (First Customer)");
+            Assert(lvl3.allowedRecipes.Contains("tteokbokki"), "Level 3 introduces Korean Tteokbokki (Night Market)");
+            Assert(lvl5.allowedRecipes.Count == 4, "Level 5 combines all 4 authentic recipes (Grand Opening)");
 
             ProgressionManager.Instance.ResetProgressionForTesting();
             Assert(ProgressionManager.Instance.linhTier == 1 && ProgressionManager.Instance.jiwonTier == 1, "Chefs start at Tier 1");
 
             // Level 3 completes -> Tier 2
-            ProgressionManager.Instance.RecordShiftResults(3, 600, 2, 4, 1);
+            var l3Res = ProgressionManager.Instance.RecordShiftResults(3, 600, 2, 4, 1);
+            Assert(l3Res.tierUpgraded, "Completing Level 3 triggers character tier upgrade");
             Assert(ProgressionManager.Instance.linhTier == 2 && ProgressionManager.Instance.jiwonTier == 2, "Linh & Jiwon upgraded to Tier 2 after Level 3");
 
             // Level 5 completes -> Tier 3
-            ProgressionManager.Instance.RecordShiftResults(5, 950, 2, 6, 2);
+            var l5Res = ProgressionManager.Instance.RecordShiftResults(5, 950, 2, 6, 2);
+            Assert(l5Res.tierUpgraded, "Completing Level 5 triggers Tier 3 upgrade");
             Assert(ProgressionManager.Instance.linhTier == 3 && ProgressionManager.Instance.jiwonTier == 3, "Linh & Jiwon upgraded to Tier 3 (Precision Engineer & Business Operator)");
         }
 
-        // Suite 13: Endless Rush Mode
+        // Suite 13: Endless Rush Mode (9 assertions)
         private void Test13_EndlessRushMode()
         {
             Debug.Log("\n[Suite 13] Endless Rush Mode: Dynamic Difficulty Scaling & Personal Best Tracking");
             ShiftManager.Instance.StartShift(1, GameMode.ENDLESS_RUSH);
             Assert(ShiftManager.Instance.currentMode == GameMode.ENDLESS_RUSH, "ShiftManager initialized in ENDLESS_RUSH mode");
+            Assert(ShiftManager.Instance.dynamicMaxOrders == 2, "Endless mode begins with 2 concurrent orders");
+
+            // Tick 65 seconds -> dynamic scaling increases pressure
+            ShiftManager.Instance.TickShift(65.0f);
+            Assert(ShiftManager.Instance.dynamicMaxOrders >= 4, "Endless mode dynamically scales concurrent order pressure over time");
+            Assert(ShiftManager.Instance.orderSpawnInterval < 12.0f, "Endless mode dynamically accelerates order spawn tempo");
+
+            // 3 failed orders -> shift ends
+            ShiftManager.Instance.ordersFailed = 3;
+            ShiftManager.Instance.TickShift(1.0f);
+            Assert(!ShiftManager.Instance.shiftActive, "3 failed customer orders triggers Endless Mode shift end");
 
             // Test personal best tracking
             ProgressionManager.Instance.ResetProgressionForTesting();

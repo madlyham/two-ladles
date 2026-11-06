@@ -16,19 +16,32 @@ namespace TwoLadles.Stations
         public const int NUM_SLOTS = 3;
         public const float HANDOFF_WINDOW_SECONDS = 4.0f;
 
-        public PassSlot[] slots = new PassSlot[NUM_SLOTS];
+        public PassSlot[] slots = new PassSlot[NUM_SLOTS]
+        {
+            new PassSlot(),
+            new PassSlot(),
+            new PassSlot()
+        };
 
         private void Awake()
         {
+            InitSlots();
+        }
+
+        public void InitSlots()
+        {
             for (int i = 0; i < NUM_SLOTS; i++)
             {
-                slots[i] = new PassSlot();
+                if (slots[i] == null)
+                    slots[i] = new PassSlot();
             }
         }
 
         public bool PlaceItem(int slotIndex, KitchenItem item, int peerId, float timestamp)
         {
+            InitSlots();
             if (slotIndex < 0 || slotIndex >= NUM_SLOTS) return false;
+            if (slots[slotIndex] == null) slots[slotIndex] = new PassSlot();
             if (slots[slotIndex].item != null) return false;
 
             slots[slotIndex].item = item;
@@ -39,9 +52,10 @@ namespace TwoLadles.Stations
 
         public (KitchenItem item, bool handoffAwarded) RetrieveItem(int slotIndex, int retrieverPeer, float currentTime)
         {
+            InitSlots();
             if (slotIndex < 0 || slotIndex >= NUM_SLOTS) return (null, false);
             var slot = slots[slotIndex];
-            if (slot.item == null) return (null, false);
+            if (slot == null || slot.item == null) return (null, false);
 
             var item = slot.item;
             int placerPeer = slot.placedByPeer;

@@ -9,6 +9,16 @@ namespace TwoLadles.Stations
         public const int REQUIRED_SCRUBS = 4;
         public int scrubStrokesCompleted = 0;
 
+        public (bool ok, string reason) TakeCleanVessel(string vesselType = "plate")
+        {
+            if (ShiftManager.Instance == null) return (false, "Shift manager offline.");
+            if (ShiftManager.Instance.TakeCleanPlate())
+            {
+                return (true, "Took clean vessel from stack.");
+            }
+            return (false, "All 4 vessels in use! Wash dirty plates at the sink.");
+        }
+
         public (bool ok, string reason, bool plateCleaned) PerformScrubStroke()
         {
             if (ShiftManager.Instance == null)

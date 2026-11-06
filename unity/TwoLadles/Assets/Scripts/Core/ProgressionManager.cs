@@ -44,7 +44,7 @@ namespace TwoLadles.Core
 
     public class ProgressionManager : MonoBehaviour
     {
-        public static ProgressionManager Instance { get; private set; }
+        public static ProgressionManager Instance { get; set; }
 
         public event Action OnProgressionUpdated;
         public event Action<string> OnUpgradePurchased;
@@ -81,7 +81,7 @@ namespace TwoLadles.Core
             }
         }
 
-        private void InitDefaults()
+        public void InitDefaults()
         {
             saveFilePath = Path.Combine(Application.persistentDataPath, "progression.json");
 
@@ -113,7 +113,7 @@ namespace TwoLadles.Core
             };
         }
 
-        public (bool ok, string reason, int earnedCoins, bool newlyUnlocked) RecordShiftResults(
+        public (bool ok, string reason, int earnedCoins, bool newlyUnlocked, bool tierUpgraded) RecordShiftResults(
             int stageId, int score, int stars, int handoffs, int rushTriggers)
         {
             int earnedCoins = (int)Math.Floor(score / 8.0f) + (handoffs * 5) + (rushTriggers * 20);
@@ -137,21 +137,24 @@ namespace TwoLadles.Core
             }
 
             // Milestone 3 Character Tier Unlocks based on campaign progress:
+            bool tierUpgraded = false;
             if (stageId == 3 && stars >= 1 && linhTier < 2)
             {
                 linhTier = 2;
                 jiwonTier = 2;
+                tierUpgraded = true;
             }
             if (stageId == 5 && stars >= 1 && linhTier < 3)
             {
                 linhTier = 3;
                 jiwonTier = 3;
+                tierUpgraded = true;
             }
 
             SaveProgression();
             OnProgressionUpdated?.Invoke();
 
-            return (true, "", earnedCoins, newlyUnlocked);
+            return (true, "", earnedCoins, newlyUnlocked, tierUpgraded);
         }
 
         public bool RecordEndlessRun(int score, int orders, float duration)

@@ -10,6 +10,7 @@ namespace TwoLadles.Stations
         public ApplianceSpec applianceSpec;
         public float cookingElapsedSeconds = 0.0f;
         public CookingState currentState = CookingState.RAW;
+        public bool flameKeeperEquipped = false;
 
         public bool PlaceIngredient(KitchenItem item)
         {
@@ -43,7 +44,7 @@ namespace TwoLadles.Stations
             float burnTime = applianceSpec != null ? applianceSpec.burnTime : 12.0f;
 
             // Apply Flame Keeper specialization bonus
-            if (specializationId == "flame_keeper" && GameData.Instance != null && GameData.Instance.specializations.TryGetValue("flame_keeper", out var specData))
+            if ((flameKeeperEquipped || specializationId == "flame_keeper") && GameData.Instance != null && GameData.Instance.specializations.TryGetValue("flame_keeper", out var specData))
             {
                 float extraWindow = (optEnd - optStart) * (specData.cookingOptimalMultiplier - 1.0f);
                 optEnd += extraWindow;

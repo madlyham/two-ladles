@@ -40,7 +40,7 @@ namespace TwoLadles.Core
 
     public class ShiftManager : MonoBehaviour
     {
-        public static ShiftManager Instance { get; private set; }
+        public static ShiftManager Instance { get; set; }
 
         public const float MAX_FLOW = 100.0f;
         public const float HANDOFF_FLOW_BONUS = 15.0f;
@@ -68,6 +68,9 @@ namespace TwoLadles.Core
         public int ordersFailed = 0;
         public int handoffsCompleted = 0;
         public int rushRhythmsTriggered = 0;
+
+        public int dynamicMaxOrders = MAX_ACTIVE_ORDERS;
+        public float orderSpawnInterval = 14.0f;
 
         public float kitchenFlow = 0.0f;
         public bool rushRhythmActive = false;
@@ -98,8 +101,13 @@ namespace TwoLadles.Core
         private void Update()
         {
             if (!shiftActive) return;
+            TickShift(Time.deltaTime);
+        }
 
-            float dt = Time.deltaTime;
+        public void TickShift(float dt)
+        {
+            if (!shiftActive) return;
+
             shiftElapsedSeconds += dt;
 
             // Tick Rush Rhythm
@@ -123,6 +131,23 @@ namespace TwoLadles.Core
                 if (shiftTimeRemaining <= 0.0f)
                 {
                     EndShift("Shift Ended! Service Complete.");
+                    return;
+                }
+            }
+            else if (currentMode == GameMode.ENDLESS_RUSH)
+            {
+                // Dynamic difficulty scaling
+                orderSpawnInterval = Mathf.Max(6.5f, 14.0f - (shiftElapsedSeconds / 30.0f));
+                if (shiftElapsedSeconds > 120.0f)
+                    dynamicMaxOrders = 5;
+                else if (shiftElapsedSeconds > 60.0f)
+                    dynamicMaxOrders = 4;
+                else if (shiftElapsedSeconds > 30.0f)
+                    dynamicMaxOrders = 3;
+
+                if (ordersFailed >= 3)
+                {
+                    EndShift("Shift Over! 3 Orders Missed.");
                     return;
                 }
             }
@@ -150,7 +175,7 @@ namespace TwoLadles.Core
 
             // Spawn incoming orders
             orderSpawnTimer -= dt;
-            if (orderSpawnTimer <= 0.0f)
+            if (orderSpawnTimer <= 0.0f && activeOrders.Count < dynamicMaxOrders)
             {
                 TrySpawnNextOrder();
             }
@@ -181,6 +206,14 @@ namespace TwoLadles.Core
             if (currentMode == GameMode.CAMPAIGN && GameData.Instance != null && GameData.Instance.campaignLevels.TryGetValue(stageId, out var spec))
             {
                 duration = spec.shiftDuration;
+                orderSpawnInterval = spec.orderSpawnInterval;
+                dynamicMaxOrders = spec.maxConcurrentOrders;
+            }
+            else if (currentMode == GameMode.ENDLESS_RUSH)
+            {
+                duration = 99999.0f;
+                orderSpawnInterval = 14.0f;
+                dynamicMaxOrders = 2;
             }
             shiftTimeRemaining = duration;
 

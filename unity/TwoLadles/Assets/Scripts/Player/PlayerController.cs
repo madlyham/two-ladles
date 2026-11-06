@@ -22,6 +22,9 @@ namespace TwoLadles.Player
         [Header("Visual Components")]
         public GameObject thirdArmVisual;
         public GameObject thirdArmGlowVisual;
+        public SpriteRenderer characterSpriteRenderer;
+        public SpriteRenderer carriedItemSpriteRenderer;
+        public float walkAnimTime = 0.0f;
 
         public void ConfigureChef(int pPeerId, string pCharId, string pSpecId, int pTier = 1)
         {
@@ -65,6 +68,31 @@ namespace TwoLadles.Player
             newPos.z = Mathf.Clamp(newPos.z, -KITCHEN_BOUNDS_Z, KITCHEN_BOUNDS_Z);
             newPos.y = 0.0f;
             transform.position = newPos;
+
+            // 30% Tilt movement animation (waddle while walking)
+            if (clamped.magnitude > 0.08f)
+            {
+                walkAnimTime += delta * 14.0f;
+                float tiltDegrees = Mathf.Sin(walkAnimTime) * 17.5f; // ~30% movement tilt arc
+                if (characterSpriteRenderer != null)
+                {
+                    characterSpriteRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, tiltDegrees);
+                    if (clamped.x < -0.05f) characterSpriteRenderer.flipX = true;
+                    else if (clamped.x > 0.05f) characterSpriteRenderer.flipX = false;
+                }
+            }
+            else
+            {
+                walkAnimTime = 0.0f;
+                if (characterSpriteRenderer != null)
+                {
+                    characterSpriteRenderer.transform.localRotation = Quaternion.Lerp(
+                        characterSpriteRenderer.transform.localRotation,
+                        Quaternion.identity,
+                        delta * 14.0f
+                    );
+                }
+            }
         }
 
         public void SetCarriedItem(KitchenItem item)
@@ -92,6 +120,10 @@ namespace TwoLadles.Player
             {
                 bool glowVisible = (characterId == "linh" && characterTier >= 3);
                 thirdArmGlowVisual.SetActive(glowVisible);
+            }
+            if (carriedItemSpriteRenderer != null)
+            {
+                carriedItemSpriteRenderer.gameObject.SetActive(carriedItem != null);
             }
         }
     }

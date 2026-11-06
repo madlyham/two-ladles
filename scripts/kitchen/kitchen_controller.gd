@@ -58,11 +58,30 @@ func _create_box(box_name: String, pos: Vector3, sz: Vector3, col: Color) -> Mes
 	mi.mesh = bm
 	mi.position = pos
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	var tex_path: String = "res://assets/sprites/kitchen/professional_kitchen.png"
+	if ResourceLoader.exists(tex_path):
+		mat.albedo_texture = load(tex_path)
+		mat.uv1_scale = Vector3(sz.x * 0.7, sz.z * 0.7, 1.0)
+		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	mat.albedo_color = col
-	mat.roughness = 0.65
+	mat.roughness = 0.55
+	mat.metallic = 0.3
 	mi.material_override = mat
 	add_child(mi)
 	return mi
+
+func _add_station_icon(pos: Vector3, sprite_rel_path: String, scale_size: float = 0.024) -> Sprite3D:
+	var spr: Sprite3D = Sprite3D.new()
+	spr.position = pos + Vector3(0.0, 1.15, 0.0)
+	spr.pixel_size = scale_size
+	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	spr.transparent = true
+	spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var full_path: String = "res://assets/sprites/items/" + sprite_rel_path
+	if ResourceLoader.exists(full_path):
+		spr.texture = load(full_path)
+	add_child(spr)
+	return spr
 
 func _build_stations() -> void:
 	# --- CENTER: SHARED PASS COUNTER & TRASH ---
@@ -73,6 +92,7 @@ func _build_stations() -> void:
 	pass_st.position = Vector3(0.0, 0.0, -0.4)
 	add_child(pass_st)
 	_create_box("PassMesh", Vector3(0.0, 0.45, -0.4), Vector3(1.6, 0.9, 3.2), Color(0.92, 0.76, 0.32))
+	_add_station_icon(Vector3(0.0, 0.45, -0.4), "dish_plate.png", 0.026)
 	stations["pass_counter"] = pass_st
 
 	var trash_st: StationBase = StationBase.new()
@@ -81,6 +101,7 @@ func _build_stations() -> void:
 	trash_st.position = Vector3(0.0, 0.0, 3.6)
 	add_child(trash_st)
 	_create_box("TrashMesh", Vector3(0.0, 0.4, 3.6), Vector3(1.1, 0.8, 1.1), Color(0.35, 0.35, 0.38))
+	_add_station_icon(Vector3(0.0, 0.4, 3.6), "dish_brush.png", 0.022)
 	stations["trash_bin"] = trash_st
 
 	# --- WEST ZONE (LINH'S SIDE): Preps Proteins/Starches for Jiwon + Cooks Pho Stock/Noodles + Assembly West + Serving ---
@@ -91,6 +112,7 @@ func _build_stations() -> void:
 	prep_west.position = Vector3(-3.2, 0.0, -2.6)
 	add_child(prep_west)
 	_create_box("PrepWestMesh", Vector3(-3.2, 0.45, -2.6), Vector3(2.2, 0.9, 1.3), Color(0.25, 0.68, 0.58))
+	_add_station_icon(Vector3(-3.2, 0.45, -2.6), "prep_counter_icon.png", 0.026)
 	stations["prep_west"] = prep_west
 
 	var stockpot_st: CookingStation = CookingStation.new()
@@ -101,6 +123,7 @@ func _build_stations() -> void:
 	stockpot_st.position = Vector3(-6.5, 0.0, -3.2)
 	add_child(stockpot_st)
 	_create_box("StockpotMesh", Vector3(-6.5, 0.45, -3.2), Vector3(1.6, 0.9, 1.4), Color(0.82, 0.58, 0.22))
+	_add_station_icon(Vector3(-6.5, 0.45, -3.2), "broth_pot.png", 0.026)
 	stations["stockpot"] = stockpot_st
 
 	var blancher_st: CookingStation = CookingStation.new()
@@ -111,6 +134,7 @@ func _build_stations() -> void:
 	blancher_st.position = Vector3(-6.5, 0.0, -1.0)
 	add_child(blancher_st)
 	_create_box("BlancherMesh", Vector3(-6.5, 0.45, -1.0), Vector3(1.6, 0.9, 1.4), Color(0.75, 0.78, 0.85))
+	_add_station_icon(Vector3(-6.5, 0.45, -1.0), "dish_bowl.png", 0.026)
 	stations["noodle_blancher"] = blancher_st
 
 	var assembly_west: AssemblyStation = AssemblyStation.new()
@@ -120,6 +144,7 @@ func _build_stations() -> void:
 	assembly_west.position = Vector3(-3.2, 0.0, 1.4)
 	add_child(assembly_west)
 	_create_box("AssemblyWestMesh", Vector3(-3.2, 0.45, 1.4), Vector3(2.2, 0.9, 1.3), Color(0.38, 0.58, 0.78))
+	_add_station_icon(Vector3(-3.2, 0.45, 1.4), "dish_bowl.png", 0.026)
 	stations["assembly_west"] = assembly_west
 
 	var serve_st: ServingStation = ServingStation.new()
@@ -129,6 +154,7 @@ func _build_stations() -> void:
 	serve_st.position = Vector3(-3.2, 0.0, 4.0)
 	add_child(serve_st)
 	_create_box("ServingMesh", Vector3(-3.2, 0.45, 4.0), Vector3(2.8, 0.9, 1.2), Color(0.95, 0.75, 0.22))
+	_add_station_icon(Vector3(-3.2, 0.45, 4.0), "baguette_bread.png", 0.026)
 	stations["serving_station"] = serve_st
 
 	# West Crates (Linh's Raw Ingredients: Beef, Noodles, Pork, Bulgogi, Tteok, Baguette)
@@ -147,6 +173,7 @@ func _build_stations() -> void:
 	prep_east.position = Vector3(3.2, 0.0, -2.6)
 	add_child(prep_east)
 	_create_box("PrepEastMesh", Vector3(3.2, 0.45, -2.6), Vector3(2.2, 0.9, 1.3), Color(0.88, 0.45, 0.25))
+	_add_station_icon(Vector3(3.2, 0.45, -2.6), "prep_counter_icon.png", 0.026)
 	stations["prep_east"] = prep_east
 
 	var grill_st: CookingStation = CookingStation.new()
@@ -157,6 +184,7 @@ func _build_stations() -> void:
 	grill_st.position = Vector3(6.5, 0.0, -3.0)
 	add_child(grill_st)
 	_create_box("GrillMesh", Vector3(6.5, 0.45, -3.0), Vector3(1.6, 0.9, 1.4), Color(0.85, 0.35, 0.22))
+	_add_station_icon(Vector3(6.5, 0.45, -3.0), "cooking_pan_icon.png", 0.026)
 	stations["grill_pan"] = grill_st
 
 	var wok_st: CookingStation = CookingStation.new()
@@ -167,6 +195,7 @@ func _build_stations() -> void:
 	wok_st.position = Vector3(6.5, 0.0, -0.8)
 	add_child(wok_st)
 	_create_box("WokMesh", Vector3(6.5, 0.45, -0.8), Vector3(1.6, 0.9, 1.4), Color(0.78, 0.18, 0.16))
+	_add_station_icon(Vector3(6.5, 0.45, -0.8), "cooking_pan_icon.png", 0.026)
 	stations["simmer_wok"] = wok_st
 
 	var assembly_east: AssemblyStation = AssemblyStation.new()
@@ -176,6 +205,7 @@ func _build_stations() -> void:
 	assembly_east.position = Vector3(3.2, 0.0, 1.4)
 	add_child(assembly_east)
 	_create_box("AssemblyEastMesh", Vector3(3.2, 0.45, 1.4), Vector3(2.2, 0.9, 1.3), Color(0.38, 0.58, 0.78))
+	_add_station_icon(Vector3(3.2, 0.45, 1.4), "dish_plate.png", 0.026)
 	stations["assembly_east"] = assembly_east
 
 	var wash_st: WashingStation = WashingStation.new()
@@ -185,6 +215,7 @@ func _build_stations() -> void:
 	wash_st.position = Vector3(3.2, 0.0, 4.0)
 	add_child(wash_st)
 	_create_box("WashMesh", Vector3(3.2, 0.45, 4.0), Vector3(2.8, 0.9, 1.2), Color(0.32, 0.75, 0.92))
+	_add_station_icon(Vector3(3.2, 0.45, 4.0), "dish_soap.png", 0.026)
 	stations["washing_station"] = wash_st
 
 	# East Crates (Jiwon's Raw Ingredients: Daikon/Carrot, Kimchi, Fish Cakes, Gochujang, plus Bowl/Plate Dispenser)
@@ -202,6 +233,19 @@ func _add_crate(st_id: String, title: String, item_id: String, pos: Vector3, col
 	_create_box("%s_Mesh" % st_id, pos + Vector3(0.0, 0.4, 0.0), Vector3(1.4, 0.8, 1.1), col)
 	stations[st_id] = st
 	crate_items[st_id] = item_id
+
+	var icon_name: String = "dish_plate.png"
+	match item_id:
+		"pork_raw": icon_name = "pork_belly_raw.png"
+		"bulgogi_raw", "beef_raw": icon_name = "beef_bulgogi_raw.png"
+		"tteok_raw": icon_name = "tteok_portioned.png"
+		"noodles_raw": icon_name = "dish_bowl.png"
+		"baguette": icon_name = "baguette_bread.png"
+		"daikon_carrot_raw": icon_name = "pickled_veg.png"
+		"kimchi_raw": icon_name = "kimchi_slaw.png"
+		"eomuk_raw": icon_name = "fish_cake_raw.png"
+		"gochujang_sauce": icon_name = "korean_sauce.png"
+	_add_station_icon(pos, icon_name, 0.022)
 
 func _spawn_players() -> void:
 	for p_node: Node in players_by_peer.values():

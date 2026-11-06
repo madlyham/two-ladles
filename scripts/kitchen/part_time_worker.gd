@@ -32,7 +32,9 @@ var target_station: StationBase = null
 var target_station_pos: Vector3 = Vector3.ZERO
 
 var body_mesh: MeshInstance3D = null
+var worker_sprite: Sprite3D = null
 var label_3d: Label3D = null
+var walk_anim_time: float = 0.0
 
 func _ready() -> void:
 	position = ENTRANCE_POS
@@ -58,6 +60,14 @@ func _build_visuals() -> void:
 	body_mesh.mesh = cap
 	body_mesh.position = Vector3(0.0, 0.62, 0.0)
 	add_child(body_mesh)
+
+	worker_sprite = Sprite3D.new()
+	worker_sprite.position = Vector3(0.0, 0.85, 0.05)
+	worker_sprite.pixel_size = 0.024
+	worker_sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	worker_sprite.transparent = true
+	worker_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	add_child(worker_sprite)
 
 	label_3d = Label3D.new()
 	label_3d.position = Vector3(0.0, 1.6, 0.0)
@@ -85,10 +95,20 @@ func _tick_host_logic(delta: float) -> void:
 			if flat_cur.distance_to(flat_tar) <= 0.35:
 				current_state = WorkerState.WORKING
 				task_tick_accum = 0.0
+				if worker_sprite != null:
+					worker_sprite.rotation.z = 0.0
 			else:
 				var move_dir: Vector2 = (flat_tar - flat_cur).normalized()
 				position.x += move_dir.x * WORKER_WALK_SPEED * delta
 				position.z += move_dir.y * WORKER_WALK_SPEED * delta
+				walk_anim_time += delta * 12.0
+				var tilt_rad: float = sin(walk_anim_time) * deg_to_rad(17.5)
+				if worker_sprite != null:
+					worker_sprite.rotation.z = lerp_angle(worker_sprite.rotation.z, tilt_rad, delta * 18.0)
+					if move_dir.x < -0.05:
+						worker_sprite.flip_h = true
+					elif move_dir.x > 0.05:
+						worker_sprite.flip_h = false
 
 		WorkerState.WORKING:
 			if contract_remaining_sec <= 0.0:
@@ -111,6 +131,14 @@ func _tick_host_logic(delta: float) -> void:
 				var move_dir_out: Vector2 = (flat_exit - flat_cur_out).normalized()
 				position.x += move_dir_out.x * WORKER_WALK_SPEED * delta
 				position.z += move_dir_out.y * WORKER_WALK_SPEED * delta
+				walk_anim_time += delta * 12.0
+				var tilt_rad_out: float = sin(walk_anim_time) * deg_to_rad(17.5)
+				if worker_sprite != null:
+					worker_sprite.rotation.z = lerp_angle(worker_sprite.rotation.z, tilt_rad_out, delta * 18.0)
+					if move_dir_out.x < -0.05:
+						worker_sprite.flip_h = true
+					elif move_dir_out.x > 0.05:
+						worker_sprite.flip_h = false
 
 func _execute_worker_task() -> void:
 	if target_station == null or not is_instance_valid(target_station):
@@ -136,6 +164,13 @@ func _refresh_visuals() -> void:
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
 	mat.albedo_color = col
 	body_mesh.material_override = mat
+
+	if worker_sprite != null:
+		var icon_name: String = "prep_counter_icon.png" if role_id == "prep_assistant" else "cleaning_gloves.png"
+		var full_path: String = "res://assets/sprites/items/" + icon_name
+		if ResourceLoader.exists(full_path):
+			worker_sprite.texture = load(full_path)
+			worker_sprite.visible = true
 
 	var state_text: String = "Arriving..."
 	if current_state == WorkerState.WORKING:

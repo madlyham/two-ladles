@@ -22,7 +22,10 @@ var body_mesh: MeshInstance3D = null
 var carried_mesh: MeshInstance3D = null
 var third_arm_mesh: MeshInstance3D = null
 var third_arm_glow_mesh: MeshInstance3D = null
+var character_sprite: Sprite3D = null
+var carried_sprite: Sprite3D = null
 var name_label: Label3D = null
+var walk_anim_time: float = 0.0
 
 func _ready() -> void:
 	_build_visuals()
@@ -71,6 +74,27 @@ func _build_visuals() -> void:
 	third_arm_glow_mesh.visible = false
 	add_child(third_arm_glow_mesh)
 
+	# 2D Character Billboard Sprite
+	character_sprite = Sprite3D.new()
+	character_sprite.name = "CharacterSprite"
+	character_sprite.position = Vector3(0.0, 0.95, 0.05)
+	character_sprite.pixel_size = 0.0036
+	character_sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	character_sprite.transparent = true
+	character_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	add_child(character_sprite)
+
+	# 2D Carried Item Sprite Icon
+	carried_sprite = Sprite3D.new()
+	carried_sprite.name = "CarriedSprite"
+	carried_sprite.position = Vector3(0.0, 1.45, 0.45)
+	carried_sprite.pixel_size = 0.022
+	carried_sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	carried_sprite.transparent = true
+	carried_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	carried_sprite.visible = false
+	add_child(carried_sprite)
+
 	name_label = Label3D.new()
 	name_label.position = Vector3(0.0, 1.9, 0.0)
 	name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -107,6 +131,24 @@ func apply_movement(input_dir: Vector2, delta: float) -> void:
 	position.x = clampf(position.x, -KITCHEN_BOUNDS_X, KITCHEN_BOUNDS_X)
 	position.z = clampf(position.z, -KITCHEN_BOUNDS_Z, KITCHEN_BOUNDS_Z)
 	position.y = 0.0
+
+	# 30% Tilt movement animation (waddle while walking)
+	if clamped_dir.length() > 0.08:
+		walk_anim_time += delta * 14.0
+		# Oscillate tilt up to ~17.5 degrees (approx 30% arc)
+		var tilt_rad: float = sin(walk_anim_time) * deg_to_rad(17.5)
+		if character_sprite != null:
+			character_sprite.rotation.z = lerp_angle(character_sprite.rotation.z, tilt_rad, delta * 18.0)
+			if clamped_dir.x < -0.05:
+				character_sprite.flip_h = true
+			elif clamped_dir.x > 0.05:
+				character_sprite.flip_h = false
+		if third_arm_mesh != null and third_arm_mesh.visible:
+			third_arm_mesh.rotation.z = lerp_angle(third_arm_mesh.rotation.z, tilt_rad - 0.4, delta * 18.0)
+	else:
+		walk_anim_time = 0.0
+		if character_sprite != null:
+			character_sprite.rotation.z = lerp_angle(character_sprite.rotation.z, 0.0, delta * 14.0)
 
 func set_carried_item(item_data: Dictionary) -> void:
 	carried_item = item_data.duplicate(true)
@@ -165,6 +207,17 @@ func _refresh_visuals() -> void:
 	mat.roughness = 0.45
 	body_mesh.material_override = mat
 
+	# Update 2D character billboard sprite
+	if character_sprite != null:
+		var sprite_path: String = "res://assets/sprites/characters/%s_tier%d.png" % [character_id, character_tier]
+		if ResourceLoader.exists(sprite_path):
+			character_sprite.texture = load(sprite_path)
+			character_sprite.visible = true
+			body_mesh.visible = false
+		else:
+			character_sprite.visible = false
+			body_mesh.visible = true
+
 	var spec_name: String = ""
 	if GameData.specializations.has(specialization_id):
 		spec_name = GameData.specializations[specialization_id].display_name
@@ -181,9 +234,40 @@ func _refresh_visuals() -> void:
 		else:
 			item_mat.albedo_color = Color(0.95, 0.9, 0.8)
 		carried_mesh.material_override = item_mat
+
+		if carried_sprite != null:
+			var icon_path: String = _get_item_sprite_path(iid)
+			if ResourceLoader.exists(icon_path):
+				carried_sprite.texture = load(icon_path)
+				carried_sprite.visible = true
+				carried_mesh.visible = false
+			else:
+				carried_sprite.visible = false
 	else:
 		carried_mesh.visible = false
+		if carried_sprite != null:
+			carried_sprite.visible = false
 
 	if name_label != null:
 		var display_cname: String = "Linh" if character_id == "linh" else "Jiwon"
 		name_label.text = "%s [%s - %s]\n%s" % [display_cname, spec_name, tier_label, item_str]
+
+func _get_item_sprite_path(item_id: String) -> String:
+	match item_id:
+		"pork_belly": return "res://assets/sprites/items/pork_belly_raw.png"
+		"pork_portioned": return "res://assets/sprites/items/pork_portioned.png"
+		"marinated_bulgogi", "beef_bulgogi": return "res://assets/sprites/items/beef_bulgogi_raw.png"
+		"bulgogi_portioned", "seared_bulgogi": return "res://assets/sprites/items/bulgogi_portioned.png"
+		"baguette": return "res://assets/sprites/items/baguette_bread.png"
+		"cabbage": return "res://assets/sprites/items/cabbage_fresh.png"
+		"kimchi_slaw": return "res://assets/sprites/items/kimchi_slaw.png"
+		"pickled_daikon_carrot", "pickled_veg": return "res://assets/sprites/items/pickled_veg.png"
+		"tteok_raw", "tteok_portioned": return "res://assets/sprites/items/tteok_portioned.png"
+		"fish_cake_raw": return "res://assets/sprites/items/fish_cake_raw.png"
+		"eomuk_prepared": return "res://assets/sprites/items/eomuk_prepared.png"
+		"bowl", "pho_bo", "tteokbokki": return "res://assets/sprites/items/dish_bowl.png"
+		"plate", "banh_mi_thit", "bulgogi_banh_mi": return "res://assets/sprites/items/dish_plate.png"
+		"noodles_raw", "noodles_blanched": return "res://assets/sprites/items/dish_bowl.png"
+		"broth_hot": return "res://assets/sprites/items/broth_pot.png"
+		"burnt_waste": return "res://assets/sprites/items/cooking_pan_icon.png"
+		_: return "res://assets/sprites/items/dish_plate.png"

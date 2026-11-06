@@ -14,13 +14,15 @@ func _init() -> void:
 	_detect_save_path()
 
 func _detect_save_path() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://"))
 	var test_file: FileAccess = FileAccess.open("user://.write_test", FileAccess.WRITE)
 	if test_file != null:
 		test_file.close()
 		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://.write_test"))
 		save_path = "user://progression.json"
 	else:
-		save_path = ProjectSettings.globalize_path("res://.user/progression.json")
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://.user"))
+		save_path = "res://.user/progression.json"
 
 # Fictional prestigious culinary rating system (IP-safe)
 const RATING_TIER_NAMES: Dictionary = {
@@ -225,10 +227,10 @@ func save_progression() -> bool:
 	DirAccess.make_dir_recursive_absolute(abs_dir)
 	var file: FileAccess = FileAccess.open(save_path, FileAccess.WRITE)
 	if file == null:
-		# If user:// fails, try absolute fallback
-		var fallback_path: String = ProjectSettings.globalize_path("res://.user/progression.json")
+		# If user:// fails, try project fallback
+		var fallback_path: String = "res://.user/progression.json"
 		if save_path != fallback_path:
-			DirAccess.make_dir_recursive_absolute(fallback_path.get_base_dir())
+			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://.user"))
 			save_path = fallback_path
 			file = FileAccess.open(save_path, FileAccess.WRITE)
 		if file == null:
@@ -257,7 +259,7 @@ func save_progression() -> bool:
 func load_progression() -> bool:
 	var load_target: String = save_path
 	if not FileAccess.file_exists(load_target):
-		var fallback_path: String = ProjectSettings.globalize_path("res://.user/progression.json")
+		var fallback_path: String = "res://.user/progression.json"
 		if FileAccess.file_exists(fallback_path):
 			load_target = fallback_path
 		else:

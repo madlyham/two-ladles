@@ -34,6 +34,8 @@ tools/
 .tmp/
 .user/
 *.log
+.playwright-mcp/
+downloaded_assets/
 
 # Unity specific ignores
 [Ll]ibrary/

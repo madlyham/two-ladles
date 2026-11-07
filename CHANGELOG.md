@@ -2,6 +2,14 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## [0.4.0] - 2026-11-07 (Official Engine Transition: 100% Unity Focus)
+
+### Changed
+- **Engine Transition:** Officially stopped development on the Godot prototype and transitioned 100% of project engineering, physics, gameplay, and Korea Game Week 2026 tournament deliverables to **Unity 2022.3.62f3 C#** (`unity/TwoLadles/`).
+- **Archival:** Godot `4.7.2` codebase is permanently archived on the `godot` branch.
+- **Documentation:** Updated `AGENTS.md`, `README.md`, `ARCHITECTURE.md`, `DEVELOPMENT_ROADMAP.md`, `TESTING.md`, `ANDROID_BUILD.md`, and `NETWORKING.md` to reflect Unity as the sole active engine.
+- **Verification Runner:** Official active test suite established as `unity/TwoLadles/Assets/Tests/TwoLadlesTestSuite.cs` (14 suites, 692 assertions).
+
 ## [0.3.0] - 2026-11-06 (Milestone 3 Character Signature Abilities, Campaign & Endless Mode)
 
 ### Added

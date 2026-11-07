@@ -1,6 +1,9 @@
 # TWO LADLES
 ### A Vietnam–Korea Kitchen Story
 
+> [!IMPORTANT]
+> **Engine Migration Notice:** Active development on the Godot prototype has officially **stopped**. The project has fully transitioned to **100% Unity (Unity 2022.3.62f3 C#)** located at [`unity/TwoLadles/`](unity/TwoLadles/). All upcoming gameplay features, physics, sprites, network multiplayer, automated tests, and Korea Game Week 2026 competition deliverables are strictly developed in the Unity codebase.
+
 **Two Ladles** is a 2-player local Wi-Fi (LAN) cooperative cooking game built in **Unity 2022.3.62f3** (C#, 2.5D stylized 3D kitchen, Android APK + Windows desktop builds for Korea Game Week 2026).
 
 Two players (**Linh**, a Vietnamese former software programmer, and **Jiwon**, a Korean former business executive) operate a high-pressure Vietnam–Korea kitchen together over a local network.

@@ -1,15 +1,35 @@
 # Testing Guide — Two Ladles (`docs/TESTING.md`)
 
-This guide explains how to test **Two Ladles** at every verification level without writing any code.
+> [!IMPORTANT]
+> **Active Engine Notice:** Development on the Godot prototype has officially **stopped**. The active, authoritative test suite is the **Unity C# Test Runner** in `unity/TwoLadles/Assets/Tests/TwoLadlesTestSuite.cs` (14 suites, 692 assertions). The Godot test runner documentation below is retained strictly as an archived historical reference.
 
-> **Important Distinction:**
-> - **Level 1 (Headless Automated Tests):** Proves game rules, recipes, station state machines, and anti-exploit math.
-> - **Level 2 (Same-Computer 2-Window Test):** Proves two live game instances communicate over UDP `127.0.0.1` and synchronize gameplay.
-> - **Level 3 (Cross-Device Wi-Fi LAN Test):** Proves real local Wi-Fi multiplayer between a Windows PC and an Android phone (or two Android phones).
+## Official Active Test Suite: Unity C# (`Assets/Tests/TwoLadlesTestSuite.cs`)
+
+### What It Tests
+Exhaustively verifies all **14 test suites**:
+1. Recipes & Cross-Prep Architecture (Bánh Mì Thịt, Phở Bò, Tteokbokki, Kimchi Bokkeumbap, Bulgogi Bánh Mì)
+2. Prep Station Rhythm Cadence (0.45s sweet spot, non-blocking misses)
+3. Cooking State Machine (Raw -> Cooking -> Optimal -> Overcooked -> Burnt & dedicated Phở stockpot separation)
+4. Assembly Station Rules & Vessel Rejection (Bowls vs Plates, broth-last constraint)
+5. Pass Counter Handoff & Anti-Exploit Window (4.0s retrieval, cross-chef verification)
+6. Kitchen Flow (0-100) & Rush Rhythm (15s, 1.5x score multiplier)
+7. Washing Station Finite Plate Lifecycle & Scrub Strokes
+8. Multiplayer Lobby Character Exclusivity & Ready Resets
+9. Permanent Career Progression, JSON save/load & Kitchen Upgrades
+10. Linh Execution Specialist Tiers (Third Arm Visuals & Speed Multipliers)
+11. Jiwon Delegation Specialist Tiers (Part-Timer Crew Hiring)
+12. 5-Level Campaign Progression & Unlock Gates
+13. Endless Rush Survival Mode & High Scores
+14. Holding Counters, Hover Tilt Animation & Throw Mechanics
+
+### How to Run in Unity
+1. Open the project in Unity Editor (`unity/TwoLadles`).
+2. Attach or run `TwoLadlesTestSuite.cs` in an active test scene or via the Unity Test Framework.
+3. The console reports all 14 suites passing cleanly.
 
 ---
 
-## Level 1: Headless Automated Logic Tests
+## Archived Godot Headless Test Suite (Historical Reference)
 
 ### What It Tests
 Verifies all **114 automated assertions across 13 comprehensive test suites**:

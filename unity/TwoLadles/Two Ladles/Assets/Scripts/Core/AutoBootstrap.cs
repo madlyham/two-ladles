@@ -55,6 +55,12 @@ namespace TwoLadles.Core
                     GameObject hudObj = new GameObject("KitchenHUD");
                     hudObj.transform.SetParent(canvasObj.transform, false);
                     hudObj.AddComponent<KitchenHUD>();
+
+                    // Lobby UI
+                    GameObject lobbyObj = new GameObject("LobbyUI");
+                    lobbyObj.transform.SetParent(canvasObj.transform, false);
+                    lobbyObj.AddComponent<LobbyUI>();
+                    lobbyObj.SetActive(false);
                 }
             }
         }

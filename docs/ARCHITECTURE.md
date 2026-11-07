@@ -1,6 +1,54 @@
 # Architecture Overview — Two Ladles
 
-## 1. Directory & Module Structure
+> [!IMPORTANT]
+> **Engine Transition Notice:** Active development on the Godot prototype has officially **stopped**. The active codebase is 100% focused on the **Unity 2022.3.62f3 C#** project located at `unity/TwoLadles/`. The Godot files remain archived on the `godot` branch for historical reference.
+
+## 1. Active Unity Codebase Structure (`unity/TwoLadles/`)
+
+```text
+unity/TwoLadles/
+├── Assets/
+│   ├── Editor/
+│   │   └── BuildScript.cs               # Headless build & automated scene builder
+│   ├── Resources/
+│   │   └── Sprites/                     # Sliced pixel-art kitchen tiles, appliances & item icons
+│   ├── Scenes/
+│   │   └── MainKitchen.unity            # Primary 2.5D kitchen game scene
+│   ├── Scripts/
+│   │   ├── Core/
+│   │   │   ├── GameData.cs              # Recipes, ingredients, appliances, dishes registry
+│   │   │   ├── ShiftManager.cs          # Orders, Flow (0-100), Rush Rhythm, scoring, plate lifecycle
+│   │   │   └── ProgressionManager.cs    # Career coins, unlocks, Linh/Jiwon tiers, JSON save/load
+│   │   ├── Data/
+│   │   │   ├── CampaignLevelSpec.cs     # 5-level campaign targets, recipe subsets, pacing
+│   │   │   ├── CharacterProgressionData.cs # Linh/Jiwon specialty perks and part-time worker roles
+│   │   │   └── RecipeData.cs            # Typed recipe step data models and enums
+│   │   ├── Kitchen/
+│   │   │   ├── KitchenController.cs     # 3D layout builder, physical BoxColliders & station router
+│   │   │   └── PartTimeWorker.cs        # Jiwon part-timer state machine (Walk In -> Work -> Walk Out)
+│   │   ├── Networking/
+│   │   │   └── NetworkManager.cs        # Authoritative UDP 24567 host/client synchronization
+│   │   ├── Player/
+│   │   │   └── PlayerController.cs       # Movement, physical collisions, item hover tilt & throw
+│   │   ├── Stations/
+│   │   │   ├── StationBase.cs           # Distance checks, interaction hooks, 3D world labels
+│   │   │   ├── PrepStation.cs           # 4-strike rhythm cadence mechanic
+│   │   │   ├── CookingStation.cs        # 5-state heat machine (Raw -> Cooking -> Optimal -> Overcooked -> Burnt)
+│   │   │   ├── AssemblyStation.cs       # Vessel + ingredients matcher & broth-last validation
+│   │   │   ├── PassCounterStation.cs    # 3-slot counter with 4.0s partner handoff flow bonus
+│   │   │   ├── ServingStation.cs        # Order matching, score calculation & dirty plate return
+│   │   │   ├── WashingStation.cs        # 4-stroke scrub cycle & clean plate stack replenishment
+│   │   │   ├── CounterStation.cs        # Holding counter tables (store, retrieve, swap items)
+│   │   │   ├── CrateStation.cs          # Raw ingredient dispensers
+│   │   │   └── TrashStation.cs          # Food waste and burnt dish disposal
+│   │   └── UI/
+│   │       ├── LobbyUI.cs               # Pre-shift lobby, chef selection exclusivity & readiness
+│   │       └── KitchenHUD.cs            # Live order tickets, Flow meter, Rush timer & prompts
+│   └── Tests/
+│       └── TwoLadlesTestSuite.cs        # 14-suite automated test suite (692 assertions)
+```
+
+## 2. Archived Godot Prototype Structure (Historical Reference)
 
 ```text
 two-ladles/

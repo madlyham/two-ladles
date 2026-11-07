@@ -2,13 +2,16 @@
 
 This file is the permanent engineering contract for all AI agents and human developers working on **Two Ladles**. The repository is the single source of truth.
 
+> [!IMPORTANT]
+> **Active Engine Notice:** Development on the Godot version has officially **STOPPED**. All active engineering, gameplay features, physics, sprites, tests, builds, and tournament submissions are **100% focused on the Unity 2022.3.62f3 C# version** located at `unity/TwoLadles/`. Do not write new gameplay code or features for Godot.
+
 ## 1. Engine & Competition Mandatory Constraints
 
 - **Official Competition Engine:** Unity `2022.3.62f3` (C# with static typing) located at `unity/TwoLadles/`.
 - **Target Platforms (Korea Game Week 2026 Submission):**
   - **Windows Desktop Standalone (`TwoLadles.exe`):** For desktop testing and laptop co-op host.
   - **Android Standalone APK (`TwoLadles.apk`):** For mobile touchscreen co-op client.
-- **Godot Status (Archived Testbed):** Godot `4.7.2` was used strictly as a rapid prototyping sandbox. It is permanently archived on the `godot` branch. All active development, physics, sprites, gameplay, builds, and tournament submissions are strictly Unity.
+- **Godot Status (Archived Testbed):** Godot `4.7.2` was used strictly as a rapid prototyping sandbox. Development on the Godot version has completely stopped and it is permanently archived on the `godot` branch. All active development, physics, sprites, gameplay, builds, and tournament submissions are strictly Unity.
 - **Zero Third-Party Networking Bloat:** ENet/UDP network communication over port `24567`.
 - **No Single-Player AI Replacement:** Mandatory simultaneous 2-player co-op (Linh & Jiwon).
 

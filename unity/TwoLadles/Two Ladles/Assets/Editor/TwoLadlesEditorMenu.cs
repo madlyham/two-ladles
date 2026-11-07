@@ -63,6 +63,11 @@ public static class TwoLadlesEditorMenu
             GameObject hudObj = new GameObject("KitchenHUD");
             hudObj.transform.SetParent(canvasObj.transform, false);
             hudObj.AddComponent<KitchenHUD>();
+
+            GameObject lobbyObj = new GameObject("LobbyUI");
+            lobbyObj.transform.SetParent(canvasObj.transform, false);
+            lobbyObj.AddComponent<LobbyUI>();
+            lobbyObj.SetActive(false);
         }
 
         Debug.Log("Two Ladles: Kitchen Scene setup completed successfully!");

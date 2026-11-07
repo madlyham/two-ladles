@@ -188,7 +188,7 @@ namespace TwoLadles.Networking
             }
         }
 
-        public void CloseConnection()
+        public void CloseConnection(string reason = null)
         {
             isRunning = false;
             if (udpSocket != null)
@@ -205,6 +205,20 @@ namespace TwoLadles.Networking
             isLanActive = false;
             players.Clear();
             OnLobbyUpdated?.Invoke(players);
+
+            if (!string.IsNullOrEmpty(reason))
+            {
+                OnReturnedToMenu?.Invoke(reason);
+            }
+        }
+
+        public void ReturnToMenu(string reason = "Returned to lobby.")
+        {
+            if (partnerEndPoint != null)
+            {
+                SendPacket($"DISCONNECT|{reason}", partnerEndPoint);
+            }
+            CloseConnection(reason);
         }
 
         private void SendPacket(string message, IPEndPoint target)
@@ -259,6 +273,12 @@ namespace TwoLadles.Networking
 
             switch (cmd)
             {
+                case "DISCONNECT":
+                    // Partner chef disconnected or returned to lobby
+                    string disconnectReason = parts.Length > 1 ? parts[1] : "Partner left the game.";
+                    OnConnectionStatusChanged?.Invoke(disconnectReason, true);
+                    CloseConnection(disconnectReason);
+                    break;
                 case "HELLO":
                     // Host receives HELLO from client: HELLO|peerId|name|char|spec|ready
                     if (IsHost() && parts.Length >= 6)

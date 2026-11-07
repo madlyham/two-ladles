@@ -1,12 +1,16 @@
 # Networking Architecture — Two Ladles
 
-## 1. Transport & Topology
+> [!IMPORTANT]
+> **Active Engine Notice:** Development on the Godot networking prototype has officially **stopped**. The active, authoritative networking implementation is built in **Unity C#** (`unity/TwoLadles/Assets/Scripts/Networking/NetworkManager.cs`), running raw UDP / lightweight reliable messaging over port `24567`.
 
-- **API:** Godot 4 `ENetMultiplayerPeer` + High-Level Multiplayer API (`@rpc`).
-- **Protocol:** UDP on configurable port `24567` (`NetworkManager.DEFAULT_PORT`).
+## 1. Transport & Topology (Unity C# Architecture)
+
+- **Engine Implementation:** Unity C# (`unity/TwoLadles/Assets/Scripts/Networking/NetworkManager.cs`).
+- **Protocol:** UDP over port `24567` (`NetworkManager.DEFAULT_PORT`).
 - **Topology:** 1 Authoritative Host (`peer_id == 1`) + 1 Client (`MAX_CLIENTS = 1`, total 2 human players).
+- **Zero Third-Party Bloat:** Standard lightweight UDP sockets without heavy external server dependencies.
 
-## 2. Host Authority & Client Responsibilities
+## 2. Host Authority & Client Responsibilities (Authoritative Host Model)
 
 | System | Authority | Transfer Mode | Notes |
 | :--- | :--- | :--- | :--- |

@@ -225,11 +225,10 @@ namespace TwoLadles.Kitchen
             var mr = obj.GetComponent<MeshRenderer>();
             if (mr != null)
             {
-                Material mat = new Material(Shader.Find("Standard"));
+                Material mat = mr.material;
                 mat.color = col;
                 mat.SetFloat("_Glossiness", 0.4f);
                 mat.SetFloat("_Metallic", 0.2f);
-                mr.material = mat;
             }
             return obj;
         }
@@ -376,11 +375,10 @@ namespace TwoLadles.Kitchen
             var mr = counterMesh.GetComponent<MeshRenderer>();
             if (mr != null)
             {
-                Material mat = new Material(Shader.Find("Standard"));
+                Material mat = mr.material;
                 mat.color = counterColor;
                 mat.SetFloat("_Glossiness", 0.45f);
                 mat.SetFloat("_Metallic", 0.4f);
-                mr.material = mat;
             }
 
             // Upright 2D Sliced Pixel-Art Appliance Sprite

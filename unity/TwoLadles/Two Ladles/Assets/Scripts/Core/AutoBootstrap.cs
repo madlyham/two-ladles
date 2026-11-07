@@ -47,9 +47,12 @@ namespace TwoLadles.Core
                     scaler.referenceResolution = new Vector2(1280, 720);
                     canvasObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 
-                    GameObject esObj = new GameObject("EventSystem");
-                    esObj.AddComponent<UnityEngine.EventSystems.EventSystem>();
-                    esObj.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+                    if (Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+                    {
+                        GameObject esObj = new GameObject("EventSystem");
+                        esObj.AddComponent<UnityEngine.EventSystems.EventSystem>();
+                        esObj.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+                    }
 
                     // Kitchen HUD
                     GameObject hudObj = new GameObject("KitchenHUD");

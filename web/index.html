@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Two Ladles — A Vietnam-Korea Kitchen Story</title>
     <meta name="description" content="Official download portal for Two Ladles: A 2-player local network cooperative cooking game. Vietnam-Korea culinary co-op for Android and Windows.">
+    <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+    <link rel="apple-touch-icon" href="assets/icon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -111,8 +113,21 @@
         }
 
         .crest-wrapper {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             display: inline-block;
+            filter: drop-shadow(0 8px 20px rgba(245, 158, 11, 0.25));
+            transition: transform 0.25s ease, filter 0.25s ease;
+        }
+
+        .crest-wrapper:hover {
+            transform: scale(1.06);
+            filter: drop-shadow(0 12px 28px rgba(245, 158, 11, 0.45));
+        }
+
+        .crest-icon {
+            width: 80px;
+            height: 80px;
+            display: block;
         }
 
         .hero-title {
@@ -590,9 +605,7 @@
         <!-- Hero Section -->
         <section class="hero">
             <div class="crest-wrapper">
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                </svg>
+                <img src="assets/icon.svg" alt="Two Ladles Official Game Crest" class="crest-icon">
             </div>
             <h1 class="hero-title">TWO LADLES</h1>
             <p class="hero-subtitle">A Vietnam-Korea Kitchen Story &mdash; 2-Player Local Network Cooperative Cooking</p>

@@ -22,10 +22,10 @@ func _setup_visual_label() -> void:
 	else:
 		label_3d = Label3D.new()
 		label_3d.name = "StatusLabel3D"
-		label_3d.position = Vector3(0.0, 1.55, 0.0)
+		label_3d.position = Vector3(0.0, 1.95, 0.0)
 		label_3d.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		label_3d.font_size = 28
-		label_3d.outline_size = 8
+		label_3d.font_size = 22
+		label_3d.outline_size = 6
 		label_3d.text = station_title
 		add_child(label_3d)
 

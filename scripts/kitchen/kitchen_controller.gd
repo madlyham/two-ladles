@@ -8,6 +8,7 @@ extends Node3D
 
 const CharacterProgressionData = preload("res://scripts/data/character_progression_data.gd")
 const RecipeData = preload("res://scripts/data/recipe_data.gd")
+const CounterStation = preload("res://scripts/stations/counter_station.gd")
 
 signal local_prompt_changed(prompt_text: String)
 signal status_toast(message: String, color: Color)
@@ -24,6 +25,7 @@ var virtual_joystick_vec: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	_build_environment()
+	_build_perimeter_walls()
 	_build_stations()
 	_spawn_players()
 
@@ -45,12 +47,86 @@ func _build_environment() -> void:
 	sun.shadow_enabled = true
 	add_child(sun)
 
-	# Kitchen Floor (West = Linh Teal-Wood tint, East = Jiwon Terracotta tint)
-	_create_box("FloorWest", Vector3(-4.6, -0.1, 0.0), Vector3(9.2, 0.2, 11.5), Color(0.24, 0.28, 0.27))
-	_create_box("FloorEast", Vector3(4.6, -0.1, 0.0), Vector3(9.2, 0.2, 11.5), Color(0.30, 0.24, 0.22))
+	# Kitchen Floor (West = Linh Sage-Teal tile, East = Jiwon Terracotta tile)
+	_create_box("FloorWest", Vector3(-4.6, -0.1, 0.0), Vector3(9.2, 0.2, 11.5), Color(0.24, 0.28, 0.27), "floor_tile_light.png")
+	_create_box("FloorEast", Vector3(4.6, -0.1, 0.0), Vector3(9.2, 0.2, 11.5), Color(0.30, 0.24, 0.22), "floor_tile_light.png")
 	_create_box("CenterDividerLine", Vector3(0.0, -0.08, 0.0), Vector3(0.35, 0.21, 11.5), Color(0.85, 0.72, 0.35))
 
-func _create_box(box_name: String, pos: Vector3, sz: Vector3, col: Color) -> MeshInstance3D:
+func _build_perimeter_walls() -> void:
+	_create_static_wall("Wall_North", Vector3(0.0, 1.5, -5.8), Vector3(19.2, 3.0, 0.8))
+	_create_static_wall("Wall_South", Vector3(0.0, 1.5, 5.8), Vector3(19.2, 3.0, 0.8))
+	_create_static_wall("Wall_West", Vector3(-9.4, 1.5, 0.0), Vector3(0.8, 3.0, 12.0))
+	_create_static_wall("Wall_East", Vector3(9.4, 1.5, 0.0), Vector3(0.8, 3.0, 12.0))
+
+func _create_static_wall(wall_name: String, pos: Vector3, sz: Vector3) -> StaticBody3D:
+	var sb: StaticBody3D = StaticBody3D.new()
+	sb.name = wall_name
+	sb.position = pos
+	var col: CollisionShape3D = CollisionShape3D.new()
+	var box: BoxShape3D = BoxShape3D.new()
+	box.size = sz
+	col.shape = box
+	sb.add_child(col)
+	add_child(sb)
+	return sb
+
+func _load_tile_texture(rel_path: String) -> Texture2D:
+	var res_path: String = "res://assets/sprites/kitchen/tiles/" + rel_path
+	if ResourceLoader.exists(res_path):
+		var res: Resource = load(res_path)
+		if res is Texture2D:
+			return res
+	var global_p: String = ProjectSettings.globalize_path(res_path)
+	if FileAccess.file_exists(global_p):
+		var img: Image = Image.load_from_file(global_p)
+		if img != null and not img.is_empty():
+			return ImageTexture.create_from_image(img)
+	return null
+
+func _create_station_structure(box_name: String, pos: Vector3, sz: Vector3, col: Color, appliance_tile: String = "") -> StaticBody3D:
+	var body: StaticBody3D = StaticBody3D.new()
+	body.name = box_name + "_Body"
+	body.position = pos
+
+	# Physical Collision Box (prevents character phasing through station)
+	var col_shape: CollisionShape3D = CollisionShape3D.new()
+	col_shape.name = "Collision"
+	var box_shape: BoxShape3D = BoxShape3D.new()
+	box_shape.size = sz
+	col_shape.shape = box_shape
+	body.add_child(col_shape)
+
+	# Clean 3D Industrial Counter Base Mesh
+	var mi: MeshInstance3D = MeshInstance3D.new()
+	mi.name = box_name + "_Mesh"
+	var bm: BoxMesh = BoxMesh.new()
+	bm.size = sz
+	mi.mesh = bm
+	var mat: StandardMaterial3D = StandardMaterial3D.new()
+	mat.albedo_color = col
+	mat.roughness = 0.4
+	mat.metallic = 0.45
+	mi.material_override = mat
+	body.add_child(mi)
+
+	# 2D Sliced Pixel-Art Appliance Visual
+	if appliance_tile != "":
+		var spr: Sprite3D = Sprite3D.new()
+		spr.name = "ApplianceSprite"
+		spr.position = Vector3(0.0, sz.y * 0.5 + 0.42, 0.05)
+		spr.pixel_size = 0.022
+		spr.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		spr.transparent = true
+		spr.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		var tex: Texture2D = _load_tile_texture(appliance_tile)
+		if tex != null:
+			spr.texture = tex
+		body.add_child(spr)
+
+	add_child(body)
+	return body
+
+func _create_box(box_name: String, pos: Vector3, sz: Vector3, col: Color, tile_tex: String = "") -> MeshInstance3D:
 	var mi: MeshInstance3D = MeshInstance3D.new()
 	mi.name = box_name
 	var bm: BoxMesh = BoxMesh.new()
@@ -58,11 +134,12 @@ func _create_box(box_name: String, pos: Vector3, sz: Vector3, col: Color) -> Mes
 	mi.mesh = bm
 	mi.position = pos
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	var tex_path: String = "res://assets/sprites/kitchen/professional_kitchen.png"
-	if ResourceLoader.exists(tex_path):
-		mat.albedo_texture = load(tex_path)
-		mat.uv1_scale = Vector3(sz.x * 0.7, sz.z * 0.7, 1.0)
-		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	if tile_tex != "":
+		var tex: Texture2D = _load_tile_texture(tile_tex)
+		if tex != null:
+			mat.albedo_texture = tex
+			mat.uv1_scale = Vector3(sz.x * 1.5, sz.z * 1.5, 1.0)
+			mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	mat.albedo_color = col
 	mat.roughness = 0.55
 	mat.metallic = 0.3
@@ -72,7 +149,7 @@ func _create_box(box_name: String, pos: Vector3, sz: Vector3, col: Color) -> Mes
 
 func _add_station_icon(pos: Vector3, sprite_rel_path: String, scale_size: float = 0.024) -> Sprite3D:
 	var spr: Sprite3D = Sprite3D.new()
-	spr.position = pos + Vector3(0.0, 1.15, 0.0)
+	spr.position = pos + Vector3(0.0, 1.45, 0.0)
 	spr.pixel_size = scale_size
 	spr.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	spr.transparent = true
@@ -80,6 +157,12 @@ func _add_station_icon(pos: Vector3, sprite_rel_path: String, scale_size: float 
 	var full_path: String = "res://assets/sprites/items/" + sprite_rel_path
 	if ResourceLoader.exists(full_path):
 		spr.texture = load(full_path)
+	else:
+		var global_p: String = ProjectSettings.globalize_path(full_path)
+		if FileAccess.file_exists(global_p):
+			var img: Image = Image.load_from_file(global_p)
+			if img != null and not img.is_empty():
+				spr.texture = ImageTexture.create_from_image(img)
 	add_child(spr)
 	return spr
 
@@ -91,7 +174,7 @@ func _build_stations() -> void:
 	pass_st.assigned_zone = "shared"
 	pass_st.position = Vector3(0.0, 0.0, -0.4)
 	add_child(pass_st)
-	_create_box("PassMesh", Vector3(0.0, 0.45, -0.4), Vector3(1.6, 0.9, 3.2), Color(0.92, 0.76, 0.32))
+	_create_station_structure("PassMesh", Vector3(0.0, 0.45, -0.4), Vector3(1.6, 0.9, 3.2), Color(0.92, 0.76, 0.32), "pass_counter.png")
 	_add_station_icon(Vector3(0.0, 0.45, -0.4), "dish_plate.png", 0.026)
 	stations["pass_counter"] = pass_st
 
@@ -100,7 +183,7 @@ func _build_stations() -> void:
 	trash_st.station_title = "TRASH BIN\n[Dispose Burnt/Unwanted Item]"
 	trash_st.position = Vector3(0.0, 0.0, 3.6)
 	add_child(trash_st)
-	_create_box("TrashMesh", Vector3(0.0, 0.4, 3.6), Vector3(1.1, 0.8, 1.1), Color(0.35, 0.35, 0.38))
+	_create_station_structure("TrashMesh", Vector3(0.0, 0.4, 3.6), Vector3(1.1, 0.8, 1.1), Color(0.35, 0.35, 0.38), "trash_bin.png")
 	_add_station_icon(Vector3(0.0, 0.4, 3.6), "dish_brush.png", 0.022)
 	stations["trash_bin"] = trash_st
 
@@ -111,9 +194,20 @@ func _build_stations() -> void:
 	prep_west.assigned_zone = "linh_west"
 	prep_west.position = Vector3(-3.2, 0.0, -2.6)
 	add_child(prep_west)
-	_create_box("PrepWestMesh", Vector3(-3.2, 0.45, -2.6), Vector3(2.2, 0.9, 1.3), Color(0.25, 0.68, 0.58))
+	_create_station_structure("PrepWestMesh", Vector3(-3.2, 0.45, -2.6), Vector3(2.2, 0.9, 1.3), Color(0.25, 0.68, 0.58), "prep_west.png")
 	_add_station_icon(Vector3(-3.2, 0.45, -2.6), "prep_counter_icon.png", 0.026)
 	stations["prep_west"] = prep_west
+
+	# West Holding Counter
+	var counter_west: CounterStation = CounterStation.new()
+	counter_west.station_id = "counter_west"
+	counter_west.station_title = "HOLDING TABLE (West)"
+	counter_west.assigned_zone = "linh_west"
+	counter_west.position = Vector3(-3.2, 0.0, -0.6)
+	add_child(counter_west)
+	_create_station_structure("CounterWestMesh", Vector3(-3.2, 0.45, -0.6), Vector3(2.0, 0.9, 1.1), Color(0.65, 0.70, 0.74), "serving_station.png")
+	_add_station_icon(Vector3(-3.2, 0.45, -0.6), "dish_plate.png", 0.024)
+	stations["counter_west"] = counter_west
 
 	var stockpot_st: CookingStation = CookingStation.new()
 	stockpot_st.station_id = "stockpot"
@@ -122,7 +216,7 @@ func _build_stations() -> void:
 	stockpot_st.assigned_zone = "linh_west"
 	stockpot_st.position = Vector3(-6.5, 0.0, -3.2)
 	add_child(stockpot_st)
-	_create_box("StockpotMesh", Vector3(-6.5, 0.45, -3.2), Vector3(1.6, 0.9, 1.4), Color(0.82, 0.58, 0.22))
+	_create_station_structure("StockpotMesh", Vector3(-6.5, 0.45, -3.2), Vector3(1.6, 0.9, 1.4), Color(0.82, 0.58, 0.22), "stockpot.png")
 	_add_station_icon(Vector3(-6.5, 0.45, -3.2), "broth_pot.png", 0.026)
 	stations["stockpot"] = stockpot_st
 
@@ -133,7 +227,7 @@ func _build_stations() -> void:
 	blancher_st.assigned_zone = "linh_west"
 	blancher_st.position = Vector3(-6.5, 0.0, -1.0)
 	add_child(blancher_st)
-	_create_box("BlancherMesh", Vector3(-6.5, 0.45, -1.0), Vector3(1.6, 0.9, 1.4), Color(0.75, 0.78, 0.85))
+	_create_station_structure("BlancherMesh", Vector3(-6.5, 0.45, -1.0), Vector3(1.6, 0.9, 1.4), Color(0.75, 0.78, 0.85), "noodle_blancher.png")
 	_add_station_icon(Vector3(-6.5, 0.45, -1.0), "dish_bowl.png", 0.026)
 	stations["noodle_blancher"] = blancher_st
 
@@ -143,7 +237,7 @@ func _build_stations() -> void:
 	assembly_west.assigned_zone = "linh_west"
 	assembly_west.position = Vector3(-3.2, 0.0, 1.4)
 	add_child(assembly_west)
-	_create_box("AssemblyWestMesh", Vector3(-3.2, 0.45, 1.4), Vector3(2.2, 0.9, 1.3), Color(0.38, 0.58, 0.78))
+	_create_station_structure("AssemblyWestMesh", Vector3(-3.2, 0.45, 1.4), Vector3(2.2, 0.9, 1.3), Color(0.38, 0.58, 0.78), "serving_station.png")
 	_add_station_icon(Vector3(-3.2, 0.45, 1.4), "dish_bowl.png", 0.026)
 	stations["assembly_west"] = assembly_west
 
@@ -153,7 +247,7 @@ func _build_stations() -> void:
 	serve_st.assigned_zone = "shared"
 	serve_st.position = Vector3(-3.2, 0.0, 4.0)
 	add_child(serve_st)
-	_create_box("ServingMesh", Vector3(-3.2, 0.45, 4.0), Vector3(2.8, 0.9, 1.2), Color(0.95, 0.75, 0.22))
+	_create_station_structure("ServingMesh", Vector3(-3.2, 0.45, 4.0), Vector3(2.8, 0.9, 1.2), Color(0.95, 0.75, 0.22), "serving_station.png")
 	_add_station_icon(Vector3(-3.2, 0.45, 4.0), "baguette_bread.png", 0.026)
 	stations["serving_station"] = serve_st
 
@@ -172,9 +266,20 @@ func _build_stations() -> void:
 	prep_east.assigned_zone = "jiwon_east"
 	prep_east.position = Vector3(3.2, 0.0, -2.6)
 	add_child(prep_east)
-	_create_box("PrepEastMesh", Vector3(3.2, 0.45, -2.6), Vector3(2.2, 0.9, 1.3), Color(0.88, 0.45, 0.25))
+	_create_station_structure("PrepEastMesh", Vector3(3.2, 0.45, -2.6), Vector3(2.2, 0.9, 1.3), Color(0.88, 0.45, 0.25), "prep_east.png")
 	_add_station_icon(Vector3(3.2, 0.45, -2.6), "prep_counter_icon.png", 0.026)
 	stations["prep_east"] = prep_east
+
+	# East Holding Counter
+	var counter_east: CounterStation = CounterStation.new()
+	counter_east.station_id = "counter_east"
+	counter_east.station_title = "HOLDING TABLE (East)"
+	counter_east.assigned_zone = "jiwon_east"
+	counter_east.position = Vector3(3.2, 0.0, -0.6)
+	add_child(counter_east)
+	_create_station_structure("CounterEastMesh", Vector3(3.2, 0.45, -0.6), Vector3(2.0, 0.9, 1.1), Color(0.65, 0.70, 0.74), "serving_station.png")
+	_add_station_icon(Vector3(3.2, 0.45, -0.6), "dish_plate.png", 0.024)
+	stations["counter_east"] = counter_east
 
 	var grill_st: CookingStation = CookingStation.new()
 	grill_st.station_id = "grill_pan"
@@ -183,7 +288,7 @@ func _build_stations() -> void:
 	grill_st.assigned_zone = "jiwon_east"
 	grill_st.position = Vector3(6.5, 0.0, -3.0)
 	add_child(grill_st)
-	_create_box("GrillMesh", Vector3(6.5, 0.45, -3.0), Vector3(1.6, 0.9, 1.4), Color(0.85, 0.35, 0.22))
+	_create_station_structure("GrillMesh", Vector3(6.5, 0.45, -3.0), Vector3(1.6, 0.9, 1.4), Color(0.85, 0.35, 0.22), "grill_pan.png")
 	_add_station_icon(Vector3(6.5, 0.45, -3.0), "cooking_pan_icon.png", 0.026)
 	stations["grill_pan"] = grill_st
 
@@ -194,7 +299,7 @@ func _build_stations() -> void:
 	wok_st.assigned_zone = "jiwon_east"
 	wok_st.position = Vector3(6.5, 0.0, -0.8)
 	add_child(wok_st)
-	_create_box("WokMesh", Vector3(6.5, 0.45, -0.8), Vector3(1.6, 0.9, 1.4), Color(0.78, 0.18, 0.16))
+	_create_station_structure("WokMesh", Vector3(6.5, 0.45, -0.8), Vector3(1.6, 0.9, 1.4), Color(0.78, 0.18, 0.16), "simmer_wok.png")
 	_add_station_icon(Vector3(6.5, 0.45, -0.8), "cooking_pan_icon.png", 0.026)
 	stations["simmer_wok"] = wok_st
 
@@ -204,7 +309,7 @@ func _build_stations() -> void:
 	assembly_east.assigned_zone = "jiwon_east"
 	assembly_east.position = Vector3(3.2, 0.0, 1.4)
 	add_child(assembly_east)
-	_create_box("AssemblyEastMesh", Vector3(3.2, 0.45, 1.4), Vector3(2.2, 0.9, 1.3), Color(0.38, 0.58, 0.78))
+	_create_station_structure("AssemblyEastMesh", Vector3(3.2, 0.45, 1.4), Vector3(2.2, 0.9, 1.3), Color(0.38, 0.58, 0.78), "prep_east.png")
 	_add_station_icon(Vector3(3.2, 0.45, 1.4), "dish_plate.png", 0.026)
 	stations["assembly_east"] = assembly_east
 
@@ -214,7 +319,7 @@ func _build_stations() -> void:
 	wash_st.assigned_zone = "jiwon_east"
 	wash_st.position = Vector3(3.2, 0.0, 4.0)
 	add_child(wash_st)
-	_create_box("WashMesh", Vector3(3.2, 0.45, 4.0), Vector3(2.8, 0.9, 1.2), Color(0.32, 0.75, 0.92))
+	_create_station_structure("WashMesh", Vector3(3.2, 0.45, 4.0), Vector3(2.8, 0.9, 1.2), Color(0.32, 0.75, 0.92), "washing_sink.png")
 	_add_station_icon(Vector3(3.2, 0.45, 4.0), "dish_soap.png", 0.026)
 	stations["washing_station"] = wash_st
 
@@ -230,7 +335,7 @@ func _add_crate(st_id: String, title: String, item_id: String, pos: Vector3, col
 	st.station_title = title
 	st.position = pos
 	add_child(st)
-	_create_box("%s_Mesh" % st_id, pos + Vector3(0.0, 0.4, 0.0), Vector3(1.4, 0.8, 1.1), col)
+	_create_station_structure("%s_Mesh" % st_id, pos + Vector3(0.0, 0.4, 0.0), Vector3(1.4, 0.8, 1.1), col, "crate_cooler.png")
 	stations[st_id] = st
 	crate_items[st_id] = item_id
 
@@ -458,7 +563,27 @@ func _execute_station_interaction(peer_id: int, station_id: String, is_secondary
 		_broadcast_station_state(station_id, pass_c.get_state())
 		return
 
-	# 6. Assembly Station
+	# 6. Holding Counter Station (West / East empty holding tables)
+	if st is CounterStation:
+		var cnt: CounterStation = st as CounterStation
+		if not player.carried_item.is_empty() and cnt.held_item.is_empty():
+			var placed: bool = cnt.place_item(player.carried_item)
+			if placed:
+				player.clear_carried_item()
+				_broadcast_player_item(peer_id)
+		elif player.carried_item.is_empty() and not cnt.held_item.is_empty():
+			var item: Dictionary = cnt.retrieve_item()
+			if not item.is_empty():
+				player.set_carried_item(item)
+				_broadcast_player_item(peer_id)
+		elif not player.carried_item.is_empty() and not cnt.held_item.is_empty():
+			var swapped: Dictionary = cnt.swap_item(player.carried_item)
+			player.set_carried_item(swapped)
+			_broadcast_player_item(peer_id)
+		_broadcast_station_state(station_id, {"held_item": cnt.held_item})
+		return
+
+	# 7. Assembly Station
 	if st is AssemblyStation:
 		var asm: AssemblyStation = st as AssemblyStation
 		if not player.carried_item.is_empty():

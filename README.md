@@ -1,7 +1,7 @@
 # TWO LADLES
 ### A Vietnam–Korea Kitchen Story
 
-**Two Ladles** is a 2-player local Wi-Fi (LAN) cooperative cooking game built in **Godot Engine 4.7.2-stable** (typed GDScript, 2.5D stylized 3D kitchen, Android-first + Windows/Linux desktop builds).
+**Two Ladles** is a 2-player local Wi-Fi (LAN) cooperative cooking game built in **Unity 2022.3.62f3** (C#, 2.5D stylized 3D kitchen, Android APK + Windows desktop builds for Korea Game Week 2026).
 
 Two players (**Linh**, a Vietnamese former software programmer, and **Jiwon**, a Korean former business executive) operate a high-pressure Vietnam–Korea kitchen together over a local network.
 
@@ -9,65 +9,66 @@ Two players (**Linh**, a Vietnamese former software programmer, and **Jiwon**, a
 
 ---
 
-## Key Features (Milestones 0–3 Vertical Slice)
+## Competition Deliverables & Engine Architecture
 
-- **Mandatory 2-Player Local Network Co-Op:** Built on Godot's `ENetMultiplayerPeer` (UDP port `24567`). One device hosts, the second joins via LAN IPv4 (or `127.0.0.1` for 2-window desktop testing).
-- **Character Signature Abilities & Progression Tiers:**
-  - **Linh (Execution Specialist):** Tiers 1–3 speed multipliers (1.0x, 0.92x, 0.85x; up to 0.38s cadence) with visual mechanical third arm evolving from rustic brass/steel to futuristic glowing precision white-and-blue.
-  - **Jiwon (Multitasking & Delegation Specialist):** "Call in the Crew" ability allowing Jiwon to spend restaurant coins to hire temporary part-time helpers (`prep_assistant`, `dishwasher`) with automated chopping and scrubbing behaviors.
-- **5 Handcrafted Campaign Levels:**
-  - *First Customer* (Rural Food Stand) → *Lunch Rush* (Village Market) → *Night Market* (Tteokbokki introduced; Tier 2 unlocked) → *Fusion Special* (Bulgogi Bánh Mì introduced) → *Grand Opening* (All 4 recipes; Tier 3 unlocked).
-- **Endless Rush Mode:**
-  - Dynamic difficulty scaling with shrinking intervals and expanding order concurrency; failure upon 3 missed orders; persistent personal best tracking.
-- **Persistent Progression & Kitchen Upgrades:**
-  - Restaurant vault coins, 1–3 star ratings, and kitchen appliance upgrades (e.g. Sharp Santoku Knives, Double-Walled Stockpot) saved persistently.
-- **Cross-Kitchen Partner Interdependence:**
-  - **Linh's Side (West Zone):** Houses raw meats & starches (*Pork Belly*, *Marinated Bulgogi*, *Rice Cakes*, *Beef*, *Dry Rice Noodles*, *Baguettes*), the West Prep Counter, the **Dedicated Phở Stockpot**, the **Noodle Blancher**, Assembly West, and the Serving Window.
-  - **Jiwon's Side (East Zone):** Houses vegetables, sauces & fish cakes (*Daikon & Carrot*, *Aged Kimchi*, *Fish Cakes*, *Gochujang*), the East Prep Counter, the **Cast-Iron Grill/Sear Pan**, the **Gochujang Simmer Wok**, Assembly East, and the **Washing Sink & Dish Rack**.
-  - **Mutual Reliance:** Linh preps the meats and rice cakes that Jiwon grills and simmers on the East stoves; Jiwon preps the pickled vegetables, kimchi slaw, and clean bowls/plates that Linh needs to assemble dishes on the West side.
-- **5 Distinct Station Mechanics (No Generic Progress Bars):**
-  1. **Preparation Counter:** Discrete 4-strike rhythm cadence (`PERFECT` / `GOOD` / `MISS` — misses never block completion).
-  2. **Cooking Station:** Timed heat-window state machine (`RAW -> COOKING -> OPTIMAL -> OVERCOOKED -> BURNT`).
-  3. **Assembly Counter:** Recipe-driven vessel combination (`plate` or `bowl` required first; *Phở Bò* enforces adding blanched noodles and sliced beef before pouring hot stockpot broth).
-  4. **Serving Counter:** Authoritative order queue matching, patience tip calculation, and dirty plate generation.
-  5. **Washing Station:** Finite 4-plate economy with a forgiving 4-stroke scrub cycle.
-- **Pass Counter Handoffs, Kitchen Flow & Rush Rhythm:**
-  - Passing an active order's ingredient across the central **Pass Counter** to your partner within **4 seconds** grants **+15 Kitchen Flow** (anti-exploit protected: max once per order, no self-handoff).
-  - Reaching **100 Kitchen Flow** resets Flow to `0` and triggers **Rush Rhythm** for **15 seconds** (`1.5x` base score multiplier on served orders, Flow generation paused during bonus).
-- **Pre-Shift Lobby with Character Exclusivity & Specializations:**
-  - Choose **Linh** or **Jiwon** (mutually exclusive) and equip any of the 4 specializations (**PREP MASTER**, **FLAME KEEPER**, **MARKET RUNNER**, **FUSION ARTIST**).
+- **Active Engine:** Unity `2022.3.62f3` standard edition (`unity/TwoLadles/`).
+- **Target Platforms:**
+  - **Windows Desktop Standalone (`Builds/Windows/TwoLadles.exe`):** For desktop testing and laptop co-op host.
+  - **Android Standalone APK (`Builds/Android/TwoLadles.apk`):** For mobile touchscreen co-op partner.
+- **Godot Status:** Godot `4.7.2` was used as a rapid prototyping sandbox and is permanently archived on the `godot` branch. All active development, physics, assets, and tournament builds are Unity.
 
 ---
 
-## Quick Start — How to Launch & Test
+## Key Gameplay Mechanics
 
-### 1. Run Automated Headless Tests
-```powershell
-& "$env:LOCALAPPDATA\Programs\two-ladles-tools\godot\Godot_v4.7.2-stable_win64_console.exe" --headless -- --run-tests
-```
-
-### 2. Launch Two-Player Localhost Test on One Computer
-Open PowerShell in the project folder and launch two independent windows:
-```powershell
-# Window 1 (Host - Linh):
-Start-Process "build\windows\two-ladles.exe" -ArgumentList "--", "--auto-host"
-
-# Window 2 (Client - Jiwon):
-Start-Process "build\windows\two-ladles.exe" -ArgumentList "--", "--auto-join=127.0.0.1"
-```
-In both windows, click **TOGGLE READY**, then click **START SHIFT** on the Host window.
+1. **Mandatory 2-Player Local Network Co-Op:** Built on UDP port `24567`. Host runs on laptop/desktop, partner joins via LAN IP from mobile or second machine.
+2. **Solid Physical Collisions (Zero Character Phasing):** Every counter, appliance, crate, and perimeter wall has a physical `BoxCollider` static body. Chefs move via `CharacterController` with collision boundaries (`radius = 0.45`, `height = 1.3`), completely preventing characters from phasing through counters or appliances.
+3. **Carried Item Visuals & Throw Mechanics:** Carried items hover dynamically above the chef's head with subtle side-to-side tilt (`±10°`) and floating vertical bobbing (`0.08m`). Press `Q` or right-click to throw items directly to your partner (who catches them with empty hands), onto an empty holding counter, into the pass counter, or into the trash.
+4. **Asymmetric Vietnam–Korea Cross-Prep Layout:**
+   - **Linh's West Zone:** Prepares proteins & starches (*Pork Belly*, *Bulgogi*, *Rice Cakes*, *Dry Rice Noodles*, *Baguettes*), operates the **Dedicated Phở Stockpot** and **Noodle Blancher**, and assembles Vietnamese dishes.
+   - **Jiwon's East Zone:** Prepares vegetables & fish cakes (*Daikon & Carrot*, *Aged Kimchi*, *Fish Cakes*, *Gochujang*), operates the **Grill/Sear Pan** and **Gochujang Simmer Wok**, washes dirty dishes, and provides clean vessels.
+5. **Authentic 5-Level Campaign Progression:**
+   - **Level 1 (First Customer):** *Bánh Mì Thịt* (Traditional Vietnamese — Baguette + grilled pork + pickled veg + cilantro/sauce on plate).
+   - **Level 2 (Lunch Rush):** *Phở Bò* (Traditional Vietnamese — Bowl + blanched rice noodles + sliced beef + hot stockpot broth poured last).
+   - **Level 3 (Night Market):** *Tteokbokki* (Traditional Korean — Bowl + simmered rice cakes + fish cakes + gochujang sauce. Rejects flat plates!).
+   - **Level 4 (Street Kitchen):** *Kimchi Bokkeumbap* (Traditional Korean — Plate + stir-fried rice + aged kimchi + grilled protein).
+   - **Level 5 (Grand Opening):** *Bulgogi Bánh Mì* (Original Vietnam–Korea Fusion Specialty — Baguette + grilled bulgogi + kimchi slaw + gochujang glaze).
+6. **Pass Counter Handoffs & Rush Rhythm:**
+   - Handoff bonus grants `+15` Kitchen Flow when retrieved by the other player within 4.0s.
+   - Reaching `100` Flow activates **Rush Rhythm** (`1.5x` score multiplier) for 15.0 seconds.
 
 ---
 
-## Documentation Index
+## Project Structure (`unity/TwoLadles`)
 
-- [AGENTS.md](AGENTS.md) — Permanent engineering guidelines and constraints.
-- [GLOSSARY.md](GLOSSARY.md) — Canonical domain terms.
-- [CHANGELOG.md](CHANGELOG.md) — Milestone release history.
-- [docs/GAME_DESIGN_DOCUMENT.md](docs/GAME_DESIGN_DOCUMENT.md) — Narrative, recipes, Kitchen Flow, and specialization specs.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Autoloads, station class hierarchy, and data-driven design.
-- [docs/NETWORKING.md](docs/NETWORKING.md) — Authoritative host model, RPC catalog, and anti-exploit validation.
-- [docs/TESTING.md](docs/TESTING.md) — Step-by-step non-technical guide for Headless, Same-PC, Desktop+Android Wi-Fi, and Dual-Android testing.
-- [docs/ANDROID_BUILD.md](docs/ANDROID_BUILD.md) — Cloud GitHub Actions APK pipeline and local Android SDK setup guide.
-- [docs/ART_PIPELINE.md](docs/ART_PIPELINE.md) — 2.5D visual style guide, proportions, palette, and asset license rules.
-- [docs/DEVELOPMENT_ROADMAP.md](docs/DEVELOPMENT_ROADMAP.md) — Milestones 0–5 status and next steps.
+```
+unity/TwoLadles/
+├── Assets/
+│   ├── Editor/
+│   │   └── BuildScript.cs          # Automated scene generation & Windows/Android build pipeline
+│   ├── Resources/
+│   │   └── Sprites/               # Pixel-art kitchen tiles, appliances, item icons & characters
+│   ├── Scenes/
+│   │   └── MainKitchen.unity       # Primary 2.5D game scene
+│   ├── Scripts/
+│   │   ├── Core/                  # GameData, ShiftManager, ProgressionManager
+│   │   ├── Data/                  # RecipeData, CampaignLevelSpec, CharacterProgressionData
+│   │   ├── Kitchen/               # KitchenController (layout builder & collision setup)
+│   │   ├── Networking/            # NetworkManager (UDP 24567 host/client synchronization)
+│   │   ├── Player/                # PlayerController (movement, physics, throw, carried item hover)
+│   │   ├── Stations/              # Prep, Cooking, Assembly, Washing, PassCounter, Crate, Trash
+│   │   └── UI/                    # LobbyUI & KitchenHUD
+│   └── Tests/
+│       └── TwoLadlesTestSuite.cs  # 14-suite automated verification runner (692 assertions)
+```
+
+---
+
+## How to Open & Build in Unity
+
+1. Open **Unity Hub** (or start Unity `2022.3.62f3`).
+2. Add and open the project at `unity/TwoLadles`.
+3. In Unity Editor:
+   - Run scene `Assets/Scenes/MainKitchen.unity`.
+   - Or click **BuildScript -> Build Windows** in the menu or execute `BuildScript.BuildWindows()` to output `Builds/Windows/TwoLadles.exe`.
+   - To build Android APK, ensure Android Target Support is installed and select Android platform.

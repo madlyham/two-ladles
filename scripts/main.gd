@@ -68,6 +68,9 @@ func _ready() -> void:
 		elif arg == "--lan-smoke-client":
 			_run_lan_smoke_client()
 			return
+		elif arg == "--screenshot-kitchen":
+			_take_kitchen_screenshot()
+			return
 		elif arg == "--auto-host":
 			NetworkManager.host_game(NetworkManager.DEFAULT_PORT, "HostChef")
 		elif arg.begins_with("--auto-join="):
@@ -128,6 +131,21 @@ func _run_lan_smoke_client() -> void:
 			return
 	printerr("[LAN-SMOKE-CLIENT] Timed out waiting for shift start sync.")
 	get_tree().quit(1)
+
+func _take_kitchen_screenshot() -> void:
+	print("[SCREENSHOT] Initializing kitchen shift for offscreen frame capture...")
+	_on_shift_start_requested()
+	await get_tree().create_timer(0.4).timeout
+	var vp: Viewport = get_viewport()
+	var tex: ViewportTexture = vp.get_texture()
+	var img: Image = tex.get_image()
+	DirAccess.make_dir_recursive_absolute("build/preview")
+	var err: Error = img.save_png("build/preview/kitchen_view.png")
+	if err == OK:
+		print("[SCREENSHOT_SAVED] build/preview/kitchen_view.png (Size: %dx%d)" % [img.get_width(), img.get_height()])
+	else:
+		printerr("[SCREENSHOT_ERROR] Failed to save png: %d" % err)
+	get_tree().quit(0 if err == OK else 1)
 
 func _build_ui() -> void:
 	hud_layer = CanvasLayer.new()
@@ -594,6 +612,7 @@ func _on_shift_start_requested() -> void:
 	if kitchen_instance != null:
 		kitchen_instance.queue_free()
 	kitchen_instance = KitchenController.new()
+	kitchen_instance.name = "KitchenController"
 	kitchen_instance.local_prompt_changed.connect(func(txt: String) -> void:
 		hud_prompt_label.text = txt
 	)

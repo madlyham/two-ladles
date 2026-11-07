@@ -34,6 +34,13 @@ func _update_counter_label() -> void:
 		var item_name: String = held_item.get("display_name", held_item.get("id", "Item"))
 		update_label_text("%s\n[%s]" % [station_title, item_name], Color(0.95, 0.85, 0.45))
 
+func apply_state(state: Dictionary) -> void:
+	if state.has("held_item"):
+		held_item = state["held_item"].duplicate(true)
+	else:
+		held_item = state.duplicate(true)
+	_update_counter_label()
+
 func get_prompt_text(carried_item: Dictionary) -> String:
 	if held_item.is_empty():
 		if carried_item.is_empty():

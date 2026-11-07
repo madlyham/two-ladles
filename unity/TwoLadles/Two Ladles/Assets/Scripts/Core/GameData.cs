@@ -89,6 +89,7 @@ namespace TwoLadles.Core
             ingredients["noodles_blanched"] = new IngredientSpec("noodles_blanched", "Blanched Rice Noodles", "linh_west", "linh_west", "noodles_raw", "noodles_blanched", "noodles_blanched", "noodle_blancher", new Color(0.98f, 0.98f, 0.96f));
 
             ingredients["baguette"] = new IngredientSpec("baguette", "Crisp Vietnamese Baguette", "linh_west", "linh_west", "baguette", "baguette", "baguette", "", new Color(0.86f, 0.65f, 0.35f));
+            ingredients["flour"] = new IngredientSpec("flour", "All-Purpose Flour", "linh_west", "linh_west", "flour", "flour", "flour", "", new Color(0.96f, 0.94f, 0.88f));
             ingredients["rice_raw"] = new IngredientSpec("rice_raw", "Raw Short-Grain Rice", "linh_west", "jiwon_east", "rice_raw", "rice_portioned", "kimchi_bokkeumbap_simmered", "simmer_wok", new Color(0.96f, 0.96f, 0.94f));
             ingredients["rice_portioned"] = new IngredientSpec("rice_portioned", "Steamed White Rice", "linh_west", "jiwon_east", "rice_raw", "rice_portioned", "kimchi_bokkeumbap_simmered", "simmer_wok", new Color(0.98f, 0.98f, 0.98f));
 

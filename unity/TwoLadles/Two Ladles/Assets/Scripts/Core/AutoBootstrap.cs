@@ -60,11 +60,11 @@ namespace TwoLadles.Core
                     hudObj.transform.SetParent(canvasObj.transform, false);
                     hudObj.AddComponent<KitchenHUD>();
 
-                    // Lobby UI
+                    // Lobby UI (Active on launch so players can select chefs, difficulty, and host/join)
                     GameObject lobbyObj = new GameObject("LobbyUI");
                     lobbyObj.transform.SetParent(canvasObj.transform, false);
                     lobbyObj.AddComponent<LobbyUI>();
-                    lobbyObj.SetActive(false);
+                    lobbyObj.SetActive(true);
                 }
             }
         }

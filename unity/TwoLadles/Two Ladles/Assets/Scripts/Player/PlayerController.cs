@@ -66,6 +66,17 @@ namespace TwoLadles.Player
             }
 
             UpdateCarriedItemHover(dt);
+
+            // Dynamic 2.5D Depth Sorting: Automatically renders chefs behind north counters and in front of south counters
+            if (characterSpriteRenderer != null)
+            {
+                int order = 500 - (int)(transform.position.z * 50);
+                characterSpriteRenderer.sortingOrder = order;
+                if (carriedItemSpriteRenderer != null)
+                {
+                    carriedItemSpriteRenderer.sortingOrder = order + 2;
+                }
+            }
         }
 
         private void HandlePlayerInput(float delta)
@@ -221,7 +232,8 @@ namespace TwoLadles.Player
                 clamped.Normalize();
 
             float speed = GetEffectiveMoveSpeed();
-            Vector3 move = new Vector3(clamped.x * speed, 0.0f, clamped.y * speed) * delta;
+            // Balanced 2.5D Movement: 1.25x vertical scaling compensates for 51° camera foreshortening
+            Vector3 move = new Vector3(clamped.x * speed, 0.0f, clamped.y * speed * 1.25f) * delta;
 
             if (characterController != null && characterController.enabled)
             {
@@ -241,16 +253,18 @@ namespace TwoLadles.Player
                 transform.position = newPos;
             }
 
-            // 30% Tilt movement animation (waddle while walking)
+            // 15° Total Sway movement animation (gentle waddle while walking)
             if (clamped.magnitude > 0.08f)
             {
                 walkAnimTime += delta * 14.0f;
-                float tiltDegrees = Mathf.Sin(walkAnimTime) * 17.5f; // ~30% movement tilt arc
+                float tiltDegrees = Mathf.Sin(walkAnimTime) * 7.5f; // 15° total sway arc (-7.5° to +7.5°)
                 if (characterSpriteRenderer != null)
                 {
                     characterSpriteRenderer.transform.localRotation = Quaternion.Euler(51.0f, 0f, tiltDegrees);
-                    if (clamped.x < -0.05f) characterSpriteRenderer.flipX = true;
-                    else if (clamped.x > 0.05f) characterSpriteRenderer.flipX = false;
+                    // Base character PNG textures face left naturally.
+                    // Moving right -> flipX = true (faces right). Moving left -> flipX = false (natural left).
+                    if (clamped.x > 0.05f) characterSpriteRenderer.flipX = true;
+                    else if (clamped.x < -0.05f) characterSpriteRenderer.flipX = false;
                 }
             }
             else
@@ -294,7 +308,7 @@ namespace TwoLadles.Player
             Vector2 dir = aimDir;
             if (dir.sqrMagnitude < 0.01f)
             {
-                dir = (characterSpriteRenderer != null && characterSpriteRenderer.flipX) ? Vector2.left : Vector2.right;
+                dir = (characterSpriteRenderer != null && characterSpriteRenderer.flipX) ? Vector2.right : Vector2.left;
             }
             dir.Normalize();
 
@@ -366,10 +380,13 @@ namespace TwoLadles.Player
             {
                 case "pork_raw": return "pork_belly_raw";
                 case "pork_portioned": case "pork_cooked": return "pork_portioned";
-                case "bulgogi_raw": case "beef_raw": return "beef_bulgogi_raw";
+                case "bulgogi_raw": return "beef_bulgogi_raw";
+                case "beef_raw": return "beef_raw";
                 case "bulgogi_portioned": case "beef_sliced": case "bulgogi_cooked": return "bulgogi_portioned";
                 case "tteok_raw": case "tteok_portioned": case "tteok_cooked": return "tteok_portioned";
-                case "noodles_raw": case "noodles_blanched": return "dish_bowl";
+                case "noodles_raw": return "noodles_raw";
+                case "noodles_blanched": return "dish_bowl";
+                case "flour": case "flour_sack": return "flour";
                 case "broth_hot": return "broth_pot";
                 case "baguette": return "baguette_bread";
                 case "daikon_carrot_raw": case "pickled_veg": return "pickled_veg";

@@ -248,7 +248,15 @@ namespace TwoLadles.UI
 
         private void OnStartShiftClicked()
         {
-            var res = NetworkManager.Instance.CanStartShift(false);
+            if (NetworkManager.Instance != null && !NetworkManager.Instance.isLanActive && NetworkManager.Instance.players.Count == 0)
+            {
+                // Auto-host local session so clicking START SHIFT immediately enters kitchen
+                NetworkManager.Instance.HostGame(24567, "Chef Linh");
+            }
+
+            (bool ok, string reason) res = NetworkManager.Instance != null 
+                ? NetworkManager.Instance.CanStartShift(false) 
+                : (ok: true, reason: "");
             if (!res.ok)
             {
                 UpdateStatus(res.reason, true);
@@ -261,7 +269,10 @@ namespace TwoLadles.UI
             {
                 NetworkManager.Instance.BroadcastShiftStart(stage, mode);
             }
-            ShiftManager.Instance.StartShift(stage, mode);
+            if (ShiftManager.Instance != null)
+            {
+                ShiftManager.Instance.StartShift(stage, mode);
+            }
             gameObject.SetActive(false);
         }
 

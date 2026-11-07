@@ -550,6 +550,11 @@ namespace TwoLadles.UI
             {
                 ShiftManager.Instance.EndShift();
             }
+            var lobby = FindObjectOfType<LobbyUI>(true);
+            if (lobby != null)
+            {
+                lobby.gameObject.SetActive(true);
+            }
         }
 
         private void OnReturnedToMenuHandler(string reason)

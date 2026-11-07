@@ -91,27 +91,30 @@ namespace TwoLadles.Kitchen
 
             if (nearest != null)
             {
-                string sName = nearest.displayName;
                 if (nearest is PrepStation)
-                    prompt = $"Near: {sName} [E/Space: Place/Pick | F: Strike Cadence]";
+                    prompt = $"{nearest.displayName}  •  [E] Place / Pick  |  [F] Strike";
                 else if (nearest is CookingStation)
-                    prompt = $"Near: {sName} [E/Space: Place Raw / Take Cooked]";
+                    prompt = $"{nearest.displayName}  •  [E] Cook / Retrieve";
                 else if (nearest is PassCounter)
-                    prompt = $"Near: {sName} [E/Space: Place / Retrieve Dish (+15 Flow)]";
+                    prompt = $"Pass Counter  •  [E] Place / Retrieve (+15 Flow)";
                 else if (nearest is CounterStation)
-                    prompt = $"Near: {sName} [E/Space: Place / Pick / Swap Item]";
+                    prompt = $"Holding Table  •  [E] Place / Pick Item";
                 else if (nearest is AssemblyStation)
-                    prompt = $"Near: {sName} [E/Space: Place Vessel / Add Component]";
+                    prompt = $"{nearest.displayName}  •  [E] Add Component / Plate";
                 else if (nearest is ServingStation)
-                    prompt = $"Near: {sName} [E/Space: Deliver Order]";
+                    prompt = $"Serving Counter  •  [E] Deliver Completed Dish";
                 else if (nearest is WashingStation)
-                    prompt = $"Near: {sName} [E/Space: Clean Plate | F: Scrub / Clean Bowl]";
-                else if (nearest is CrateStation)
-                    prompt = $"Near: {sName} [E/Space: Grab Ingredient]";
+                    prompt = $"Washing Sink  •  [E] Clean Plate  |  [F] Clean Bowl";
+                else if (nearest is CrateStation crate)
+                    prompt = $"{crate.displayName}  •  [E] Take";
                 else if (nearest is TrashStation)
-                    prompt = $"Near: {sName} [E/Space: Dispose Item]";
+                    prompt = $"Trash Bin  •  [E] Dispose Item";
                 else
-                    prompt = $"Near: {sName} [E/Space: Interact]";
+                    prompt = $"{nearest.displayName}  •  [E] Interact";
+            }
+            else
+            {
+                prompt = "Move near a station to interact  [E: Use | F: Strike | Q: Throw]";
             }
 
             if (prompt != currentPrompt)
@@ -155,16 +158,16 @@ namespace TwoLadles.Kitchen
 
         public void BuildEnvironment()
         {
-            // 1. Camera (Positioned at South looking North along +Z with orthographic 51-deg pitch)
+            // 1. Camera (Expanded 2.5D Orthographic FOV, pushed back to encompass all bounds without clipping)
             if (Camera.main == null)
             {
                 GameObject camObj = new GameObject("KitchenCamera");
                 camObj.tag = "MainCamera";
                 Camera cam = camObj.AddComponent<Camera>();
                 cam.orthographic = true;
-                cam.orthographicSize = 7.0f;
-                camObj.transform.position = new Vector3(0.0f, 11.5f, -9.5f);
-                camObj.transform.LookAt(new Vector3(0.0f, 0.0f, -0.2f), Vector3.up);
+                cam.orthographicSize = 9.5f;
+                camObj.transform.position = new Vector3(0.0f, 15.0f, -11.0f);
+                camObj.transform.LookAt(new Vector3(0.0f, 0.0f, 0.6f), Vector3.up);
             }
 
             // 2. Warm Sun Light
@@ -185,10 +188,11 @@ namespace TwoLadles.Kitchen
                 lightObj.transform.rotation = Quaternion.Euler(51.0f, 28.0f, 0.0f);
             }
 
-            // 3. Kitchen Floors (West = Linh Sage-Teal tile, East = Jiwon Terracotta tile, Center Divider)
-            CreateFloorMesh("FloorWest", new Vector3(-4.6f, -0.1f, 0.0f), new Vector3(9.2f, 0.2f, 11.5f), new Color(0.24f, 0.28f, 0.27f));
-            CreateFloorMesh("FloorEast", new Vector3(4.6f, -0.1f, 0.0f), new Vector3(9.2f, 0.2f, 11.5f), new Color(0.30f, 0.24f, 0.22f));
-            CreateFloorMesh("CenterDividerLine", new Vector3(0.0f, -0.08f, 0.0f), new Vector3(0.35f, 0.21f, 11.5f), new Color(0.85f, 0.72f, 0.35f));
+            // 3. Flat Kitchen Floor Layer (Pushed backward +Z and lower -Y for camera depth clearance, larger chunky tiles)
+            CreateFloorMesh("FloorBackdrop", new Vector3(0.0f, -0.45f, 0.85f), new Vector2(21.0f, 16.5f), new Color(0.12f, 0.13f, 0.16f), 0.5f);
+            CreateFloorMesh("FloorWest", new Vector3(-4.6f, -0.38f, 0.85f), new Vector2(9.4f, 16.0f), new Color(0.24f, 0.28f, 0.27f), 0.55f);
+            CreateFloorMesh("FloorEast", new Vector3(4.6f, -0.38f, 0.85f), new Vector2(9.4f, 16.0f), new Color(0.30f, 0.24f, 0.22f), 0.55f);
+            CreateFloorMesh("CenterDividerLine", new Vector3(0.0f, -0.34f, 0.85f), new Vector2(0.35f, 16.0f), new Color(0.85f, 0.72f, 0.35f), 0.55f);
         }
 
         public void BuildPerimeterWalls()
@@ -209,13 +213,14 @@ namespace TwoLadles.Kitchen
             return wall;
         }
 
-        private GameObject CreateFloorMesh(string floorName, Vector3 pos, Vector3 size, Color col)
+        private GameObject CreateFloorMesh(string floorName, Vector3 pos, Vector2 size, Color col, float tileDensity = 0.55f)
         {
-            GameObject obj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            GameObject obj = GameObject.CreatePrimitive(PrimitiveType.Quad);
             obj.name = floorName;
             obj.transform.SetParent(transform);
             obj.transform.position = pos;
-            obj.transform.localScale = size;
+            obj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
+            obj.transform.localScale = new Vector3(size.x, size.y, 1.0f);
 
             // Remove collider from floor so player character controller uses ground plane y=0
             var c = obj.GetComponent<Collider>();
@@ -225,15 +230,15 @@ namespace TwoLadles.Kitchen
             if (mr != null)
             {
                 Shader s = Shader.Find("Sprites/Default");
-                Material mat = new Material(s);
+                Material mat = s != null ? new Material(s) : mr.material;
                 mat.color = col;
 
-                // Load pixel-art tile texture for authentic restaurant kitchen flooring
+                // Load pixel-art tile texture for authentic restaurant kitchen flooring (larger chunky tiles)
                 Texture2D floorTex = Resources.Load<Texture2D>("Sprites/Kitchen/Tiles/floor_tile_light");
                 if (floorTex != null)
                 {
                     mat.mainTexture = floorTex;
-                    mat.mainTextureScale = new Vector2(size.x * 1.5f, size.z * 1.5f);
+                    mat.mainTextureScale = new Vector2(size.x * tileDensity, size.y * tileDensity);
                 }
                 mr.material = mat;
             }
@@ -244,6 +249,7 @@ namespace TwoLadles.Kitchen
         {
             // Clear previous stations if rebuild
             stations.Clear();
+            _kitchenSpritesCache = null;
 
             // --- CENTER: SHARED PASS COUNTER & TRASH ---
             var pass = CreateStation<PassCounter>(
@@ -301,8 +307,9 @@ namespace TwoLadles.Kitchen
             CreateCrateStation("crate_pork", "CRATE: Raw Pork Belly", "pork_raw", new Vector3(-7.6f, 0.0f, -1.2f), new Color(0.88f, 0.48f, 0.45f), "pork_belly_raw");
             CreateCrateStation("crate_bulgogi", "CRATE: Raw Bulgogi", "bulgogi_raw", new Vector3(-7.6f, 0.0f, -2.6f), new Color(0.68f, 0.22f, 0.20f), "beef_bulgogi_raw");
             CreateCrateStation("crate_tteok", "CRATE: Rice Cakes", "tteok_raw", new Vector3(-7.6f, 0.0f, -4.0f), new Color(0.95f, 0.93f, 0.90f), "tteok_portioned");
-            CreateCrateStation("crate_beef", "CRATE: Raw Beef", "beef_raw", new Vector3(-5.4f, 0.0f, 4.4f), new Color(0.78f, 0.25f, 0.25f), "beef_bulgogi_raw");
-            CreateCrateStation("crate_noodles", "CRATE: Dry Rice Noodles", "noodles_raw", new Vector3(-3.4f, 0.0f, 4.4f), new Color(0.95f, 0.92f, 0.80f), "dish_bowl");
+            CreateCrateStation("crate_flour", "CRATE: Flour Sack", "flour", new Vector3(-7.6f, 0.0f, 0.2f), new Color(0.95f, 0.93f, 0.86f), "flour");
+            CreateCrateStation("crate_beef", "CRATE: Raw Beef", "beef_raw", new Vector3(-5.4f, 0.0f, 4.4f), new Color(0.78f, 0.25f, 0.25f), "beef_raw");
+            CreateCrateStation("crate_noodles", "CRATE: Dry Rice Noodles", "noodles_raw", new Vector3(-3.4f, 0.0f, 4.4f), new Color(0.95f, 0.92f, 0.80f), "noodles_raw");
             CreateCrateStation("crate_baguette", "CRATE: Baguettes", "baguette", new Vector3(-1.4f, 0.0f, 4.4f), new Color(0.86f, 0.66f, 0.36f), "baguette_bread");
 
             // --- EAST ZONE (JIWON'S SIDE): Preps, Holding, Grill, Simmer Wok, Assembly, Washing, Crates ---
@@ -370,12 +377,12 @@ namespace TwoLadles.Kitchen
             col.center = new Vector3(0.0f, size.y * 0.5f, 0.0f);
             col.size = size;
 
-            // 3D Counter Base Mesh
+            // 3D Counter Low-Profile Base Mesh (Low height prevents occluding chefs walking behind)
             GameObject counterMesh = GameObject.CreatePrimitive(PrimitiveType.Cube);
             counterMesh.name = $"{stId}_CounterMesh";
             counterMesh.transform.SetParent(stationObj.transform);
-            counterMesh.transform.localPosition = new Vector3(0.0f, size.y * 0.5f, 0.0f);
-            counterMesh.transform.localScale = size;
+            counterMesh.transform.localPosition = new Vector3(0.0f, 0.175f, 0.0f);
+            counterMesh.transform.localScale = new Vector3(size.x, 0.35f, size.z);
             var subCol = counterMesh.GetComponent<Collider>();
             if (subCol != null) Destroy(subCol);
 
@@ -388,15 +395,28 @@ namespace TwoLadles.Kitchen
                 mr.material = mat;
             }
 
-            // Upright 2D Sliced Pixel-Art Appliance Sprite
+            // Upright 2D Sliced Pixel-Art Appliance Sprite (Pushed backward +Z cleanly onto counter rear)
+            int stationBaseOrder = 500 - (int)(pos.z * 50);
             if (!string.IsNullOrEmpty(tileSpriteName))
             {
                 GameObject sprObj = new GameObject("ApplianceSprite");
                 sprObj.transform.SetParent(stationObj.transform);
-                sprObj.transform.localPosition = new Vector3(0.0f, size.y + 0.42f, 0.05f);
                 sprObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f); // Match orthographic camera tilt
                 var sr = sprObj.AddComponent<SpriteRenderer>();
-                sr.sprite = Resources.Load<Sprite>($"Sprites/Kitchen/Tiles/{tileSpriteName}");
+                sr.sprite = GetStationSprite(tileSpriteName);
+                sr.sortingOrder = stationBaseOrder;
+
+                float posY = 0.72f;
+                if (sr.sprite != null && sr.sprite.rect.height > 0)
+                {
+                    float normPivotY = sr.sprite.pivot.y / sr.sprite.rect.height;
+                    // If bottom-pivoted (normPivotY < 0.25f), sit directly on 0.35m counter pad
+                    if (normPivotY < 0.25f)
+                    {
+                        posY = 0.35f;
+                    }
+                }
+                sprObj.transform.localPosition = new Vector3(0.0f, posY, 0.22f);
                 sprObj.transform.localScale = Vector3.one * 1.35f;
             }
 
@@ -405,10 +425,11 @@ namespace TwoLadles.Kitchen
             {
                 GameObject iconObj = new GameObject("StationIcon");
                 iconObj.transform.SetParent(stationObj.transform);
-                iconObj.transform.localPosition = new Vector3(0.0f, size.y + 1.1f, 0.0f);
+                iconObj.transform.localPosition = new Vector3(0.0f, 1.38f, 0.22f);
                 iconObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
                 var isr = iconObj.AddComponent<SpriteRenderer>();
                 isr.sprite = Resources.Load<Sprite>($"Sprites/Items/{iconSpriteName}");
+                isr.sortingOrder = stationBaseOrder + 1;
                 iconObj.transform.localScale = Vector3.one * 0.9f;
             }
 
@@ -573,6 +594,89 @@ namespace TwoLadles.Kitchen
             }
 
             return nearest;
+        }
+
+        private static Dictionary<string, Sprite> _kitchenSpritesCache = null;
+
+        public static void InvalidateSpriteCache()
+        {
+            _kitchenSpritesCache = null;
+        }
+
+        public Sprite GetStationSprite(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+
+            if (_kitchenSpritesCache == null)
+            {
+                _kitchenSpritesCache = new Dictionary<string, Sprite>(System.StringComparer.OrdinalIgnoreCase);
+
+                // 1. Slices from master spritesheets in Resources
+                string[] sheets = new string[] {
+                    "Sprites/Kitchen/professional_kitchen",
+                    "Sprites/Kitchen/professional_kitchen_withshadows",
+                    "Sprites/Kitchen/professional_kitchen_room_door_tiles"
+                };
+
+                foreach (var sPath in sheets)
+                {
+                    Sprite[] subs = Resources.LoadAll<Sprite>(sPath);
+                    if (subs != null)
+                    {
+                        foreach (var s in subs)
+                        {
+                            if (s != null && !_kitchenSpritesCache.ContainsKey(s.name))
+                                _kitchenSpritesCache[s.name] = s;
+                        }
+                    }
+                }
+
+#if UNITY_EDITOR
+                // In Editor, also load directly via AssetDatabase in case user sliced in Assets/Sprites/
+                string[] editorPaths = new string[] {
+                    "Assets/Resources/Sprites/Kitchen/professional_kitchen.png",
+                    "Assets/Sprites/Kitchen/professional_kitchen.png",
+                    "Assets/Resources/Sprites/Kitchen/professional_kitchen_withshadows.png",
+                    "Assets/Sprites/Kitchen/professional_kitchen_withshadows.png"
+                };
+                foreach (var ep in editorPaths)
+                {
+                    var assets = UnityEditor.AssetDatabase.LoadAllAssetsAtPath(ep);
+                    if (assets != null)
+                    {
+                        foreach (var a in assets)
+                        {
+                            if (a is Sprite sp && !_kitchenSpritesCache.ContainsKey(sp.name))
+                            {
+                                _kitchenSpritesCache[sp.name] = sp;
+                            }
+                        }
+                    }
+                }
+#endif
+            }
+
+            // 1. Direct exact match
+            if (_kitchenSpritesCache.TryGetValue(name, out Sprite exact))
+            {
+                return exact;
+            }
+
+            // 2. Keyword/substring match (e.g. user named slice "grill", station requests "grill_pan")
+            foreach (var kvp in _kitchenSpritesCache)
+            {
+                string sliceName = kvp.Key;
+                if (sliceName.IndexOf(name, System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    name.IndexOf(sliceName, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return kvp.Value;
+                }
+            }
+
+            // 3. Fallback to separate single-tile files
+            Sprite fallback = Resources.Load<Sprite>($"Sprites/Kitchen/Tiles/{name}");
+            if (fallback == null) fallback = Resources.Load<Sprite>($"Sprites/Kitchen/{name}");
+            return fallback;
         }
     }
 }

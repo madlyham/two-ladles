@@ -34,11 +34,11 @@ public class BuildScript
         camObj.tag = "MainCamera";
         Camera cam = camObj.AddComponent<Camera>();
         cam.orthographic = true;
-        cam.orthographicSize = 7.0f;
+        cam.orthographicSize = 9.5f;
         cam.backgroundColor = new Color(0.12f, 0.12f, 0.14f);
         cam.clearFlags = CameraClearFlags.SolidColor;
-        camObj.transform.position = new Vector3(0.0f, 11.5f, -9.5f);
-        camObj.transform.LookAt(new Vector3(0.0f, 0.0f, -0.2f), Vector3.up);
+        camObj.transform.position = new Vector3(0.0f, 15.0f, -11.0f);
+        camObj.transform.LookAt(new Vector3(0.0f, 0.0f, 0.6f), Vector3.up);
 
         GameObject lightObj = new GameObject("Directional Light");
         Light sun = lightObj.AddComponent<Light>();

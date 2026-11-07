@@ -7,6 +7,19 @@ using TwoLadles.UI;
 
 public static class TwoLadlesEditorMenu
 {
+    [InitializeOnLoadMethod]
+    private static void AutoSetupOnEditorOpen()
+    {
+        EditorApplication.delayCall += () =>
+        {
+            if (GameObject.Find("KitchenController") == null)
+            {
+                Debug.Log("[TwoLadles] Empty scene detected on editor launch. Auto-generating kitchen scene...");
+                BuildScript.GenerateMainScene();
+            }
+        };
+    }
+
     [MenuItem("Two Ladles/Setup Kitchen Scene in Editor")]
     public static void SetupKitchenScene()
     {

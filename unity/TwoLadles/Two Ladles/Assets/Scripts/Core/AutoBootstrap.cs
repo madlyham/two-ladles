@@ -45,6 +45,7 @@ namespace TwoLadles.Core
                     var scaler = canvasObj.AddComponent<UnityEngine.UI.CanvasScaler>();
                     scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
                     scaler.referenceResolution = new Vector2(1280, 720);
+                    scaler.matchWidthOrHeight = 0.5f;
                     canvasObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 
                     if (Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)

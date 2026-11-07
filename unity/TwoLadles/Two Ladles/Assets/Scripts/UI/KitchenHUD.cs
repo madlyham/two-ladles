@@ -234,6 +234,12 @@ namespace TwoLadles.UI
             secondaryActionButton = CreateButton("SecondaryActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 52f), new Vector2(210f, 46f), "STRIKE / SCRUB / BOWL\n(F Key)", new Color(0.72f, 0.42f, 0.15f, 0.9f), out _);
             throwActionButton = CreateButton("ThrowActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 6f), new Vector2(210f, 40f), "THROW ITEM\n(Q / Right-Click)", new Color(0.58f, 0.22f, 0.55f, 0.9f), out _);
 
+            // Desktop players use keyboard & mouse: hide touch overlay buttons to keep playfield uncluttered
+            #if !UNITY_ANDROID && !UNITY_IOS
+            dpadRoot.SetActive(false);
+            actionsRoot.SetActive(false);
+            #endif
+
             // 5. Jiwon Crew Bar (Bottom Center)
             jiwonCrewBar = new GameObject("JiwonCrewBar");
             jiwonCrewBar.transform.SetParent(root, false);
@@ -247,8 +253,19 @@ namespace TwoLadles.UI
             hirePrepButton = CreateButton("HirePrepBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-105f, 0f), new Vector2(195f, 32f), "Hire Prep Assistant (20c)", new Color(0.24f, 0.44f, 0.38f, 0.85f), out hirePrepCooldownText);
             hireDishwasherButton = CreateButton("HireDishwasherBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(105f, 0f), new Vector2(195f, 32f), "Hire Dishwasher (20c)", new Color(0.22f, 0.38f, 0.52f, 0.85f), out hireDishwasherCooldownText);
 
-            // 6. Interaction Prompt (Bottom Center)
-            promptText = CreateLabel("PromptText", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 12f), new Vector2(620f, 26f), "Near: None", 13, new Color(0.9f, 0.9f, 0.9f), TextAnchor.MiddleCenter);
+            // 6. Interaction Prompt (Bottom Center with dark backdrop)
+            GameObject promptBar = new GameObject("PromptBar");
+            promptBar.transform.SetParent(root, false);
+            var pbRect = promptBar.AddComponent<RectTransform>();
+            pbRect.anchorMin = new Vector2(0.5f, 0f);
+            pbRect.anchorMax = new Vector2(0.5f, 0f);
+            pbRect.pivot = new Vector2(0.5f, 0f);
+            pbRect.anchoredPosition = new Vector2(0f, 10f);
+            pbRect.sizeDelta = new Vector2(640f, 28f);
+            var pbImg = promptBar.AddComponent<Image>();
+            pbImg.color = new Color(0.06f, 0.07f, 0.10f, 0.85f);
+
+            promptText = CreateLabel("PromptText", promptBar.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-16f, 0f), "Near: None", 13, new Color(0.95f, 0.95f, 0.95f), TextAnchor.MiddleCenter);
 
             // 7. Feedback Banner (Top Center)
             feedbackBannerText = CreateLabel("FeedbackBanner", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -48f), new Vector2(500f, 32f), "", 16, Color.yellow, TextAnchor.MiddleCenter);
@@ -447,7 +464,7 @@ namespace TwoLadles.UI
             }
 
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("ACTIVE CUSTOMER ORDERS:");
+            sb.AppendLine("ACTIVE ORDERS:");
             foreach (var o in orders)
             {
                 string rName = o.recipeId;
@@ -457,8 +474,8 @@ namespace TwoLadles.UI
                     rName = rSpec.displayName;
                     score = rSpec.baseScore;
                 }
-                string bonusTag = o.handoffBonusClaimed ? "" : " [Pass Handoff +15 Flow Available]";
-                sb.AppendLine($"#{o.ticketId} {rName} — {o.timeRemaining:F0}s left | {score} pts{bonusTag}");
+                string bonusTag = o.handoffBonusClaimed ? "" : " ★Flow+15";
+                sb.AppendLine($"• #{o.ticketId} {rName} [{o.timeRemaining:F0}s] {score}pts{bonusTag}");
             }
             orderListText.text = sb.ToString();
         }

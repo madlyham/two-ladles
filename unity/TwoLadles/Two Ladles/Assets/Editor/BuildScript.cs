@@ -37,8 +37,8 @@ public class BuildScript
         cam.orthographicSize = 7.0f;
         cam.backgroundColor = new Color(0.12f, 0.12f, 0.14f);
         cam.clearFlags = CameraClearFlags.SolidColor;
-        camObj.transform.position = new Vector3(0.0f, 11.5f, 9.5f);
-        camObj.transform.LookAt(new Vector3(0.0f, 0.0f, 0.2f), Vector3.up);
+        camObj.transform.position = new Vector3(0.0f, 11.5f, -9.5f);
+        camObj.transform.LookAt(new Vector3(0.0f, 0.0f, -0.2f), Vector3.up);
 
         GameObject lightObj = new GameObject("Directional Light");
         Light sun = lightObj.AddComponent<Light>();
@@ -46,7 +46,7 @@ public class BuildScript
         sun.color = new Color(1.0f, 0.94f, 0.84f);
         sun.intensity = 1.25f;
         sun.shadows = LightShadows.Soft;
-        lightObj.transform.rotation = Quaternion.Euler(52.0f, -28.0f, 0.0f);
+        lightObj.transform.rotation = Quaternion.Euler(51.0f, 28.0f, 0.0f);
 
         GameObject eventSystemObj = new GameObject("EventSystem");
         eventSystemObj.AddComponent<UnityEngine.EventSystems.EventSystem>();
@@ -146,6 +146,85 @@ public class BuildScript
         {
             Debug.LogError($"[BuildScript] BUILD FAILED! Errors: {summary.totalErrors}, Result: {summary.result}");
             EditorApplication.Exit(1);
+        }
+    }
+
+    public static void CaptureKitchenPreview()
+    {
+        Debug.Log("[BuildScript] Capturing Unity Kitchen Preview...");
+        GenerateMainScene();
+
+        Scene scene = EditorSceneManager.OpenScene(SCENE_PATH);
+
+        // Build kitchen in scene
+        GameObject kcObj = new GameObject("KitchenController");
+        KitchenController kc = kcObj.AddComponent<KitchenController>();
+        kc.autoBuildKitchenOnStart = false;
+        kc.BuildEnvironment();
+        kc.BuildPerimeterWalls();
+        kc.BuildStations();
+        kc.SpawnPlayers();
+
+        // Create Canvas & HUD
+        GameObject canvasObj = new GameObject("Canvas");
+        Canvas canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceCamera;
+
+        Camera cam = Camera.main;
+        if (cam == null)
+            cam = GameObject.FindObjectOfType<Camera>();
+        canvas.worldCamera = cam;
+
+        var scaler = canvasObj.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1280, 720);
+
+        GameObject hudObj = new GameObject("KitchenHUD");
+        hudObj.transform.SetParent(canvasObj.transform, false);
+        hudObj.AddComponent<KitchenHUD>();
+
+        int width = 1280;
+        int height = 720;
+        RenderTexture rt = new RenderTexture(width, height, 24);
+        cam.targetTexture = rt;
+        cam.Render();
+
+        RenderTexture.active = rt;
+        Texture2D tex = new Texture2D(width, height, TextureFormat.RGB24, false);
+        tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+        tex.Apply();
+
+        cam.targetTexture = null;
+        RenderTexture.active = null;
+        UnityEngine.Object.DestroyImmediate(rt);
+
+        byte[] bytes = tex.EncodeToPNG();
+        UnityEngine.Object.DestroyImmediate(tex);
+
+        string previewDir = "Builds/preview";
+        if (!Directory.Exists(previewDir))
+            Directory.CreateDirectory(previewDir);
+        string previewFile = $"{previewDir}/unity_kitchen_view.png";
+        File.WriteAllBytes(previewFile, bytes);
+        Debug.Log($"[BuildScript] Unity preview successfully rendered and saved to {previewFile} ({bytes.Length} bytes)");
+        EditorApplication.Exit(0);
+    }
+
+    public static void RunTestSuite()
+    {
+        Debug.Log("[BuildScript] Running Automated C# Test Suite...");
+        var go = new GameObject("TestSuiteRunner");
+        var runner = go.AddComponent<TwoLadlesTestSuite>();
+        runner.RunAllTests();
+        if (runner.testsFailed > 0)
+        {
+            Debug.LogError($"[BuildScript] TEST SUITE FAILED: {runner.testsFailed} tests failed!");
+            EditorApplication.Exit(1);
+        }
+        else
+        {
+            Debug.Log($"[BuildScript] ALL {runner.testsPassed} TESTS PASSED CLEANLY!");
+            EditorApplication.Exit(0);
         }
     }
 }

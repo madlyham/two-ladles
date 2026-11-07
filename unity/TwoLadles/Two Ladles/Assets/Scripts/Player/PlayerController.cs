@@ -34,7 +34,7 @@ namespace TwoLadles.Player
         public CharacterController characterController;
 
         [Header("Carried Item Hover & Tilt Animation")]
-        public Vector3 carriedItemBaseOffset = new Vector3(0.0f, 1.85f, 0.0f);
+        public Vector3 carriedItemBaseOffset = new Vector3(0.0f, 1.45f, 0.0f);
         public float carriedHoverBobSpeed = 4.5f;
         public float carriedHoverBobHeight = 0.08f;
         public float carriedHoverTiltSpeed = 3.5f;
@@ -179,7 +179,7 @@ namespace TwoLadles.Player
             }
 
             carriedItemSpriteRenderer.transform.localPosition = carriedItemBaseOffset + new Vector3(0.0f, bobOffset, 0.0f);
-            carriedItemSpriteRenderer.transform.localRotation = Quaternion.Euler(0.0f, 0.0f, tiltZ);
+            carriedItemSpriteRenderer.transform.localRotation = Quaternion.Euler(51.0f, 0.0f, tiltZ);
         }
 
         public void ConfigureChef(int pPeerId, string pCharId, string pSpecId, int pTier = 1)
@@ -248,7 +248,7 @@ namespace TwoLadles.Player
                 float tiltDegrees = Mathf.Sin(walkAnimTime) * 17.5f; // ~30% movement tilt arc
                 if (characterSpriteRenderer != null)
                 {
-                    characterSpriteRenderer.transform.localRotation = Quaternion.Euler(0f, 0f, tiltDegrees);
+                    characterSpriteRenderer.transform.localRotation = Quaternion.Euler(51.0f, 0f, tiltDegrees);
                     if (clamped.x < -0.05f) characterSpriteRenderer.flipX = true;
                     else if (clamped.x > 0.05f) characterSpriteRenderer.flipX = false;
                 }
@@ -260,7 +260,7 @@ namespace TwoLadles.Player
                 {
                     characterSpriteRenderer.transform.localRotation = Quaternion.Lerp(
                         characterSpriteRenderer.transform.localRotation,
-                        Quaternion.identity,
+                        Quaternion.Euler(51.0f, 0f, 0f),
                         delta * 14.0f
                     );
                 }
@@ -396,6 +396,11 @@ namespace TwoLadles.Player
                 if (spr != null)
                 {
                     characterSpriteRenderer.sprite = spr;
+                    if (spr.bounds.size.y > 0.01f)
+                    {
+                        float scale = 1.45f / spr.bounds.size.y;
+                        characterSpriteRenderer.transform.localScale = Vector3.one * scale;
+                    }
                 }
             }
 
@@ -422,7 +427,7 @@ namespace TwoLadles.Player
                         carriedItemSpriteRenderer.sprite = itemSpr;
                     }
                     carriedItemSpriteRenderer.transform.localPosition = carriedItemBaseOffset;
-                    carriedItemSpriteRenderer.transform.localRotation = Quaternion.identity;
+                    carriedItemSpriteRenderer.transform.localRotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
                 }
             }
         }

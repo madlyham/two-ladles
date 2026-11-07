@@ -84,11 +84,11 @@ func _build_visuals() -> void:
 	character_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	add_child(character_sprite)
 
-	# 2D Carried Item Sprite Icon
+	# 2D Carried Item Sprite Icon (Hovering directly over chef's head)
 	carried_sprite = Sprite3D.new()
 	carried_sprite.name = "CarriedSprite"
-	carried_sprite.position = Vector3(0.0, 1.45, 0.45)
-	carried_sprite.pixel_size = 0.022
+	carried_sprite.position = Vector3(0.0, 1.85, 0.0)
+	carried_sprite.pixel_size = 0.024
 	carried_sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	carried_sprite.transparent = true
 	carried_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
@@ -127,7 +127,7 @@ func apply_movement(input_dir: Vector2, delta: float) -> void:
 
 	var speed: float = get_effective_move_speed()
 	velocity = Vector3(clamped_dir.x * speed, 0.0, clamped_dir.y * speed)
-	position += velocity * delta
+	move_and_slide()
 	position.x = clampf(position.x, -KITCHEN_BOUNDS_X, KITCHEN_BOUNDS_X)
 	position.z = clampf(position.z, -KITCHEN_BOUNDS_Z, KITCHEN_BOUNDS_Z)
 	position.y = 0.0
@@ -149,6 +149,13 @@ func apply_movement(input_dir: Vector2, delta: float) -> void:
 		walk_anim_time = 0.0
 		if character_sprite != null:
 			character_sprite.rotation.z = lerp_angle(character_sprite.rotation.z, 0.0, delta * 14.0)
+
+	# Carried Item Hover & Tilt Animation
+	if not carried_item.is_empty() and carried_sprite != null and carried_sprite.visible:
+		var bob_offset: float = sin(walk_anim_time * 0.8 + delta) * 0.08
+		var tilt_z: float = sin(walk_anim_time * 0.6) * deg_to_rad(10.0)
+		carried_sprite.position = Vector3(0.0, 1.85 + bob_offset, 0.0)
+		carried_sprite.rotation.z = tilt_z
 
 func set_carried_item(item_data: Dictionary) -> void:
 	carried_item = item_data.duplicate(true)

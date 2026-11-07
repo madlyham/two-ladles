@@ -133,11 +133,16 @@ func _register_ingredients() -> void:
 	_add_item("gochujang_sauce", "Gochujang Chili Paste", "jiwon_east", "jiwon_east", "gochujang_sauce", "gochujang_sauce", "tteokbokki_simmered", "simmer_wok", Color(0.76, 0.12, 0.10))
 	_add_item("tteokbokki_simmered", "Simmered Tteokbokki", "jiwon_east", "linh_west", "", "", "tteokbokki_simmered", "simmer_wok", Color(0.88, 0.22, 0.14))
 
+	_add_item("rice_raw", "Raw Short-Grain Rice", "linh_west", "jiwon_east", "rice_raw", "rice_portioned", "kimchi_bokkeumbap_simmered", "simmer_wok", Color(0.96, 0.96, 0.94))
+	_add_item("rice_portioned", "Steamed White Rice (Pass to Jiwon -> Wok)", "linh_west", "jiwon_east", "rice_raw", "rice_portioned", "kimchi_bokkeumbap_simmered", "simmer_wok", Color(0.98, 0.98, 0.98))
+	_add_item("kimchi_bokkeumbap_simmered", "Sizzling Kimchi Bokkeumbap", "jiwon_east", "shared", "rice_portioned", "kimchi_bokkeumbap_simmered", "kimchi_bokkeumbap_simmered", "simmer_wok", Color(0.92, 0.35, 0.15))
+
 	# --- COMPLETED DISHES & WASTE ---
 	_add_item("dish_pho_bo", "Phở Bò", "shared", "shared", "", "", "", "", Color(0.90, 0.72, 0.38))
 	_add_item("dish_banh_mi_thit", "Bánh Mì Thịt", "shared", "shared", "", "", "", "", Color(0.88, 0.64, 0.30))
 	_add_item("dish_tteokbokki", "Tteokbokki", "shared", "shared", "", "", "", "", Color(0.90, 0.24, 0.16))
 	_add_item("dish_bulgogi_banh_mi", "Bulgogi Bánh Mì (Fusion)", "shared", "shared", "", "", "", "", Color(0.78, 0.42, 0.24))
+	_add_item("dish_kimchi_bokkeumbap", "Kimchi Bokkeumbap", "shared", "shared", "", "", "", "", Color(0.92, 0.35, 0.15))
 	_add_item("burnt_waste", "Burnt Food Waste", "shared", "shared", "", "", "", "", Color(0.18, 0.16, 0.16))
 
 func _add_item(
@@ -274,6 +279,22 @@ func _register_recipes() -> void:
 		"Linh portions Marinated Bulgogi -> passes to Jiwon to Sear; Jiwon preps Kimchi Slaw -> passes to Linh to assemble on Baguette."
 	)
 
+	# Recipe 5: KIMCHI BOKKEUMBAP (Traditional Korean)
+	# Sequence: 1. Portion rice (Linh). 2. Prepare kimchi & simmer in Wok with pork (Jiwon). 3. Plate in bowl & serve.
+	recipes["kimchi_bokkeumbap"] = RecipeData.RecipeSpec.new(
+		"kimchi_bokkeumbap",
+		"Kimchi Bokkeumbap",
+		"Traditional Korean",
+		false,
+		"bowl",
+		["kimchi_bokkeumbap_simmered"],
+		"",
+		125,
+		65.0,
+		2,
+		"Linh portions Rice -> passes to Jiwon; Jiwon preps Kimchi & cooks in Wok -> plates in Bowl."
+	)
+
 func get_prep_output(raw_item_id: String) -> String:
 	if not ingredients.has(raw_item_id):
 		return ""
@@ -297,6 +318,7 @@ func is_cross_partner_handoff(item_id: String, placer_character: String, retriev
 	return ingredients.has(item_id)
 
 func _register_campaign_levels() -> void:
+	# Level 1: 1 Recipe only (Bánh Mì Thịt) - Tutorial pace, master basic movement, grill & assembly
 	campaign_levels[1] = CampaignLevelSpec.new(
 		1,
 		"First Customer",
@@ -304,11 +326,12 @@ func _register_campaign_levels() -> void:
 		"Rural Vietnam",
 		180.0,
 		150, 300, 500,
-		["banh_mi_thit", "pho_bo"],
+		["banh_mi_thit"],
 		2,
 		16.0,
-		"Open the family food stall! Master basic movement, cross-prep, and initial service."
+		"Open the family food stall! Master basic movement, cross-prep, and initial service with Bánh Mì Thịt."
 	)
+	# Level 2: 2 Recipes (Bánh Mì Thịt + Phở Bò) - Introduces broth timing & dish washing cycle
 	campaign_levels[2] = CampaignLevelSpec.new(
 		2,
 		"Lunch Rush",
@@ -321,6 +344,7 @@ func _register_campaign_levels() -> void:
 		13.0,
 		"Multiple customer orders arrive together. Manage finite plates and scrub dirty dishes at the sink!"
 	)
+	# Level 3: 3 Recipes (Bánh Mì Thịt + Phở Bò + Tteokbokki) - Introduces Korean Wok & Pass Counter handoffs
 	campaign_levels[3] = CampaignLevelSpec.new(
 		3,
 		"Night Market",
@@ -328,23 +352,25 @@ func _register_campaign_levels() -> void:
 		"Night Market",
 		180.0,
 		300, 550, 800,
-		["pho_bo", "banh_mi_thit", "tteokbokki"],
+		["banh_mi_thit", "pho_bo", "tteokbokki"],
 		3,
 		11.0,
 		"Introduce Korean Tteokbokki! Linh portions rice cakes for Jiwon's Wok. Completing unlocks Tier 2!"
 	)
+	# Level 4: 4 Recipes (+ Kimchi Bokkeumbap) - High volume cross-prep rush
 	campaign_levels[4] = CampaignLevelSpec.new(
 		4,
-		"Fusion Special",
+		"City Bistro",
 		"Growing Fusion Bistro",
 		"City Fringe",
 		180.0,
 		380, 700, 950,
-		["bulgogi_banh_mi", "tteokbokki", "banh_mi_thit"],
+		["banh_mi_thit", "pho_bo", "tteokbokki", "kimchi_bokkeumbap"],
 		4,
 		10.0,
-		"Introduce Bulgogi Bánh Mì! Maximize Pass Counter handoffs and trigger Rush Rhythm."
+		"Traditional Kimchi Bokkeumbap unlocked! High volume cross-prep and quick dish turnaround."
 	)
+	# Level 5: 5 Recipes (+ Bulgogi Bánh Mì Fusion) - Grand Opening climax with all dishes
 	campaign_levels[5] = CampaignLevelSpec.new(
 		5,
 		"Grand Opening",
@@ -352,10 +378,10 @@ func _register_campaign_levels() -> void:
 		"Downtown Metropolis",
 		180.0,
 		450, 850, 1200,
-		["pho_bo", "banh_mi_thit", "tteokbokki", "bulgogi_banh_mi"],
+		["banh_mi_thit", "pho_bo", "tteokbokki", "kimchi_bokkeumbap", "bulgogi_banh_mi"],
 		4,
 		8.5,
-		"Full menu under peak customer pressure! Combine all stations and abilities. Unlocks Tier 3!"
+		"Full menu under peak customer pressure! Combine all 5 authentic dishes. Unlocks Tier 3!"
 	)
 
 func _register_character_tiers() -> void:

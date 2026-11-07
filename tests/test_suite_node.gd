@@ -6,6 +6,7 @@ extends Node
 const CampaignLevelSpec = preload("res://scripts/data/campaign_level_spec.gd")
 const CharacterProgressionData = preload("res://scripts/data/character_progression_data.gd")
 const RecipeData = preload("res://scripts/data/recipe_data.gd")
+const CounterStation = preload("res://scripts/stations/counter_station.gd")
 
 var tests_run: int = 0
 var tests_passed: int = 0
@@ -30,6 +31,7 @@ func _ready() -> void:
 	_test_jiwon_delegation_part_time_crew()
 	_test_campaign_levels_and_progression_unlocks()
 	_test_endless_rush_mode()
+	_test_holding_counter_and_throw_mechanics()
 
 	print("------------------------------------------------------------")
 	print("  RESULTS: %d / %d Passed | %d Failed" % [tests_passed, tests_run, tests_failed])
@@ -54,10 +56,11 @@ func _assert(condition: bool, description: String) -> void:
 
 func _test_recipes_and_cross_prep_architecture() -> void:
 	print("\n[Suite 1] Data-Driven Recipes & Cross-Prep Interdependence")
-	_assert(GameData.recipes.size() == 4, "Exactly 4 starter recipes registered")
+	_assert(GameData.recipes.size() == 5, "Exactly 5 starter recipes registered")
 	_assert(GameData.recipes.has("pho_bo") and not GameData.recipes["pho_bo"].is_fusion, "Pho Bo registered as Traditional Vietnamese dish")
 	_assert(GameData.recipes.has("banh_mi_thit") and not GameData.recipes["banh_mi_thit"].is_fusion, "Banh Mi Thit registered as Traditional Vietnamese dish")
 	_assert(GameData.recipes.has("tteokbokki") and not GameData.recipes["tteokbokki"].is_fusion, "Tteokbokki registered as Traditional Korean dish")
+	_assert(GameData.recipes.has("kimchi_bokkeumbap") and not GameData.recipes["kimchi_bokkeumbap"].is_fusion, "Kimchi Bokkeumbap registered as Traditional Korean dish")
 	_assert(
 		GameData.recipes.has("bulgogi_banh_mi") and GameData.recipes["bulgogi_banh_mi"].is_fusion and GameData.recipes["bulgogi_banh_mi"].culinary_origin.find("Fusion") != -1,
 		"Bulgogi Banh Mi explicitly marked as Original Vietnam-Korea Fusion Specialty"
@@ -450,9 +453,9 @@ func _test_campaign_levels_and_progression_unlocks() -> void:
 	var lvl3: CampaignLevelSpec = GameData.campaign_levels[3]
 	var lvl5: CampaignLevelSpec = GameData.campaign_levels[5]
 
-	_assert(lvl1.allowed_recipes.size() == 2, "Level 1 starts with 2 starter recipes (First Customer)")
+	_assert(lvl1.allowed_recipes.size() == 1, "Level 1 starts with 1 starter recipe (First Customer: Banh Mi Thit)")
 	_assert("tteokbokki" in lvl3.allowed_recipes, "Level 3 introduces Korean Tteokbokki (Night Market)")
-	_assert(lvl5.allowed_recipes.size() == 4, "Level 5 combines all 4 authentic recipes (Grand Opening)")
+	_assert(lvl5.allowed_recipes.size() == 5, "Level 5 combines all 5 authentic recipes (Grand Opening)")
 
 	# Verify Character Tier Unlocks based on campaign progress:
 	ProgressionManager.reset_progression_for_testing()
@@ -506,3 +509,35 @@ func _test_endless_rush_mode() -> void:
 	var lower_summary: Dictionary = ProgressionManager.record_endless_results(500, 4, 45.0)
 	_assert(not bool(lower_summary.get("new_high_score", false)), "Lower score run does not overwrite personal best")
 	_assert(ProgressionManager.endless_best_score == 850, "Endless personal best preserved at 850")
+
+func _test_holding_counter_and_throw_mechanics() -> void:
+	print("\n[Suite 14] Holding Counters, Hover Tilt Animation & Throw Mechanics")
+	var counter: CounterStation = CounterStation.new()
+	counter.station_id = "counter_west_1"
+	add_child(counter)
+
+	var held: Dictionary = {"id": "pork_portioned", "display_name": "Portioned Pork"}
+	var p_res: bool = counter.place_item(held)
+	_assert(p_res and not counter.held_item.is_empty(), "Holding counter accepts held item from player")
+
+	var ret: Dictionary = counter.retrieve_item()
+	_assert(not ret.is_empty() and counter.held_item.is_empty(), "Player retrieves held item from counter with empty hands")
+
+	counter.held_item = {"id": "pickled_veg", "display_name": "Pickled Veg"}
+	var swapped: Dictionary = counter.swap_item(held)
+	_assert(swapped.get("id") == "pickled_veg" and counter.held_item.get("id") == "pork_portioned", "Holding counter cleanly swaps items when both player and counter have items")
+
+	var chef: PlayerController = PlayerController.new()
+	chef.configure_chef(1, "linh", "prep_master", 1)
+	add_child(chef)
+	chef.set_carried_item(held)
+	_assert(not chef.carried_item.is_empty(), "Chef successfully holding carried item")
+
+	chef.apply_movement(Vector2(0.5, 0.0), 0.1)
+	_assert(chef.carried_sprite != null, "Carried item hover update calculates smoothly without error")
+
+	var thrown: Dictionary = chef.clear_carried_item()
+	_assert(not thrown.is_empty() and chef.carried_item.is_empty(), "Chef clears carried item when throwing")
+
+	counter.queue_free()
+	chef.queue_free()

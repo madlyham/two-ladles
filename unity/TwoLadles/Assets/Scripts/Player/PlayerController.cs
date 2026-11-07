@@ -1,6 +1,8 @@
 using UnityEngine;
 using TwoLadles.Data;
 using TwoLadles.Core;
+using TwoLadles.Stations;
+using TwoLadles.Kitchen;
 
 namespace TwoLadles.Player
 {
@@ -25,6 +27,56 @@ namespace TwoLadles.Player
         public SpriteRenderer characterSpriteRenderer;
         public SpriteRenderer carriedItemSpriteRenderer;
         public float walkAnimTime = 0.0f;
+
+        [Header("Physics & Collision")]
+        public CharacterController characterController;
+
+        [Header("Carried Item Hover & Tilt Animation")]
+        public Vector3 carriedItemBaseOffset = new Vector3(0.0f, 1.85f, 0.0f);
+        public float carriedHoverBobSpeed = 4.5f;
+        public float carriedHoverBobHeight = 0.08f;
+        public float carriedHoverTiltSpeed = 3.5f;
+        public float carriedHoverTiltAngle = 10.0f;
+        private float carriedAnimTime = 0.0f;
+
+        private void Start()
+        {
+            if (characterController == null)
+                characterController = GetComponent<CharacterController>();
+        }
+
+        private void Update()
+        {
+            UpdateCarriedItemHover(Time.deltaTime);
+        }
+
+        /// <summary>
+        /// Animates the carried item hovering above chef's head with subtle side-to-side tilt
+        /// and gentle floating vertical bobbing.
+        /// </summary>
+        public void UpdateCarriedItemHover(float delta)
+        {
+            if (carriedItem == null || carriedItemSpriteRenderer == null)
+                return;
+
+            carriedAnimTime += delta;
+
+            // Subtle vertical floating bob (sin wave)
+            float bobOffset = Mathf.Sin(carriedAnimTime * carriedHoverBobSpeed) * carriedHoverBobHeight;
+
+            // Subtle side-to-side tilt variation
+            float tiltZ = Mathf.Sin(carriedAnimTime * carriedHoverTiltSpeed) * carriedHoverTiltAngle;
+
+            // If chef is walking, synchronize dynamic tilt with movement stride
+            if (walkAnimTime > 0.0f)
+            {
+                bobOffset += Mathf.Sin(walkAnimTime * 1.5f) * 0.04f;
+                tiltZ += Mathf.Sin(walkAnimTime) * 6.0f;
+            }
+
+            carriedItemSpriteRenderer.transform.localPosition = carriedItemBaseOffset + new Vector3(0.0f, bobOffset, 0.0f);
+            carriedItemSpriteRenderer.transform.localRotation = Quaternion.Euler(0.0f, 0.0f, tiltZ);
+        }
 
         public void ConfigureChef(int pPeerId, string pCharId, string pSpecId, int pTier = 1)
         {
@@ -62,12 +114,24 @@ namespace TwoLadles.Player
 
             float speed = GetEffectiveMoveSpeed();
             Vector3 move = new Vector3(clamped.x * speed, 0.0f, clamped.y * speed) * delta;
-            Vector3 newPos = transform.position + move;
 
-            newPos.x = Mathf.Clamp(newPos.x, -KITCHEN_BOUNDS_X, KITCHEN_BOUNDS_X);
-            newPos.z = Mathf.Clamp(newPos.z, -KITCHEN_BOUNDS_Z, KITCHEN_BOUNDS_Z);
-            newPos.y = 0.0f;
-            transform.position = newPos;
+            if (characterController != null && characterController.enabled)
+            {
+                characterController.Move(move);
+                Vector3 clampedPos = transform.position;
+                clampedPos.x = Mathf.Clamp(clampedPos.x, -KITCHEN_BOUNDS_X, KITCHEN_BOUNDS_X);
+                clampedPos.z = Mathf.Clamp(clampedPos.z, -KITCHEN_BOUNDS_Z, KITCHEN_BOUNDS_Z);
+                clampedPos.y = 0.0f;
+                transform.position = clampedPos;
+            }
+            else
+            {
+                Vector3 newPos = transform.position + move;
+                newPos.x = Mathf.Clamp(newPos.x, -KITCHEN_BOUNDS_X, KITCHEN_BOUNDS_X);
+                newPos.z = Mathf.Clamp(newPos.z, -KITCHEN_BOUNDS_Z, KITCHEN_BOUNDS_Z);
+                newPos.y = 0.0f;
+                transform.position = newPos;
+            }
 
             // 30% Tilt movement animation (waddle while walking)
             if (clamped.magnitude > 0.08f)
@@ -109,6 +173,77 @@ namespace TwoLadles.Player
             return prev;
         }
 
+        /// <summary>
+        /// Throws the carried ingredient or dish in the chef's facing direction.
+        /// Can be caught by the other chef, land on an empty counter, enter the pass counter,
+        /// or drop into the trash bin.
+        /// </summary>
+        public bool ThrowItem(Vector2 aimDir)
+        {
+            if (carriedItem == null)
+                return false;
+
+            Vector2 dir = aimDir;
+            if (dir.sqrMagnitude < 0.01f)
+            {
+                dir = (characterSpriteRenderer != null && characterSpriteRenderer.flipX) ? Vector2.left : Vector2.right;
+            }
+            dir.Normalize();
+
+            var itemToThrow = ClearCarriedItem();
+            if (itemToThrow == null)
+                return false;
+
+            Vector3 landingTarget = transform.position + new Vector3(dir.x * 4.5f, 0.0f, dir.y * 4.5f);
+            landingTarget.x = Mathf.Clamp(landingTarget.x, -KITCHEN_BOUNDS_X, KITCHEN_BOUNDS_X);
+            landingTarget.z = Mathf.Clamp(landingTarget.z, -KITCHEN_BOUNDS_Z, KITCHEN_BOUNDS_Z);
+
+            if (KitchenController.Instance != null)
+            {
+                // 1. Partner catch detection
+                foreach (var otherChef in KitchenController.Instance.playersByPeer.Values)
+                {
+                    if (otherChef != this && otherChef.carriedItem == null)
+                    {
+                        float dist = Vector3.Distance(otherChef.transform.position, landingTarget);
+                        if (dist <= 2.2f)
+                        {
+                            otherChef.SetCarriedItem(itemToThrow);
+                            return true;
+                        }
+                    }
+                }
+
+                // 2. Nearest station target (Holding counter, Pass Counter, Trash bin)
+                StationBase nearest = KitchenController.Instance.FindNearestStation(landingTarget);
+                if (nearest is CounterStation counter && counter.heldItem == null)
+                {
+                    counter.heldItem = itemToThrow;
+                    return true;
+                }
+
+                if (nearest is PassCounter pass)
+                {
+                    for (int i = 0; i < PassCounter.NUM_SLOTS; i++)
+                    {
+                        if (pass.slots[i] == null || pass.slots[i].item == null)
+                        {
+                            pass.PlaceItem(i, itemToThrow, peerId, Time.time);
+                            return true;
+                        }
+                    }
+                }
+
+                if (nearest != null && nearest.stationId == "trash_bin")
+                {
+                    // Disposed in trash
+                    return true;
+                }
+            }
+
+            return true;
+        }
+
         public void RefreshVisuals()
         {
             if (thirdArmVisual != null)
@@ -124,6 +259,11 @@ namespace TwoLadles.Player
             if (carriedItemSpriteRenderer != null)
             {
                 carriedItemSpriteRenderer.gameObject.SetActive(carriedItem != null);
+                if (carriedItem != null)
+                {
+                    carriedItemSpriteRenderer.transform.localPosition = carriedItemBaseOffset;
+                    carriedItemSpriteRenderer.transform.localRotation = Quaternion.identity;
+                }
             }
         }
     }

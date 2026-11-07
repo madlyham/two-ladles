@@ -89,6 +89,8 @@ namespace TwoLadles.Core
             ingredients["noodles_blanched"] = new IngredientSpec("noodles_blanched", "Blanched Rice Noodles", "linh_west", "linh_west", "noodles_raw", "noodles_blanched", "noodles_blanched", "noodle_blancher", new Color(0.98f, 0.98f, 0.96f));
 
             ingredients["baguette"] = new IngredientSpec("baguette", "Crisp Vietnamese Baguette", "linh_west", "linh_west", "baguette", "baguette", "baguette", "", new Color(0.86f, 0.65f, 0.35f));
+            ingredients["rice_raw"] = new IngredientSpec("rice_raw", "Raw Short-Grain Rice", "linh_west", "jiwon_east", "rice_raw", "rice_portioned", "kimchi_bokkeumbap_simmered", "simmer_wok", new Color(0.96f, 0.96f, 0.94f));
+            ingredients["rice_portioned"] = new IngredientSpec("rice_portioned", "Steamed White Rice", "linh_west", "jiwon_east", "rice_raw", "rice_portioned", "kimchi_bokkeumbap_simmered", "simmer_wok", new Color(0.98f, 0.98f, 0.98f));
 
             // EAST ZONE (Jiwon's side: Vegetables, Sauces, Clean Dishes)
             ingredients["daikon_carrot_raw"] = new IngredientSpec("daikon_carrot_raw", "Raw Daikon & Carrot", "jiwon_east", "linh_west", "daikon_carrot_raw", "pickled_veg", "pickled_veg", "", new Color(0.95f, 0.62f, 0.22f));
@@ -102,6 +104,7 @@ namespace TwoLadles.Core
 
             ingredients["broth_hot"] = new IngredientSpec("broth_hot", "Simmering Pho Broth", "linh_west", "linh_west", "broth_hot", "broth_hot", "broth_hot", "stockpot", new Color(0.75f, 0.58f, 0.30f));
             ingredients["tteokbokki_simmered"] = new IngredientSpec("tteokbokki_simmered", "Simmered Tteokbokki & Eomuk", "jiwon_east", "shared", "tteok_portioned", "tteokbokki_simmered", "tteokbokki_simmered", "simmer_wok", new Color(0.85f, 0.20f, 0.12f));
+            ingredients["kimchi_bokkeumbap_simmered"] = new IngredientSpec("kimchi_bokkeumbap_simmered", "Sizzling Kimchi Bokkeumbap", "jiwon_east", "shared", "rice_portioned", "kimchi_bokkeumbap_simmered", "kimchi_bokkeumbap_simmered", "simmer_wok", new Color(0.92f, 0.35f, 0.15f));
         }
 
         private void RegisterAppliances()
@@ -145,24 +148,36 @@ namespace TwoLadles.Core
                 "", 150, 70.0f, 3,
                 "Linh portions Marinated Bulgogi -> passes to Jiwon to Sear; Jiwon preps Kimchi Slaw -> passes to Linh to assemble on Baguette."
             );
+
+            // Recipe 5: KIMCHI BOKKEUMBAP (Traditional Korean)
+            // Sequence: Linh portions rice -> passes to Jiwon; Jiwon preps Kimchi & cooks in Wok with pork -> plates in clean Bowl.
+            recipes["kimchi_bokkeumbap"] = new RecipeSpec(
+                "kimchi_bokkeumbap", "Kimchi Bokkeumbap", "Traditional Korean", false, "bowl",
+                new List<string> { "kimchi_bokkeumbap_simmered" },
+                "", 125, 65.0f, 2,
+                "Linh portions Rice -> passes to Jiwon; Jiwon preps Kimchi & simmers in Wok -> plates in Bowl."
+            );
         }
 
         private void RegisterCampaignLevels()
         {
+            // Level 1: 1 Recipe only (Bánh Mì Thịt) - Tutorial pace, master basic prep, grill & assembly
             campaignLevels[1] = new CampaignLevelSpec(
                 1, "First Customer", "Rural Roadside Food Stand", "Rural Vietnam",
                 180.0f, 150, 300, 500,
-                new List<string> { "banh_mi_thit", "pho_bo" },
+                new List<string> { "banh_mi_thit" },
                 2, 16.0f,
-                "Open the family food stall! Master basic movement, cross-prep, and initial service."
+                "Open the family food stall! Master basic movement, cross-prep, and initial service with Bánh Mì Thịt."
             );
+            // Level 2: 2 Recipes (Bánh Mì Thịt + Phở Bò) - Introduces noodle blanching & hot stock timing
             campaignLevels[2] = new CampaignLevelSpec(
                 2, "Lunch Rush", "Village Market Restaurant", "Village Market",
                 180.0f, 220, 450, 650,
                 new List<string> { "banh_mi_thit", "pho_bo" },
                 3, 13.0f,
-                "Multiple customer orders arrive together. Manage finite plates and scrub dirty dishes at the sink!"
+                "Multiple customer orders arrive together! Manage finite plates and scrub dirty dishes at the sink."
             );
+            // Level 3: 3 Recipes (Bánh Mì Thịt + Phở Bò + Tteokbokki) - Introduces Korean Wok & Pass Counter handoffs
             campaignLevels[3] = new CampaignLevelSpec(
                 3, "Night Market", "Night Market Stall", "Night Market",
                 180.0f, 300, 600, 850,
@@ -170,19 +185,21 @@ namespace TwoLadles.Core
                 3, 11.0f,
                 "Korean Tteokbokki added! Simmer rice cakes and fish cakes in the Wok. Unlocks Character Tier 2!"
             );
+            // Level 4: 4 Recipes (+ Kimchi Bokkeumbap) - High volume cross-prep rush
             campaignLevels[4] = new CampaignLevelSpec(
-                4, "Fusion Special", "Street Food Market Hub", "City Food Market",
+                4, "City Bistro", "Street Food Market Hub", "City Food Market",
                 180.0f, 400, 750, 1100,
-                new List<string> { "banh_mi_thit", "pho_bo", "tteokbokki", "bulgogi_banh_mi" },
+                new List<string> { "banh_mi_thit", "pho_bo", "tteokbokki", "kimchi_bokkeumbap" },
                 4, 10.0f,
-                "Original Vietnam-Korea Fusion Specialty unlocked: Bulgogi Banh Mi! High coordination required."
+                "Traditional Kimchi Bokkeumbap unlocked! High volume cross-prep and quick dish turnaround."
             );
+            // Level 5: 5 Recipes (+ Bulgogi Bánh Mì Fusion) - Grand Opening climax with all dishes
             campaignLevels[5] = new CampaignLevelSpec(
                 5, "Grand Opening", "Modern Fusion Restaurant", "Metropolitan Bistro",
                 180.0f, 550, 950, 1400,
-                new List<string> { "banh_mi_thit", "pho_bo", "tteokbokki", "bulgogi_banh_mi" },
+                new List<string> { "banh_mi_thit", "pho_bo", "tteokbokki", "kimchi_bokkeumbap", "bulgogi_banh_mi" },
                 4, 8.5f,
-                "Grand Opening! All 4 signature dishes in rapid succession. Unlocks Character Tier 3!"
+                "Grand Opening! All 5 authentic dishes in rapid succession. Trigger Rush Rhythm and unlock Character Tier 3!"
             );
         }
 

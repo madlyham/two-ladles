@@ -76,15 +76,21 @@ namespace TwoLadles.Stations
             var item = heldItem;
             heldItem = null;
 
-            if (currentState == CookingState.OPTIMAL)
+            if (currentState == CookingState.OPTIMAL || currentState == CookingState.OVERCOOKED)
             {
-                item.quality = QualityTier.OPTIMAL;
-                item.itemId = applianceSpec != null ? applianceSpec.outputItemId : item.itemId;
-            }
-            else if (currentState == CookingState.OVERCOOKED)
-            {
-                item.quality = QualityTier.OVERCOOKED;
-                item.itemId = applianceSpec != null ? applianceSpec.outputItemId : item.itemId;
+                item.quality = (currentState == CookingState.OPTIMAL) ? QualityTier.OPTIMAL : QualityTier.OVERCOOKED;
+                if (GameData.Instance != null && GameData.Instance.ingredients.TryGetValue(item.itemId, out var ingSpec) && !string.IsNullOrEmpty(ingSpec.cookedId))
+                {
+                    item.itemId = ingSpec.cookedId;
+                }
+                else if (applianceSpec != null && !string.IsNullOrEmpty(applianceSpec.outputItemId))
+                {
+                    item.itemId = applianceSpec.outputItemId;
+                }
+                if (GameData.Instance != null && GameData.Instance.ingredients.TryGetValue(item.itemId, out var outSpec))
+                {
+                    item.displayName = outSpec.displayName;
+                }
             }
             else if (currentState == CookingState.BURNT)
             {

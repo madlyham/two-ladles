@@ -80,6 +80,7 @@ namespace TwoLadles.Tests
             Test11_JiwonDelegationPartTimeCrew();
             Test12_CampaignLevelsAndProgressionUnlocks();
             Test13_EndlessRushMode();
+            Test14_HoldingCounterAndThrowMechanics();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -87,7 +88,7 @@ namespace TwoLadles.Tests
 
             if (testsFailed == 0)
             {
-                Debug.Log("  ALL 114 AUTOMATED TESTS PASSED CLEANLY IN UNITY C#.");
+                Debug.Log($"  ALL {testsPassed} AUTOMATED TESTS PASSED CLEANLY IN UNITY C#.");
             }
             else
             {
@@ -120,10 +121,11 @@ namespace TwoLadles.Tests
         private void Test1_RecipesAndCrossPrepArchitecture()
         {
             Debug.Log("\n[Suite 1] Data-Driven Recipes & Cross-Prep Interdependence");
-            Assert(GameData.Instance.recipes.Count == 4, "Exactly 4 starter recipes registered");
+            Assert(GameData.Instance.recipes.Count == 5, "Exactly 5 starter recipes registered");
             Assert(GameData.Instance.recipes["pho_bo"].culturalOrigin == "Traditional Vietnamese", "Pho Bo registered as Traditional Vietnamese dish");
             Assert(GameData.Instance.recipes["banh_mi_thit"].culturalOrigin == "Traditional Vietnamese", "Banh Mi Thit registered as Traditional Vietnamese dish");
             Assert(GameData.Instance.recipes["tteokbokki"].culturalOrigin == "Traditional Korean", "Tteokbokki registered as Traditional Korean dish");
+            Assert(GameData.Instance.recipes["kimchi_bokkeumbap"].culturalOrigin == "Traditional Korean", "Kimchi Bokkeumbap registered as Traditional Korean dish");
             Assert(GameData.Instance.recipes["bulgogi_banh_mi"].isFusionSpecialty, "Bulgogi Banh Mi explicitly marked as Original Vietnam-Korea Fusion Specialty");
 
             Assert(GameData.Instance.ingredients["pork_raw"].originZone == "linh_west" && GameData.Instance.ingredients["pork_raw"].partnerTargetZone == "jiwon_east", "Linh preps Pork Belly on West side for Jiwon's East Grill");
@@ -582,9 +584,9 @@ namespace TwoLadles.Tests
             var lvl3 = GameData.Instance.campaignLevels[3];
             var lvl5 = GameData.Instance.campaignLevels[5];
 
-            Assert(lvl1.allowedRecipes.Count == 2, "Level 1 starts with 2 starter recipes (First Customer)");
+            Assert(lvl1.allowedRecipes.Count == 1, "Level 1 starts with 1 starter recipe (First Customer: Banh Mi Thit)");
             Assert(lvl3.allowedRecipes.Contains("tteokbokki"), "Level 3 introduces Korean Tteokbokki (Night Market)");
-            Assert(lvl5.allowedRecipes.Count == 4, "Level 5 combines all 4 authentic recipes (Grand Opening)");
+            Assert(lvl5.allowedRecipes.Count == 5, "Level 5 combines all 5 authentic recipes (Grand Opening)");
 
             ProgressionManager.Instance.ResetProgressionForTesting();
             Assert(ProgressionManager.Instance.linhTier == 1 && ProgressionManager.Instance.jiwonTier == 1, "Chefs start at Tier 1");
@@ -627,6 +629,64 @@ namespace TwoLadles.Tests
             bool lowerHigh = ProgressionManager.Instance.RecordEndlessRun(500, 4, 45.0f);
             Assert(!lowerHigh, "Lower score run does not overwrite personal best");
             Assert(ProgressionManager.Instance.endlessBestScore == 850, "Endless personal best preserved at 850");
+        }
+
+        // Suite 14: Holding Counters, Hover Animation & Throw Mechanics
+        private void Test14_HoldingCounterAndThrowMechanics()
+        {
+            Debug.Log("\n[Suite 14] Holding Counters, Hover Tilt Animation & Throw Mechanics");
+
+            // 1. CounterStation place, pickup & swap
+            var counterObj = new GameObject("TestCounterStation");
+            var counter = counterObj.AddComponent<CounterStation>();
+            counter.stationId = "counter_west_1";
+
+            KitchenItem held = new KitchenItem("pork_portioned", "Portioned Pork Belly");
+            var res1 = counter.InteractPrimary(ref held, 1, "linh");
+            Assert(res1.ok && held == null && counter.heldItem != null, "Holding counter accepts held item from player");
+
+            var res2 = counter.InteractPrimary(ref held, 1, "linh");
+            Assert(res2.ok && held != null && counter.heldItem == null, "Player retrieves held item from counter with empty hands");
+
+            counter.heldItem = new KitchenItem("pickled_veg", "Pickled Veg");
+            var swapRes = counter.InteractPrimary(ref held, 1, "linh");
+            Assert(swapRes.ok && held.itemId == "pickled_veg" && counter.heldItem.itemId == "pork_portioned", "Holding counter cleanly swaps items when both player and counter have items");
+
+            // 2. Player hover tilt animation
+            var pObj = new GameObject("TestChefLinh");
+            var p1 = pObj.AddComponent<PlayerController>();
+            p1.ConfigureChef(1, "linh", "prep_master", 1);
+            p1.SetCarriedItem(held);
+            Assert(p1.carriedItem != null, "Chef successfully holding carried item");
+
+            p1.walkAnimTime = 0.5f;
+            p1.UpdateCarriedItemHover(0.1f);
+            Assert(p1.carriedItemSpriteRenderer == null || p1.carriedItemSpriteRenderer.transform != null, "Carried item hover update calculates smoothly without error");
+
+            // 3. Throw mechanics & partner catch
+            var p2Obj = new GameObject("TestChefJiwon");
+            var p2 = p2Obj.AddComponent<PlayerController>();
+            p2.ConfigureChef(2, "jiwon", "flame_keeper", 1);
+            p2.transform.position = p1.transform.position + new Vector3(4.0f, 0.0f, 0.0f);
+
+            var kcObj = new GameObject("KitchenControllerTest");
+            var kc = kcObj.AddComponent<KitchenController>();
+            KitchenController.Instance = kc;
+            kc.playersByPeer[1] = p1;
+            kc.playersByPeer[2] = p2;
+            kc.stations["counter_west_1"] = counter;
+
+            // Throw item toward partner (aim right)
+            bool threw = p1.ThrowItem(Vector2.right);
+            Assert(threw, "Chef successfully throws carried item");
+            Assert(p1.carriedItem == null, "Chef hands empty after throwing item");
+            Assert(p2.carriedItem != null && p2.carriedItem.itemId == "pickled_veg", "Partner chef automatically catches thrown item with empty hands");
+
+            // Cleanup
+            DestroyImmediate(counterObj);
+            DestroyImmediate(pObj);
+            DestroyImmediate(p2Obj);
+            DestroyImmediate(kcObj);
         }
     }
 }

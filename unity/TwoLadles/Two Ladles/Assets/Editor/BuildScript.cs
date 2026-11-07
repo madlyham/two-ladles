@@ -59,6 +59,10 @@ public class BuildScript
         GameObject kitchenObj = new GameObject("KitchenController");
         var kc = kitchenObj.AddComponent<KitchenController>();
         kc.autoBuildKitchenOnStart = true;
+        kc.BuildEnvironment();
+        kc.BuildPerimeterWalls();
+        kc.BuildStations();
+        kc.SpawnPlayers();
 
         // 4. Test Suite Runner
         GameObject testRunnerObj = new GameObject("TestRunner");
@@ -91,14 +95,20 @@ public class BuildScript
         // Create UI elements for HUD
         CreateHudElements(hudObj, hudUI);
 
-        // Save scene
+        // Save scene to MainKitchen.unity
         EditorSceneManager.SaveScene(scene, SCENE_PATH);
         Debug.Log($"[BuildScript] MainKitchen.unity saved successfully to {SCENE_PATH}");
 
-        // Assign scene to EditorBuildSettings
+        // Also save to SampleScene.unity so opening the default scene shows full kitchen immediately
+        string samplePath = "Assets/Scenes/SampleScene.unity";
+        EditorSceneManager.SaveScene(scene, samplePath);
+        Debug.Log($"[BuildScript] SampleScene.unity populated and saved to {samplePath}");
+
+        // Assign scenes to EditorBuildSettings
         EditorBuildSettings.scenes = new EditorBuildSettingsScene[]
         {
-            new EditorBuildSettingsScene(SCENE_PATH, true)
+            new EditorBuildSettingsScene(SCENE_PATH, true),
+            new EditorBuildSettingsScene(samplePath, true)
         };
         AssetDatabase.SaveAssets();
     }

@@ -32,12 +32,24 @@ namespace TwoLadles.Kitchen
 
         private void Start()
         {
-            if (autoBuildKitchenOnStart)
+            if (autoBuildKitchenOnStart && transform.childCount == 0)
             {
                 BuildEnvironment();
                 BuildPerimeterWalls();
                 BuildStations();
                 SpawnPlayers();
+            }
+            else
+            {
+                // Register stations and players already present in the pre-baked scene
+                foreach (var st in GetComponentsInChildren<StationBase>())
+                {
+                    stations[st.stationId] = st;
+                }
+                foreach (var chef in FindObjectsOfType<Player.PlayerController>())
+                {
+                    playersByPeer[chef.peerId] = chef;
+                }
             }
         }
 

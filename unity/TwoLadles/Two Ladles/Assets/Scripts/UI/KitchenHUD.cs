@@ -59,17 +59,21 @@ namespace TwoLadles.UI
             }
         }
 
-        private static Font GetDefaultFont()
+        public static Font GetDefaultFont()
         {
-            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            Font font = null;
+            try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch {}
             if (font == null)
             {
-                var osFonts = Font.GetOSInstalledFontNames();
-                if (osFonts != null && osFonts.Length > 0)
+                try
                 {
-                    font = Font.CreateDynamicFontFromOSFont(osFonts[0], 14);
+                    var osFonts = Font.GetOSInstalledFontNames();
+                    if (osFonts != null && osFonts.Length > 0)
+                    {
+                        font = Font.CreateDynamicFontFromOSFont(osFonts[0], 14);
+                    }
                 }
+                catch {}
             }
             return font;
         }
@@ -168,8 +172,17 @@ namespace TwoLadles.UI
         private void AutoBuildUI()
         {
             var root = transform;
+            var rootRect = GetComponent<RectTransform>();
+            if (rootRect == null) rootRect = gameObject.AddComponent<RectTransform>();
+            rootRect.anchorMin = Vector2.zero;
+            rootRect.anchorMax = Vector2.one;
+            rootRect.pivot = new Vector2(0.5f, 0.5f);
+            rootRect.anchoredPosition = Vector2.zero;
+            rootRect.sizeDelta = Vector2.zero;
+            rootRect.offsetMin = Vector2.zero;
+            rootRect.offsetMax = Vector2.zero;
 
-            // 1. Top Bar Panel
+            // 1. Top Bar Panel (Pinned to top border of screen)
             GameObject topBar = new GameObject("TopBarPanel");
             topBar.transform.SetParent(root, false);
             var tbRect = topBar.AddComponent<RectTransform>();
@@ -177,32 +190,32 @@ namespace TwoLadles.UI
             tbRect.anchorMax = new Vector2(1f, 1f);
             tbRect.pivot = new Vector2(0.5f, 1f);
             tbRect.anchoredPosition = Vector2.zero;
-            tbRect.sizeDelta = new Vector2(0f, 40f);
+            tbRect.sizeDelta = new Vector2(0f, 38f);
             var tbImg = topBar.AddComponent<Image>();
-            tbImg.color = new Color(0.08f, 0.08f, 0.12f, 0.88f);
+            tbImg.color = new Color(0.08f, 0.08f, 0.12f, 0.90f);
 
-            scoreText = CreateLabel("ScoreText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(24f, 0f), new Vector2(110f, 30f), "SCORE: 0", 15, Color.yellow, TextAnchor.MiddleLeft);
-            shiftTimerText = CreateLabel("TimerText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(144f, 0f), new Vector2(120f, 30f), "TIME: 90s", 15, Color.white, TextAnchor.MiddleLeft);
-            flowText = CreateLabel("FlowText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(274f, 0f), new Vector2(160f, 30f), "KITCHEN FLOW: 0 / 100", 14, new Color(0.35f, 0.85f, 1.0f), TextAnchor.MiddleLeft);
-            flowSlider = CreateFlowSlider(topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(444f, 0f), new Vector2(110f, 16f));
-            cleanPlatesText = CreateLabel("CleanPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(574f, 0f), new Vector2(140f, 30f), "Clean: 4", 14, new Color(0.7f, 1.0f, 0.7f), TextAnchor.MiddleLeft);
-            dirtyPlatesText = CreateLabel("DirtyPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(724f, 0f), new Vector2(130f, 30f), "Dirty Return: 0", 14, new Color(1.0f, 0.6f, 0.6f), TextAnchor.MiddleLeft);
+            scoreText = CreateLabel("ScoreText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(16f, 0f), new Vector2(100f, 28f), "SCORE: 0", 14, Color.yellow, TextAnchor.MiddleLeft);
+            shiftTimerText = CreateLabel("TimerText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(124f, 0f), new Vector2(100f, 28f), "TIME: 90s", 14, Color.white, TextAnchor.MiddleLeft);
+            flowText = CreateLabel("FlowText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(232f, 0f), new Vector2(160f, 28f), "KITCHEN FLOW: 0 / 100", 13, new Color(0.35f, 0.85f, 1.0f), TextAnchor.MiddleLeft);
+            flowSlider = CreateFlowSlider(topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(400f, 0f), new Vector2(100f, 14f));
+            cleanPlatesText = CreateLabel("CleanPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(516f, 0f), new Vector2(100f, 28f), "Clean: 4", 13, new Color(0.7f, 1.0f, 0.7f), TextAnchor.MiddleLeft);
+            dirtyPlatesText = CreateLabel("DirtyPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(624f, 0f), new Vector2(110f, 28f), "Dirty: 0", 13, new Color(1.0f, 0.6f, 0.6f), TextAnchor.MiddleLeft);
 
-            returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(130f, 28f), "Return to Lobby", new Color(0.5f, 0.2f, 0.2f, 0.9f), out _);
+            returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(120f, 26f), "Return to Lobby", new Color(0.5f, 0.2f, 0.2f, 0.9f), out _);
 
-            // 2. Active Orders Panel (Upper Left)
+            // 2. Active Orders Panel (Upper Left Corner, compact)
             GameObject ordersPanel = new GameObject("OrdersPanel");
             ordersPanel.transform.SetParent(root, false);
             var opRect = ordersPanel.AddComponent<RectTransform>();
             opRect.anchorMin = new Vector2(0f, 1f);
             opRect.anchorMax = new Vector2(0f, 1f);
             opRect.pivot = new Vector2(0f, 1f);
-            opRect.anchoredPosition = new Vector2(24f, -48f);
-            opRect.sizeDelta = new Vector2(480f, 130f);
+            opRect.anchoredPosition = new Vector2(16f, -44f);
+            opRect.sizeDelta = new Vector2(340f, 96f);
             var opImg = ordersPanel.AddComponent<Image>();
             opImg.color = new Color(0.06f, 0.06f, 0.09f, 0.75f);
 
-            orderListText = CreateLabel("OrderListText", ordersPanel.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-16f, -12f), "ACTIVE CUSTOMER ORDERS:\nWaiting for tickets...", 13, Color.white, TextAnchor.UpperLeft);
+            orderListText = CreateLabel("OrderListText", ordersPanel.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-12f, -8f), "ACTIVE ORDERS:\nWaiting for tickets...", 12, Color.white, TextAnchor.UpperLeft);
 
             // 3. Mobile D-Pad (Bottom Left)
             GameObject dpadRoot = new GameObject("MobileDPad");

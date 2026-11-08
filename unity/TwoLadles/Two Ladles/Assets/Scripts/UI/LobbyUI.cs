@@ -48,15 +48,19 @@ namespace TwoLadles.UI
 
         private static Font GetDefaultFont()
         {
-            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            Font font = null;
+            try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch {}
             if (font == null)
             {
-                var osFonts = Font.GetOSInstalledFontNames();
-                if (osFonts != null && osFonts.Length > 0)
+                try
                 {
-                    font = Font.CreateDynamicFontFromOSFont(osFonts[0], 14);
+                    var osFonts = Font.GetOSInstalledFontNames();
+                    if (osFonts != null && osFonts.Length > 0)
+                    {
+                        font = Font.CreateDynamicFontFromOSFont(osFonts[0], 14);
+                    }
                 }
+                catch {}
             }
             return font;
         }

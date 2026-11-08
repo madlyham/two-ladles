@@ -203,7 +203,7 @@ namespace TwoLadles.UI
             mtRect.anchorMax = Vector2.one;
             mtRect.sizeDelta = Vector2.zero;
             var mtText = mbTextObj.AddComponent<Text>();
-            mtText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            mtText.font = KitchenHUD.GetDefaultFont();
             mtText.text = "INGREDIENT\nWHEEL\n[TAB]";
             mtText.fontSize = 11;
             mtText.fontStyle = FontStyle.Bold;
@@ -263,7 +263,7 @@ namespace TwoLadles.UI
             clRect.anchoredPosition = Vector2.zero;
             clRect.sizeDelta = Vector2.zero;
             centerTitleText = clObj.AddComponent<Text>();
-            centerTitleText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            centerTitleText.font = KitchenHUD.GetDefaultFont();
             centerTitleText.text = "SELECT";
             centerTitleText.fontSize = 11;
             centerTitleText.fontStyle = FontStyle.Bold;

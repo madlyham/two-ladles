@@ -256,28 +256,38 @@ namespace TwoLadles.Kitchen
             CreateStaticWall("Wall_West", new Vector3(-9.4f, 1.5f, 0.0f), new Vector3(0.8f, 3.0f, 12.0f));
             CreateStaticWall("Wall_East", new Vector3(9.4f, 1.5f, 0.0f), new Vector3(0.8f, 3.0f, 12.0f));
 
-            // 2. Visual Back North Wall (Tiled Wall Sections with baseboard)
+            // Central Divider Barriers (Chefs stay in their assigned half, only interacting via Pass Counter!)
+            CreateStaticWall("CenterDivider_North", new Vector3(0.0f, 0.75f, 3.6f), new Vector3(0.45f, 1.5f, 3.2f));
+            CreateStaticWall("CenterDivider_South", new Vector3(0.0f, 0.75f, -2.1f), new Vector3(0.45f, 1.5f, 1.9f));
+            CreateStaticWall("CenterDivider_Bottom", new Vector3(0.0f, 0.75f, -4.75f), new Vector3(0.45f, 1.5f, 1.3f));
+
+            // 2. Visual Back North Wall (Stacked Tiled Wall Sections reaching high up)
             GameObject wallRoot = new GameObject("VisualBackWall");
             wallRoot.transform.SetParent(transform);
             Sprite wallSprite = GetStationSprite("wall_south");
 
             if (wallSprite != null)
             {
-                for (float x = -8.5f; x <= 8.5f; x += 1.0f)
+                // Multi-tier wall reaching up high above the door lintel to enclose kitchen
+                float[] wallYLevels = new float[] { 0.6f, 1.8f, 3.0f, 4.2f };
+                foreach (float y in wallYLevels)
                 {
-                    // Leave 2.8m center opening for the double entrance doors!
-                    if (Mathf.Abs(x) < 1.4f) continue;
+                    for (float x = -8.5f; x <= 8.5f; x += 1.0f)
+                    {
+                        // Door opening is 2.8m wide, 2.2m tall: only skip tiles within door frame
+                        if (y < 2.2f && Mathf.Abs(x) < 1.4f) continue;
 
-                    GameObject wObj = new GameObject($"WallTile_{x:F1}");
-                    wObj.transform.SetParent(wallRoot.transform);
-                    wObj.transform.position = new Vector3(x, 1.0f, 5.2f);
-                    wObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
-                    wObj.transform.localScale = Vector3.one * 1.55f;
+                        GameObject wObj = new GameObject($"WallTile_{x:F1}_{y:F1}");
+                        wObj.transform.SetParent(wallRoot.transform);
+                        wObj.transform.position = new Vector3(x, y, 5.2f);
+                        wObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
+                        wObj.transform.localScale = Vector3.one * 1.55f;
 
-                    var sr = wObj.AddComponent<SpriteRenderer>();
-                    sr.sprite = wallSprite;
-                    sr.sortingOrder = -20;
-                    sr.color = (x < 0f) ? new Color(0.88f, 0.92f, 0.90f) : new Color(0.92f, 0.88f, 0.85f);
+                        var sr = wObj.AddComponent<SpriteRenderer>();
+                        sr.sprite = wallSprite;
+                        sr.sortingOrder = -20;
+                        sr.color = (x < 0f) ? new Color(0.88f, 0.92f, 0.90f) : new Color(0.92f, 0.88f, 0.85f);
+                    }
                 }
             }
         }
@@ -342,10 +352,12 @@ namespace TwoLadles.Kitchen
 
             // --- WEST ZONE (LINH'S SIDE): Preps, Holding, Stockpot, Blancher, Assembly, Serving, Crates ---
             var prepWest = CreateStation<PrepStation>(
-                "prep_west", "RESPONSIVE PREP (West)", "linh_west",
+                "prep_west", "RESPONSIVE PREP COUNTER", "linh_west",
                 new Vector3(-3.2f, 0.0f, 2.6f), new Vector3(2.2f, 0.9f, 1.3f),
                 new Color(0.72f, 0.75f, 0.78f), "prep_table_pot", "prep_counter_icon"
             );
+            // Universal prep counter: only 1 prep table needed in kitchen
+            stations["prep_east"] = prepWest;
 
             var counterWest = CreateStation<CounterStation>(
                 "counter_west", "HOLDING TABLE (West)", "linh_west",
@@ -389,13 +401,7 @@ namespace TwoLadles.Kitchen
             stations["crate_noodles"] = shelfWest;
             stations["crate_flour"] = shelfWest;
 
-            // --- EAST ZONE (JIWON'S SIDE): Preps, Holding, Grill, Simmer Wok, Assembly, Washing, Crates ---
-            var prepEast = CreateStation<PrepStation>(
-                "prep_east", "RESPONSIVE PREP (East)", "jiwon_east",
-                new Vector3(3.2f, 0.0f, 2.6f), new Vector3(2.2f, 0.9f, 1.3f),
-                new Color(0.72f, 0.75f, 0.78f), "prep_table_dry", "prep_counter_icon"
-            );
-
+            // --- EAST ZONE (JIWON'S SIDE): Holding, Grill, Simmer Wok, Assembly, Washing, Crates ---
             var counterEast = CreateStation<CounterStation>(
                 "counter_east", "HOLDING TABLE (East)", "jiwon_east",
                 new Vector3(3.2f, 0.0f, 0.6f), new Vector3(2.0f, 0.9f, 1.1f),
@@ -455,30 +461,12 @@ namespace TwoLadles.Kitchen
             comp.displayName = title;
             comp.zone = z;
 
-            // Physical BoxCollider (ensures characters cannot phase through appliances!)
+            // Compact Physical BoxCollider: tight bounds allowing chefs to walk close to stations smoothly
             var col = stationObj.AddComponent<BoxCollider>();
-            col.center = new Vector3(0.0f, size.y * 0.5f, 0.0f);
-            col.size = size;
+            col.center = new Vector3(0.0f, 0.45f, 0.0f);
+            col.size = new Vector3(Mathf.Min(size.x * 0.75f, 1.4f), 0.9f, 0.65f);
 
-            // 3D Counter Low-Profile Base Mesh (Low height prevents occluding chefs walking behind)
-            GameObject counterMesh = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            counterMesh.name = $"{stId}_CounterMesh";
-            counterMesh.transform.SetParent(stationObj.transform);
-            counterMesh.transform.localPosition = new Vector3(0.0f, 0.175f, 0.0f);
-            counterMesh.transform.localScale = new Vector3(size.x, 0.35f, size.z);
-            var subCol = counterMesh.GetComponent<Collider>();
-            if (subCol != null) Destroy(subCol);
-
-            var mr = counterMesh.GetComponent<MeshRenderer>();
-            if (mr != null)
-            {
-                Shader s = Shader.Find("Sprites/Default");
-                Material mat = new Material(s);
-                mat.color = counterColor;
-                mr.material = mat;
-            }
-
-            // Upright 2D Sliced Pixel-Art Appliance Sprite (Pushed backward +Z cleanly onto counter rear)
+            // Upright 2D Sliced Pixel-Art Appliance Sprite resting flush on the floor tile
             int stationBaseOrder = 500 - (int)(pos.z * 50);
             if (!string.IsNullOrEmpty(tileSpriteName))
             {
@@ -489,18 +477,14 @@ namespace TwoLadles.Kitchen
                 sr.sprite = GetStationSprite(tileSpriteName);
                 sr.sortingOrder = stationBaseOrder;
 
-                float posY = 0.72f;
-                if (sr.sprite != null && sr.sprite.rect.height > 0)
+                float bottomOffset = 0.0f;
+                if (sr.sprite != null)
                 {
-                    float normPivotY = sr.sprite.pivot.y / sr.sprite.rect.height;
-                    // If bottom-pivoted (normPivotY < 0.25f), sit directly on 0.35m counter pad
-                    if (normPivotY < 0.25f)
-                    {
-                        posY = 0.35f;
-                    }
+                    bottomOffset = -sr.sprite.bounds.min.y;
                 }
-                sprObj.transform.localPosition = new Vector3(0.0f, posY, 0.22f);
-                sprObj.transform.localScale = Vector3.one * 1.35f;
+                float scale = 1.35f;
+                sprObj.transform.localScale = Vector3.one * scale;
+                sprObj.transform.localPosition = new Vector3(0.0f, bottomOffset * scale, 0.0f);
             }
 
             // Floating Station Icon
@@ -508,12 +492,12 @@ namespace TwoLadles.Kitchen
             {
                 GameObject iconObj = new GameObject("StationIcon");
                 iconObj.transform.SetParent(stationObj.transform);
-                iconObj.transform.localPosition = new Vector3(0.0f, 1.38f, 0.22f);
+                iconObj.transform.localPosition = new Vector3(0.0f, 1.35f, 0.0f);
                 iconObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
                 var isr = iconObj.AddComponent<SpriteRenderer>();
                 isr.sprite = Resources.Load<Sprite>($"Sprites/Items/{iconSpriteName}");
                 isr.sortingOrder = stationBaseOrder + 1;
-                iconObj.transform.localScale = Vector3.one * 0.9f;
+                iconObj.transform.localScale = Vector3.one * 0.85f;
             }
 
             stations[stId] = comp;
@@ -544,37 +528,34 @@ namespace TwoLadles.Kitchen
         {
             GameObject obj = new GameObject($"Decor_{spriteName}");
             obj.transform.SetParent(transform);
-            obj.transform.position = pos;
             obj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
             var sr = obj.AddComponent<SpriteRenderer>();
             sr.sprite = GetStationSprite(spriteName);
             int baseOrder = 500 - (int)(pos.z * 50);
             sr.sortingOrder = baseOrder + sortingOrderOffset;
             obj.transform.localScale = scale;
+
+            float posY = pos.y;
+            if (sr.sprite != null && pos.y == 0.0f)
+            {
+                posY = -sr.sprite.bounds.min.y * scale.y;
+            }
+            obj.transform.position = new Vector3(pos.x, posY, pos.z);
         }
 
         public void BuildDecorations()
         {
-            // 1. Double entrance doors at North Wall center
-            AddDecorSprite("door_double_closed", new Vector3(0.0f, 0.0f, 5.0f), Vector3.one * 1.5f, -10);
+            // 1. Double entrance doors at North Wall center (flush at floor boundary)
+            AddDecorSprite("door_double_closed", new Vector3(0.0f, 0.0f, 5.05f), Vector3.one * 1.5f, -10);
 
-            // 2. Stainless Smoke Hoods above cooking appliances (hanging overhead)
-            AddDecorSprite("smoke_hood", new Vector3(-6.5f, 1.7f, 3.2f), Vector3.one * 1.4f, 10);
-            AddDecorSprite("smoke_hood", new Vector3(-6.5f, 1.7f, 1.0f), Vector3.one * 1.4f, 10);
-            AddDecorSprite("smoke_hood", new Vector3(6.5f, 1.7f, 3.0f), Vector3.one * 1.4f, 10);
-            AddDecorSprite("smoke_hood", new Vector3(6.5f, 1.7f, 0.8f), Vector3.one * 1.4f, 10);
+            // 2. Center Divider Counters along X=0 (Framing the Pass Counter to physically block phasing across)
+            AddDecorSprite("table_single_vertical", new Vector3(0.0f, 0.0f, 2.6f), Vector3.one * 1.35f, 0);
+            AddDecorSprite("table_single_vertical", new Vector3(0.0f, 0.0f, 4.0f), Vector3.one * 1.35f, 0);
+            AddDecorSprite("table_single_vertical", new Vector3(0.0f, 0.0f, -2.1f), Vector3.one * 1.35f, 0);
 
-            // 3. Wall Hung Utensils on North Wall
-            AddDecorSprite("utensils_wall_1", new Vector3(-3.4f, 1.4f, 4.8f), Vector3.one * 1.3f, -5);
-            AddDecorSprite("utensils_wall_2", new Vector3(3.8f, 1.4f, 4.8f), Vector3.one * 1.3f, -5);
-
-            // 4. Stand Mixer & Prep Bowl on Linh's West table
-            AddDecorSprite("mixer_side", new Vector3(-3.8f, 0.35f, 0.82f), Vector3.one * 1.15f, 5);
-            AddDecorSprite("mixing_bowl_full", new Vector3(-2.5f, 0.35f, 0.82f), Vector3.one * 1.15f, 5);
-
-            // 5. Unwashed Dishes stack by Jiwon's Washing Sink
-            AddDecorSprite("dishes_unwashed_stack", new Vector3(4.2f, 0.35f, -3.78f), Vector3.one * 1.25f, 5);
-            AddDecorSprite("dish_unwashed_1", new Vector3(2.2f, 0.35f, -3.78f), Vector3.one * 1.15f, 5);
+            // 3. Wall Hung Utensils on North Wall (hung high up at Y = 2.8m)
+            AddDecorSprite("utensils_wall_1", new Vector3(-3.4f, 2.8f, 5.15f), Vector3.one * 1.3f, -5);
+            AddDecorSprite("utensils_wall_2", new Vector3(3.8f, 2.8f, 5.15f), Vector3.one * 1.3f, -5);
         }
 
         public void SpawnPlayers()

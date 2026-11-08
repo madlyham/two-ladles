@@ -21,7 +21,7 @@ TextureImporter:
     heightScale: 0.25
     normalMapFilter: 0
     flipGreenChannel: 0
-  isReadable: 0
+  isReadable: 1
   streamingMipmaps: 0
   streamingMipmapsPriority: 0
   vTOnly: 0
@@ -95,7 +95,805 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: dishes_unwashed_stack
+      rect:
+        serializedVersion: 2
+        x: 161
+        y: 546
+        width: 14
+        height: 17
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 34180dc97bc437e4b92eebb0465ed62a
+      internalID: -1088491285
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dish_unwashed_1
+      rect:
+        serializedVersion: 2
+        x: 177
+        y: 561
+        width: 14
+        height: 13
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 14bd6894a2d8bbe4e96123b359398469
+      internalID: -185625996
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dish_unwashed_2
+      rect:
+        serializedVersion: 2
+        x: 177
+        y: 545
+        width: 14
+        height: 13
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e0e672ac97d12614da28e367db8fc4f6
+      internalID: 2076024427
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: utensils_wall_1
+      rect:
+        serializedVersion: 2
+        x: 257
+        y: 519
+        width: 79
+        height: 23
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3183bf012c88317408980647c0b2f76e
+      internalID: 211110129
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: smoke_hood
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 511
+        width: 35
+        height: 32
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1335f5324b49bb34eb4b63f3840c2b98
+      internalID: -844753209
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: utensils_wall_2
+      rect:
+        serializedVersion: 2
+        x: 417
+        y: 457
+        width: 63
+        height: 23
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5710323d126b47f4db9716f2d4196d71
+      internalID: -177291260
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: mixer_side
+      rect:
+        serializedVersion: 2
+        x: 165
+        y: 480
+        width: 22
+        height: 24
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 41040ab4d8ca2ef42bbee0e67dc6f69d
+      internalID: -1673324468
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: mixing_bowl_empty
+      rect:
+        serializedVersion: 2
+        x: 194
+        y: 496
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0beae7cf07c9a934e96c6cfdd2d62ff7
+      internalID: -737986133
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: mixing_bowl_full
+      rect:
+        serializedVersion: 2
+        x: 194
+        y: 480
+        width: 13
+        height: 15
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 42287a2ee36c36d4ca37bfbe0fc2f207
+      internalID: 2081589766
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: stove_south_off
+      rect:
+        serializedVersion: 2
+        x: 66
+        y: 368
+        width: 29
+        height: 40
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: fb0224227b1e03f4793971d86663655b
+      internalID: -1858030047
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: stove_south_on
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 368
+        width: 28
+        height: 40
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: abb6c4bc9b5594040ae9810432ec0bb3
+      internalID: -2048059392
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: stove_north_off
+      rect:
+        serializedVersion: 2
+        x: 130
+        y: 368
+        width: 29
+        height: 40
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 36d406ba00dff924395ddc0d1b3825e1
+      internalID: 831951001
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: stove_north_on
+      rect:
+        serializedVersion: 2
+        x: 162
+        y: 368
+        width: 29
+        height: 40
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e190cced794f1754aa0b46f96dc9dadd
+      internalID: -1453970211
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: stove_side_off
+      rect:
+        serializedVersion: 2
+        x: 198
+        y: 369
+        width: 25
+        height: 43
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 431f36fa01646db408c50a4a6e01c2a1
+      internalID: 874700978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: stove_side_on
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 369
+        width: 25
+        height: 43
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0ba2e5327a2b5e644b3e65eb4a921b5e
+      internalID: -973038089
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sink_double_south
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 416
+        width: 47
+        height: 45
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: edf874ea72622c74b864227ad6ea5ace
+      internalID: -896493629
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sink_single_south
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 416
+        width: 31
+        height: 45
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1a5b9a23147176342ae8a223b7bda9ea
+      internalID: -1412226371
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sink_double_north
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 416
+        width: 47
+        height: 40
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: de49ea8416c32d74283a245af774e60d
+      internalID: 157573309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: sink_single_north
+      rect:
+        serializedVersion: 2
+        x: 129
+        y: 416
+        width: 31
+        height: 40
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 84c78686e937e7a42b69b7ed754ce78e
+      internalID: 562847691
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: fridge_south
+      rect:
+        serializedVersion: 2
+        x: 3
+        y: 227
+        width: 43
+        height: 61
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: cfe3334fd3b08334ea3813ada332e4e5
+      internalID: -223881395
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: fridge_south_open
+      rect:
+        serializedVersion: 2
+        x: 196
+        y: 224
+        width: 43
+        height: 64
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9ce05924a74a9db4c9cd775b8eedbaad
+      internalID: -197114245
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: table_double_horizontal
+      rect:
+        serializedVersion: 2
+        x: 337
+        y: 144
+        width: 47
+        height: 40
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 95ba4d9dedd75634da3aada0d29f5ee3
+      internalID: -804448089
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: table_single_horizontal
+      rect:
+        serializedVersion: 2
+        x: 385
+        y: 144
+        width: 31
+        height: 40
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5794a6be0948c004eaae1b48173ddc4f
+      internalID: -1494922090
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: table_double_vertical
+      rect:
+        serializedVersion: 2
+        x: 422
+        y: 145
+        width: 25
+        height: 58
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ac6cbf984d93f834a874ae2780b17fb0
+      internalID: 230100748
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: table_single_vertical
+      rect:
+        serializedVersion: 2
+        x: 454
+        y: 145
+        width: 25
+        height: 45
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a6bf4ebef2810d14aa69056fb5ce9715
+      internalID: -470998468
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: shelf_horizontal
+      rect:
+        serializedVersion: 2
+        x: 208
+        y: 67
+        width: 47
+        height: 66
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f9ffdbab7fa8b64459660584751274f4
+      internalID: -340157094
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: shelf_vertical
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 65
+        width: 16
+        height: 76
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e0894b0a96290ce4b9576790f8b69431
+      internalID: 259301159
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: grill_south
+      rect:
+        serializedVersion: 2
+        x: 321
+        y: 64
+        width: 47
+        height: 44
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 38cc97ccefc6bc8448784b662cbc7cf7
+      internalID: -1693650353
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: fridge_side
+      rect:
+        serializedVersion: 2
+        x: 300
+        y: 226
+        width: 19
+        height: 73
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1079008b12b74474490092188e493b86
+      internalID: -1110197280
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: fridge_side_open
+      rect:
+        serializedVersion: 2
+        x: 429
+        y: 226
+        width: 34
+        height: 73
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3d2c78b8b302d8847bf29c6b9d551dd2
+      internalID: 2097964918
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: stove_south_pot
+      rect:
+        serializedVersion: 2
+        x: 66
+        y: 0
+        width: 29
+        height: 46
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ed9cea3932d0b5c44ab8064325dea115
+      internalID: -1225957485
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: stove_north_pot
+      rect:
+        serializedVersion: 2
+        x: 98
+        y: 0
+        width: 29
+        height: 39
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: cf0bd7507a128674f87bf6ccbff16e10
+      internalID: -2090069989
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: stove_side_pot
+      rect:
+        serializedVersion: 2
+        x: 134
+        y: 1
+        width: 26
+        height: 47
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3ab3d5056b1a6e04881a38d85f9136c8
+      internalID: -875241148
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: prep_table_dry
+      rect:
+        serializedVersion: 2
+        x: 401
+        y: 0
+        width: 47
+        height: 47
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8ec466488f0df4b478cbf5bcb6fa62a1
+      internalID: 937981792
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: prep_table_pot
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 64
+        width: 47
+        height: 46
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4365e698fd2937740b4d23b81d18967b
+      internalID: -500163438
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: wall_south
+      rect:
+        serializedVersion: 2
+        x: 448
+        y: 65
+        width: 32
+        height: 63
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: da76fd2a0676ba14cb9dc09c5bec13b5
+      internalID: 128828192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: floor_tile_clean
+      rect:
+        serializedVersion: 2
+        x: 448
+        y: 33
+        width: 32
+        height: 31
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9a11d1d1f8a54204e8ea1de074a5c37a
+      internalID: -2080588309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: floor_tile_broken
+      rect:
+        serializedVersion: 2
+        x: 448
+        y: 0
+        width: 32
+        height: 33
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f7563dc67a6e30347a6bc66e1e715b59
+      internalID: 108422374
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     physicsShape: []
     bones: []
@@ -106,7 +904,47 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      empty double table(horizontal: -804448089
+      empty double table(verticle): 230100748
+      empty mixing bowl: -737986133
+      empty single table (horizontal): -1494922090
+      empty single table (vertivle: -470998468
+      faucet nort: 562847691
+      fridge side (left default): -1110197280
+      fridge side (left default) open: 2097964918
+      fridge south: -223881395
+      fridge south open: -197114245
+      full mixing bowl: 2081589766
+      grill south: -1693650353
+      mixer side ways: -1673324468
+      mixer straight on: 105669273
+      prep table dry: 937981792
+      prep table pot: -500163438
+      professional_kitchen_0: -1494659711
+      shef of stuff (horizontal): -340157094
+      shelf of stuff verticle: 259301159
+      single faucet south: -1412226371
+      smoke hut: -844753209
+      stove north off: 831951001
+      stove north on: -1453970211
+      stove north with pot: -2090069989
+      stove side off: 874700978
+      stove side on: -973038089
+      stove side with pot: -875241148
+      stove south on: -2048059392
+      stove south on with pot: -1225957485
+      stove_south_off: -1858030047
+      tile broken: 108422374
+      tile not broken: -2080588309
+      two faucets north: 157573309
+      two faucets sout: -896493629
+      unwashed dish 1: -185625996
+      unwashed dish 2: 2076024427
+      unwashed dishes: -1088491285
+      wall hung utensil 1(decor): 211110129
+      wall hung utensil 2(decor): -177291260
+      wall south: 128828192
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

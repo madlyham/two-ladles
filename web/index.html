@@ -326,6 +326,30 @@
             box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45);
         }
 
+        .btn-mirror {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: 600;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .btn-mirror:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
         /* Characters Showcase */
         .section-title {
             font-family: 'Cinzel', serif;
@@ -635,19 +659,29 @@
                         <h2 class="card-title">Android Package (.APK)</h2>
                         <p class="card-desc">For physical Android smartphones and tablets. Optimized for touch controls with dual on-screen joysticks.</p>
                         <div class="file-meta">
-                            <span>Size: <strong>56 MB</strong></span>
+                            <span>Size: <strong>~38 MB</strong></span>
                             <span>Arch: <strong>arm64-v8a / x86_64</strong></span>
-                            <span>Version: <strong>v0.1.0</strong></span>
+                            <span>Version: <strong>v0.2.0-unity</strong></span>
                         </div>
                     </div>
-                    <a href="https://github.com/madlyham/two-ladles/releases/download/v0.1.0-demo/two-ladles-debug.apk" class="btn-download btn-green">
-                        <svg class="svg-icon" viewBox="0 0 24 24">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                        Download Android APK
-                    </a>
+                    <div>
+                        <a href="https://github.com/madlyham/two-ladles/releases/download/v0.2.0-unity/TwoLadles.apk" class="btn-download btn-green">
+                            <svg class="svg-icon" viewBox="0 0 24 24">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download Android APK
+                        </a>
+                        <a href="https://github.com/madlyham/two-ladles/releases/latest" target="_blank" rel="noopener noreferrer" class="btn-mirror">
+                            <svg class="svg-icon" viewBox="0 0 24 24" style="width:16px; height:16px;">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                            GitHub Release Mirror
+                        </a>
+                    </div>
                 </div>
 
                 <!-- Windows Card -->
@@ -664,23 +698,43 @@
                             </div>
                             <span class="card-pill blue">Windows 64-bit</span>
                         </div>
-                        <h2 class="card-title">Windows Desktop (.EXE)</h2>
-                        <p class="card-desc">Standalone executable with embedded PCK. Includes keyboard controls and dual-instance localhost support.</p>
+                        <h2 class="card-title">Windows Desktop (.ZIP)</h2>
+                        <p class="card-desc">Standalone Unity 64-bit package with 2.5D kitchen rendering, keyboard controls, and dual-instance localhost support.</p>
                         <div class="file-meta">
-                            <span>Size: <strong>100 MB</strong></span>
+                            <span>Size: <strong>29.2 MB</strong></span>
                             <span>OS: <strong>Windows 10 / 11 64-bit</strong></span>
-                            <span>Version: <strong>v0.1.0</strong></span>
+                            <span>Version: <strong>v0.2.0-unity</strong></span>
                         </div>
                     </div>
-                    <a href="https://github.com/madlyham/two-ladles/releases/download/v0.1.0-demo/two-ladles.exe" class="btn-download btn-blue">
-                        <svg class="svg-icon" viewBox="0 0 24 24">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                        Download Windows Executable
-                    </a>
+                    <div>
+                        <a href="https://github.com/madlyham/two-ladles/releases/download/v0.2.0-unity/TwoLadles-Windows-x64.zip" class="btn-download btn-blue">
+                            <svg class="svg-icon" viewBox="0 0 24 24">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download Windows ZIP
+                        </a>
+                        <a href="https://github.com/madlyham/two-ladles/releases/latest" target="_blank" rel="noopener noreferrer" class="btn-mirror">
+                            <svg class="svg-icon" viewBox="0 0 24 24" style="width:16px; height:16px;">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                            GitHub Release Mirror
+                        </a>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Kitchen Preview Showcase -->
+            <div class="preview-showcase" style="margin-top: 48px; text-align: center;">
+                <div class="preview-box" style="border-radius: 18px; overflow: hidden; border: 1px solid var(--border-bright); box-shadow: 0 16px 36px rgba(0,0,0,0.6); max-width: 960px; margin: 0 auto; background: #161b22;">
+                    <img src="assets/kitchen_preview.png" alt="Two Ladles Unity 2.5D Kitchen Gameplay View" style="width: 100%; height: auto; display: block;">
+                </div>
+                <p style="font-size: 13.5px; color: var(--text-dim); margin-top: 14px; letter-spacing: 0.3px;">
+                    Authentic 2.5D Kitchen &bull; West: Linh's Phở & Starches &bull; East: Jiwon's Wok, Grill & Wash Station
+                </p>
             </div>
         </section>
 

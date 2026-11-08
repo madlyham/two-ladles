@@ -33,6 +33,12 @@ public static class TwoLadlesEditorMenu
         BuildScript.BuildWindows();
     }
 
+    [MenuItem("Two Ladles/Build Android Standalone APK")]
+    public static void BuildAndroidApk()
+    {
+        BuildScript.BuildAndroid();
+    }
+
     [MenuItem("Two Ladles/Run Automated Test Suite")]
     public static void RunTestSuite()
     {

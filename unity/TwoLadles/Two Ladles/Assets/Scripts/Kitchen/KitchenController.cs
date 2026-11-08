@@ -37,6 +37,7 @@ namespace TwoLadles.Kitchen
                 BuildEnvironment();
                 BuildPerimeterWalls();
                 BuildStations();
+                BuildDecorations();
                 SpawnPlayers();
             }
             else
@@ -169,6 +170,13 @@ namespace TwoLadles.Kitchen
                 camObj.transform.position = new Vector3(0.0f, 15.0f, -11.0f);
                 camObj.transform.LookAt(new Vector3(0.0f, 0.0f, 0.6f), Vector3.up);
             }
+            else
+            {
+                Camera.main.orthographic = true;
+                Camera.main.orthographicSize = 9.5f;
+                Camera.main.transform.position = new Vector3(0.0f, 15.0f, -11.0f);
+                Camera.main.transform.LookAt(new Vector3(0.0f, 0.0f, 0.6f), Vector3.up);
+            }
 
             // 2. Warm Sun Light
             Light[] existingLights = FindObjectsOfType<Light>();
@@ -234,7 +242,7 @@ namespace TwoLadles.Kitchen
                 mat.color = col;
 
                 // Load pixel-art tile texture for authentic restaurant kitchen flooring (larger chunky tiles)
-                Texture2D floorTex = Resources.Load<Texture2D>("Sprites/Kitchen/Tiles/floor_tile_light");
+                Texture2D floorTex = Resources.Load<Texture2D>("Sprites/Kitchen/floor_tile_clean");
                 if (floorTex != null)
                 {
                     mat.mainTexture = floorTex;
@@ -255,107 +263,110 @@ namespace TwoLadles.Kitchen
             var pass = CreateStation<PassCounter>(
                 "pass_counter", "PASS COUNTER", "shared",
                 new Vector3(0.0f, 0.0f, 0.4f), new Vector3(1.6f, 0.9f, 3.2f),
-                new Color(0.92f, 0.76f, 0.32f), "pass_counter", "dish_plate"
+                new Color(0.78f, 0.80f, 0.84f), "table_double_vertical", "dish_plate"
             );
 
             var trash = CreateStation<TrashStation>(
                 "trash_bin", "TRASH BIN", "shared",
                 new Vector3(0.0f, 0.0f, -3.6f), new Vector3(1.1f, 0.8f, 1.1f),
-                new Color(0.35f, 0.35f, 0.38f), "trash_bin", "dish_brush"
+                new Color(0.35f, 0.35f, 0.38f), "table_single_horizontal", "dish_brush"
             );
 
             // --- WEST ZONE (LINH'S SIDE): Preps, Holding, Stockpot, Blancher, Assembly, Serving, Crates ---
             var prepWest = CreateStation<PrepStation>(
                 "prep_west", "LINH PREP (West)", "linh_west",
                 new Vector3(-3.2f, 0.0f, 2.6f), new Vector3(2.2f, 0.9f, 1.3f),
-                new Color(0.25f, 0.68f, 0.58f), "prep_west", "prep_counter_icon"
+                new Color(0.72f, 0.75f, 0.78f), "prep_table_pot", "prep_counter_icon"
             );
 
             var counterWest = CreateStation<CounterStation>(
                 "counter_west", "HOLDING TABLE (West)", "linh_west",
                 new Vector3(-3.2f, 0.0f, 0.6f), new Vector3(2.0f, 0.9f, 1.1f),
-                new Color(0.65f, 0.70f, 0.74f), "counter_stainless", "dish_plate"
+                new Color(0.72f, 0.75f, 0.78f), "table_double_horizontal", "dish_plate"
             );
 
             var stockpot = CreateStation<CookingStation>(
                 "stockpot", "Dedicated Phở Stockpot", "linh_west",
                 new Vector3(-6.5f, 0.0f, 3.2f), new Vector3(1.6f, 0.9f, 1.4f),
-                new Color(0.82f, 0.58f, 0.22f), "stockpot", "broth_pot"
+                new Color(0.30f, 0.30f, 0.33f), "stove_south_pot", "broth_pot"
             );
             stockpot.applianceId = "stockpot";
 
             var blancher = CreateStation<CookingStation>(
                 "noodle_blancher", "Noodle Blancher", "linh_west",
                 new Vector3(-6.5f, 0.0f, 1.0f), new Vector3(1.6f, 0.9f, 1.4f),
-                new Color(0.75f, 0.78f, 0.85f), "noodle_blancher", "dish_bowl"
+                new Color(0.30f, 0.30f, 0.33f), "stove_south_on", "dish_bowl"
             );
             blancher.applianceId = "noodle_blancher";
 
             var assemblyWest = CreateStation<AssemblyStation>(
                 "assembly_west", "ASSEMBLY WEST (Linh)", "linh_west",
                 new Vector3(-3.2f, 0.0f, -1.4f), new Vector3(2.2f, 0.9f, 1.3f),
-                new Color(0.38f, 0.58f, 0.78f), "prep_west_table", "dish_bowl"
+                new Color(0.72f, 0.75f, 0.78f), "table_double_horizontal", "dish_bowl"
             );
 
             var servingStation = CreateStation<ServingStation>(
                 "serving_station", "SERVING COUNTER", "shared",
                 new Vector3(-3.2f, 0.0f, -4.0f), new Vector3(2.8f, 0.9f, 1.2f),
-                new Color(0.95f, 0.75f, 0.22f), "serving_station", "baguette_bread"
+                new Color(0.75f, 0.78f, 0.82f), "table_double_horizontal", "baguette_bread"
             );
 
-            // West Crates
-            CreateCrateStation("crate_pork", "CRATE: Raw Pork Belly", "pork_raw", new Vector3(-7.6f, 0.0f, -1.2f), new Color(0.88f, 0.48f, 0.45f), "pork_belly_raw");
-            CreateCrateStation("crate_bulgogi", "CRATE: Raw Bulgogi", "bulgogi_raw", new Vector3(-7.6f, 0.0f, -2.6f), new Color(0.68f, 0.22f, 0.20f), "beef_bulgogi_raw");
-            CreateCrateStation("crate_tteok", "CRATE: Rice Cakes", "tteok_raw", new Vector3(-7.6f, 0.0f, -4.0f), new Color(0.95f, 0.93f, 0.90f), "tteok_portioned");
-            CreateCrateStation("crate_flour", "CRATE: Flour Sack", "flour", new Vector3(-7.6f, 0.0f, 0.2f), new Color(0.95f, 0.93f, 0.86f), "flour");
-            CreateCrateStation("crate_beef", "CRATE: Raw Beef", "beef_raw", new Vector3(-5.4f, 0.0f, 4.4f), new Color(0.78f, 0.25f, 0.25f), "beef_raw");
-            CreateCrateStation("crate_noodles", "CRATE: Dry Rice Noodles", "noodles_raw", new Vector3(-3.4f, 0.0f, 4.4f), new Color(0.95f, 0.92f, 0.80f), "noodles_raw");
-            CreateCrateStation("crate_baguette", "CRATE: Baguettes", "baguette", new Vector3(-1.4f, 0.0f, 4.4f), new Color(0.86f, 0.66f, 0.36f), "baguette_bread");
+            // West Supply Storage (Fridges & Shelves)
+            CreateCrateStation("crate_pork", "FRIDGE: Raw Pork Belly", "pork_raw", new Vector3(-7.6f, 0.0f, -1.2f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", "pork_belly_raw");
+            CreateCrateStation("crate_bulgogi", "FRIDGE: Raw Bulgogi", "bulgogi_raw", new Vector3(-7.6f, 0.0f, -2.6f), new Color(0.85f, 0.88f, 0.92f), "fridge_south_open", "beef_bulgogi_raw");
+            CreateCrateStation("crate_tteok", "SHELF: Rice Cakes", "tteok_raw", new Vector3(-7.6f, 0.0f, -4.0f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "tteok_portioned");
+            CreateCrateStation("crate_flour", "SHELF: Flour Sack", "flour", new Vector3(-7.6f, 0.0f, 0.2f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "flour");
+            CreateCrateStation("crate_beef", "FRIDGE: Raw Beef", "beef_raw", new Vector3(-5.4f, 0.0f, 4.4f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", "beef_raw");
+            CreateCrateStation("crate_noodles", "SHELF: Dry Rice Noodles", "noodles_raw", new Vector3(-3.4f, 0.0f, 4.4f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "noodles_raw");
+            CreateCrateStation("crate_baguette", "SHELF: Baguettes", "baguette", new Vector3(-1.4f, 0.0f, 4.4f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "baguette_bread");
 
             // --- EAST ZONE (JIWON'S SIDE): Preps, Holding, Grill, Simmer Wok, Assembly, Washing, Crates ---
             var prepEast = CreateStation<PrepStation>(
                 "prep_east", "JIWON PREP (East)", "jiwon_east",
                 new Vector3(3.2f, 0.0f, 2.6f), new Vector3(2.2f, 0.9f, 1.3f),
-                new Color(0.88f, 0.45f, 0.25f), "prep_east", "prep_counter_icon"
+                new Color(0.72f, 0.75f, 0.78f), "prep_table_dry", "prep_counter_icon"
             );
 
             var counterEast = CreateStation<CounterStation>(
                 "counter_east", "HOLDING TABLE (East)", "jiwon_east",
                 new Vector3(3.2f, 0.0f, 0.6f), new Vector3(2.0f, 0.9f, 1.1f),
-                new Color(0.65f, 0.70f, 0.74f), "counter_drawers", "dish_plate"
+                new Color(0.72f, 0.75f, 0.78f), "table_double_horizontal", "dish_plate"
             );
 
             var grill = CreateStation<CookingStation>(
                 "grill_pan", "Grill & Sear Pan (Pork / Bulgogi)", "jiwon_east",
                 new Vector3(6.5f, 0.0f, 3.0f), new Vector3(1.6f, 0.9f, 1.4f),
-                new Color(0.85f, 0.35f, 0.22f), "grill_pan", "cooking_pan_icon"
+                new Color(0.30f, 0.30f, 0.33f), "grill_south", "cooking_pan_icon"
             );
             grill.applianceId = "grill_pan";
 
             var wok = CreateStation<CookingStation>(
                 "simmer_wok", "Gochujang Simmer Wok (Tteokbokki)", "jiwon_east",
                 new Vector3(6.5f, 0.0f, 0.8f), new Vector3(1.6f, 0.9f, 1.4f),
-                new Color(0.78f, 0.18f, 0.16f), "simmer_wok", "cooking_pan_icon"
+                new Color(0.30f, 0.30f, 0.33f), "stove_south_on", "cooking_pan_icon"
             );
             wok.applianceId = "simmer_wok";
 
             var assemblyEast = CreateStation<AssemblyStation>(
                 "assembly_east", "ASSEMBLY EAST (Jiwon)", "jiwon_east",
                 new Vector3(3.2f, 0.0f, -1.4f), new Vector3(2.2f, 0.9f, 1.3f),
-                new Color(0.38f, 0.58f, 0.78f), "prep_east_table", "dish_plate"
+                new Color(0.72f, 0.75f, 0.78f), "table_double_horizontal", "dish_plate"
             );
 
             var washingStation = CreateStation<WashingStation>(
                 "washing_station", "WASHING SINK & DISH RACK", "jiwon_east",
                 new Vector3(3.2f, 0.0f, -4.0f), new Vector3(2.8f, 0.9f, 1.2f),
-                new Color(0.32f, 0.75f, 0.92f), "washing_sink", "dish_soap"
+                new Color(0.40f, 0.70f, 0.85f), "sink_double_south", "dish_soap"
             );
 
-            // East Crates
-            CreateCrateStation("crate_daikon", "CRATE: Daikon & Carrot", "daikon_carrot_raw", new Vector3(1.6f, 0.0f, 4.4f), new Color(0.95f, 0.62f, 0.24f), "pickled_veg");
-            CreateCrateStation("crate_kimchi", "CRATE: Aged Kimchi", "kimchi_raw", new Vector3(3.8f, 0.0f, 4.4f), new Color(0.88f, 0.26f, 0.18f), "kimchi_slaw");
-            CreateCrateStation("crate_eomuk", "CRATE: Fish Cakes", "eomuk_raw", new Vector3(6.0f, 0.0f, 4.4f), new Color(0.88f, 0.76f, 0.54f), "fish_cake_raw");
-            CreateCrateStation("crate_gochujang", "CRATE: Gochujang Sauce", "gochujang_sauce", new Vector3(7.6f, 0.0f, -1.4f), new Color(0.76f, 0.12f, 0.10f), "korean_sauce");
+            // East Supply Storage (Fridges & Shelves)
+            CreateCrateStation("crate_daikon", "FRIDGE: Daikon & Carrot", "daikon_carrot_raw", new Vector3(1.6f, 0.0f, 4.4f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", "pickled_veg");
+            CreateCrateStation("crate_kimchi", "FRIDGE: Aged Kimchi", "kimchi_raw", new Vector3(3.8f, 0.0f, 4.4f), new Color(0.85f, 0.88f, 0.92f), "fridge_south_open", "kimchi_slaw");
+            CreateCrateStation("crate_eomuk", "SHELF: Fish Cakes", "eomuk_raw", new Vector3(6.0f, 0.0f, 4.4f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "fish_cake_raw");
+            CreateCrateStation("crate_gochujang", "SHELF: Gochujang Sauce", "gochujang_sauce", new Vector3(7.6f, 0.0f, -1.4f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "korean_sauce");
+
+            // Build Authentic Decorative Kitchen Props
+            BuildDecorations();
         }
 
         private T CreateStation<T>(
@@ -439,15 +450,59 @@ namespace TwoLadles.Kitchen
 
         private CrateStation CreateCrateStation(
             string stId, string title, string itemId,
-            Vector3 pos, Color crateColor, string iconSpriteName)
+            Vector3 pos, Color crateColor, string spriteName, string iconSpriteName)
         {
             Vector3 size = new Vector3(1.4f, 0.8f, 1.1f);
             var crate = CreateStation<CrateStation>(
                 stId, title, "crate",
-                pos, size, crateColor, "crate_cooler", iconSpriteName
+                pos, size, crateColor, spriteName, iconSpriteName
             );
             crate.dispensedItemId = itemId;
             return crate;
+        }
+
+        private CrateStation CreateCrateStation(
+            string stId, string title, string itemId,
+            Vector3 pos, Color crateColor, string iconSpriteName)
+        {
+            return CreateCrateStation(stId, title, itemId, pos, crateColor, "fridge_south", iconSpriteName);
+        }
+
+        public void AddDecorSprite(string spriteName, Vector3 pos, Vector3 scale, int sortingOrderOffset = 0)
+        {
+            GameObject obj = new GameObject($"Decor_{spriteName}");
+            obj.transform.SetParent(transform);
+            obj.transform.position = pos;
+            obj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
+            var sr = obj.AddComponent<SpriteRenderer>();
+            sr.sprite = GetStationSprite(spriteName);
+            int baseOrder = 500 - (int)(pos.z * 50);
+            sr.sortingOrder = baseOrder + sortingOrderOffset;
+            obj.transform.localScale = scale;
+        }
+
+        public void BuildDecorations()
+        {
+            // 1. Double entrance doors at North Wall center
+            AddDecorSprite("door_double_closed", new Vector3(0.0f, 0.0f, 5.0f), Vector3.one * 1.5f, -10);
+
+            // 2. Stainless Smoke Hoods above cooking appliances (hanging overhead)
+            AddDecorSprite("smoke_hood", new Vector3(-6.5f, 1.7f, 3.2f), Vector3.one * 1.4f, 10);
+            AddDecorSprite("smoke_hood", new Vector3(-6.5f, 1.7f, 1.0f), Vector3.one * 1.4f, 10);
+            AddDecorSprite("smoke_hood", new Vector3(6.5f, 1.7f, 3.0f), Vector3.one * 1.4f, 10);
+            AddDecorSprite("smoke_hood", new Vector3(6.5f, 1.7f, 0.8f), Vector3.one * 1.4f, 10);
+
+            // 3. Wall Hung Utensils on North Wall
+            AddDecorSprite("utensils_wall_1", new Vector3(-3.4f, 1.4f, 4.8f), Vector3.one * 1.3f, -5);
+            AddDecorSprite("utensils_wall_2", new Vector3(3.8f, 1.4f, 4.8f), Vector3.one * 1.3f, -5);
+
+            // 4. Stand Mixer & Prep Bowl on Linh's West table
+            AddDecorSprite("mixer_side", new Vector3(-3.8f, 0.35f, 0.82f), Vector3.one * 1.15f, 5);
+            AddDecorSprite("mixing_bowl_full", new Vector3(-2.5f, 0.35f, 0.82f), Vector3.one * 1.15f, 5);
+
+            // 5. Unwashed Dishes stack by Jiwon's Washing Sink
+            AddDecorSprite("dishes_unwashed_stack", new Vector3(4.2f, 0.35f, -3.78f), Vector3.one * 1.25f, 5);
+            AddDecorSprite("dish_unwashed_1", new Vector3(2.2f, 0.35f, -3.78f), Vector3.one * 1.15f, 5);
         }
 
         public void SpawnPlayers()
@@ -662,7 +717,14 @@ namespace TwoLadles.Kitchen
                 return exact;
             }
 
-            // 2. Keyword/substring match (e.g. user named slice "grill", station requests "grill_pan")
+            // 2. Built-in station alias lookup
+            string alias = GetStationSpriteAlias(name);
+            if (!string.IsNullOrEmpty(alias) && _kitchenSpritesCache.TryGetValue(alias, out Sprite aliased))
+            {
+                return aliased;
+            }
+
+            // 3. Keyword/substring match (e.g. user named slice "grill", station requests "grill_pan")
             foreach (var kvp in _kitchenSpritesCache)
             {
                 string sliceName = kvp.Key;
@@ -673,10 +735,32 @@ namespace TwoLadles.Kitchen
                 }
             }
 
-            // 3. Fallback to separate single-tile files
-            Sprite fallback = Resources.Load<Sprite>($"Sprites/Kitchen/Tiles/{name}");
-            if (fallback == null) fallback = Resources.Load<Sprite>($"Sprites/Kitchen/{name}");
+            // 4. Fallback to separate single-tile files
+            Sprite fallback = Resources.Load<Sprite>($"Sprites/Kitchen/{name}");
             return fallback;
+        }
+
+        private string GetStationSpriteAlias(string key)
+        {
+            switch (key.ToLowerInvariant())
+            {
+                case "stockpot": return "stove_south_pot";
+                case "noodle_blancher": return "stove_south_on";
+                case "grill_pan": return "grill_south";
+                case "simmer_wok": return "stove_south_on";
+                case "prep_west": return "prep_table_pot";
+                case "prep_east": return "prep_table_dry";
+                case "washing_station":
+                case "washing_sink": return "sink_double_south";
+                case "pass_counter": return "table_double_vertical";
+                case "serving_station": return "table_double_horizontal";
+                case "counter_west":
+                case "counter_east":
+                case "counter_stainless": return "table_double_horizontal";
+                case "trash_bin": return "table_single_horizontal";
+                case "crate_cooler": return "fridge_south";
+                default: return null;
+            }
         }
     }
 }

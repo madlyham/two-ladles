@@ -149,6 +149,43 @@ public class BuildScript
         }
     }
 
+    public static void BuildAndroid()
+    {
+        Debug.Log("[BuildScript] Starting Android Standalone APK Build...");
+        GenerateMainScene();
+
+        string buildDir = "Builds/Android";
+        if (!Directory.Exists(buildDir))
+            Directory.CreateDirectory(buildDir);
+
+        string apkPath = $"{buildDir}/TwoLadles.apk";
+
+        PlayerSettings.productName = "Two Ladles";
+        PlayerSettings.companyName = "Two Ladles Team";
+        PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
+        PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
+        PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel34;
+
+        BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions();
+        buildPlayerOptions.scenes = new string[] { SCENE_PATH };
+        buildPlayerOptions.locationPathName = apkPath;
+        buildPlayerOptions.target = BuildTarget.Android;
+        buildPlayerOptions.options = BuildOptions.None;
+
+        var report = BuildPipeline.BuildPlayer(buildPlayerOptions);
+        var summary = report.summary;
+
+        if (summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
+        {
+            Debug.Log($"[BuildScript] ANDROID BUILD SUCCESSFUL! APK generated at: {apkPath} ({summary.totalSize} bytes)");
+        }
+        else
+        {
+            Debug.LogError($"[BuildScript] ANDROID BUILD FAILED! Errors: {summary.totalErrors}, Result: {summary.result}");
+            EditorApplication.Exit(1);
+        }
+    }
+
     public static void CaptureKitchenPreview()
     {
         Debug.Log("[BuildScript] Capturing Unity Kitchen Preview...");

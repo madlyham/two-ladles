@@ -33,6 +33,11 @@ namespace TwoLadles.UI
         public Button buyKnivesButton;
         public Button buyStockpotButton;
 
+        [Header("Modal & Toggle")]
+        public GameObject modalPanel;
+        public Button toggleMenuButton;
+        public Text toggleMenuButtonText;
+
         private void Awake()
         {
             if (hostButton == null)
@@ -154,7 +159,7 @@ namespace TwoLadles.UI
         {
             var root = transform;
 
-            // Background Panel
+            // Transparent Root (allows 100% full view of 3D kitchen)
             var rootRect = GetComponent<RectTransform>();
             if (rootRect == null) rootRect = gameObject.AddComponent<RectTransform>();
             rootRect.anchorMin = Vector2.zero;
@@ -162,35 +167,73 @@ namespace TwoLadles.UI
             rootRect.sizeDelta = Vector2.zero;
 
             var bgImg = gameObject.GetComponent<Image>();
-            if (bgImg == null) bgImg = gameObject.AddComponent<Image>();
-            bgImg.color = new Color(0.06f, 0.07f, 0.10f, 0.96f);
+            if (bgImg != null) Destroy(bgImg);
+
+            // 1. Floating Menu Toggle Button (Pinned to Top-Right)
+            toggleMenuButton = CreateButton("ToggleMenuBtn", root, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-16f, -12f), new Vector2(140f, 32f), "Hide Menu [TAB]", new Color(0.2f, 0.25f, 0.35f, 0.9f), out toggleMenuButtonText);
+            toggleMenuButton.onClick.AddListener(ToggleMenuVisibility);
+
+            // 2. Compact Floating Modal Card (Pinned to Top-Center)
+            GameObject modal = new GameObject("LobbyModalPanel");
+            modal.transform.SetParent(root, false);
+            modalPanel = modal;
+
+            var mRect = modal.AddComponent<RectTransform>();
+            mRect.anchorMin = new Vector2(0.5f, 1f);
+            mRect.anchorMax = new Vector2(0.5f, 1f);
+            mRect.pivot = new Vector2(0.5f, 1f);
+            mRect.anchoredPosition = new Vector2(0f, -10f);
+            mRect.sizeDelta = new Vector2(620f, 260f);
+
+            var mImg = modal.AddComponent<Image>();
+            mImg.color = new Color(0.08f, 0.10f, 0.14f, 0.90f); // Sleek dark card
+
+            Transform mRoot = modal.transform;
 
             // Title
-            CreateLabel("Title", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -32f), new Vector2(700f, 40f), "TWO LADLES: VIETNAM & KOREA CO-OP KITCHEN", 20, Color.yellow, TextAnchor.MiddleCenter);
-            CreateLabel("SubTitle", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -66f), new Vector2(700f, 24f), "Cross-Prep Culinary Rhythm Game | Korea Game Week 2026 Submission", 13, new Color(0.7f, 0.8f, 0.9f), TextAnchor.MiddleCenter);
+            CreateLabel("Title", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -18f), new Vector2(600f, 26f), "TWO LADLES: VIETNAM & KOREA CO-OP", 16, Color.yellow, TextAnchor.MiddleCenter);
+            CreateLabel("SubTitle", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(600f, 18f), "Korea Game Week 2026 | Press [TAB] to toggle menu", 11, new Color(0.7f, 0.8f, 0.9f), TextAnchor.MiddleCenter);
 
-            // Network Panel
-            CreateLabel("NetHeader", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -100f), new Vector2(600f, 24f), "LAN UDP MULTIPLAYER (Port 24567)", 15, Color.white, TextAnchor.MiddleCenter);
+            // Network Input Row
+            nameInput = CreateInputField("NameInput", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-205f, -72f), new Vector2(150f, 28f), "Chef Linh", "Player Name");
+            ipInput = CreateInputField("IpInput", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-55f, -72f), new Vector2(130f, 28f), "127.0.0.1", "Host IP");
+            portInput = CreateInputField("PortInput", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(55f, -72f), new Vector2(70f, 28f), "24567", "Port");
 
-            nameInput = CreateInputField("NameInput", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-220f, -135f), new Vector2(170f, 32f), "Chef Linh", "Player Name");
-            ipInput = CreateInputField("IpInput", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-40f, -135f), new Vector2(160f, 32f), "127.0.0.1", "Host IPv4");
-            portInput = CreateInputField("PortInput", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(100f, -135f), new Vector2(90f, 32f), "24567", "Port");
+            hostButton = CreateButton("HostBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(145f, -72f), new Vector2(85f, 28f), "HOST", new Color(0.2f, 0.6f, 0.35f, 1f), out _);
+            joinButton = CreateButton("JoinBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(235f, -72f), new Vector2(75f, 28f), "JOIN", new Color(0.25f, 0.5f, 0.75f, 1f), out _);
 
-            hostButton = CreateButton("HostBtn", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(200f, -135f), new Vector2(90f, 32f), "HOST", new Color(0.2f, 0.6f, 0.35f, 1f), out _);
-            joinButton = CreateButton("JoinBtn", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(295f, -135f), new Vector2(90f, 32f), "JOIN", new Color(0.25f, 0.5f, 0.75f, 1f), out _);
+            // Status & Connected Players
+            statusText = CreateLabel("StatusText", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -106f), new Vector2(600f, 22f), "Ready to host or join LAN session.", 12, Color.white, TextAnchor.MiddleCenter);
+            playersListText = CreateLabel("PlayersList", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -132f), new Vector2(600f, 32f), "Connected: Host (Linh) [READY]  •  Client (Jiwon) [READY]", 12, new Color(0.85f, 0.85f, 0.9f), TextAnchor.MiddleCenter);
 
-            statusText = CreateLabel("StatusText", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -180f), new Vector2(700f, 30f), "Ready to host or join LAN session.", 13, Color.white, TextAnchor.MiddleCenter);
+            // Buttons: Ready & Start Shift
+            readyButton = CreateButton("ReadyBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-110f, -182f), new Vector2(180f, 38f), "TOGGLE READY", new Color(0.3f, 0.5f, 0.7f, 1f), out readyButtonText);
+            startShiftButton = CreateButton("StartShiftBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(110f, -182f), new Vector2(180f, 38f), "START SHIFT", new Color(0.85f, 0.45f, 0.15f, 1f), out _);
 
-            // Connected Players
-            playersListText = CreateLabel("PlayersList", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -240f), new Vector2(500f, 70f), "Connected Chefs:\n• Host (Linh) [READY]\n• Client (Jiwon) [NOT READY]", 13, new Color(0.85f, 0.85f, 0.9f), TextAnchor.MiddleCenter);
+            // Career / Coins
+            coinsText = CreateLabel("CoinsText", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-130f, -228f), new Vector2(220f, 22f), "Coins: 0", 13, Color.yellow, TextAnchor.MiddleCenter);
+            careerScoreText = CreateLabel("CareerScoreText", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(130f, -228f), new Vector2(220f, 22f), "Career Score: 0", 13, Color.cyan, TextAnchor.MiddleCenter);
+        }
 
-            // Controls
-            readyButton = CreateButton("ReadyBtn", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-120f, 100f), new Vector2(180f, 44f), "TOGGLE READY", new Color(0.3f, 0.5f, 0.7f, 1f), out readyButtonText);
-            startShiftButton = CreateButton("StartShiftBtn", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(120f, 100f), new Vector2(180f, 44f), "START SHIFT", new Color(0.85f, 0.45f, 0.15f, 1f), out _);
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.M))
+            {
+                ToggleMenuVisibility();
+            }
+        }
 
-            // Career / Shop
-            coinsText = CreateLabel("CoinsText", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-140f, 45f), new Vector2(200f, 26f), "Coins: 0", 14, Color.yellow, TextAnchor.MiddleCenter);
-            careerScoreText = CreateLabel("CareerScoreText", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(140f, 45f), new Vector2(200f, 26f), "Career Score: 0", 14, Color.cyan, TextAnchor.MiddleCenter);
+        public void ToggleMenuVisibility()
+        {
+            if (modalPanel != null)
+            {
+                bool newState = !modalPanel.activeSelf;
+                modalPanel.SetActive(newState);
+                if (toggleMenuButtonText != null)
+                {
+                    toggleMenuButtonText.text = newState ? "Hide Menu [TAB]" : "Show Menu [TAB]";
+                }
+            }
         }
 
         private void Start()

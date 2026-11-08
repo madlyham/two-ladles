@@ -74,7 +74,7 @@ namespace TwoLadles.Player
                 characterSpriteRenderer.sortingOrder = order;
                 if (carriedItemSpriteRenderer != null)
                 {
-                    carriedItemSpriteRenderer.sortingOrder = order + 2;
+                    carriedItemSpriteRenderer.sortingOrder = 1300;
                 }
             }
         }
@@ -230,6 +230,10 @@ namespace TwoLadles.Player
             if (specializationId == "market_runner" && GameData.Instance != null && GameData.Instance.specializations.TryGetValue("market_runner", out var spec))
             {
                 mult = spec.moveSpeedMultiplier;
+            }
+            if (ProgressionManager.Instance != null)
+            {
+                mult *= ProgressionManager.Instance.GetUpgradeValue("move_speed", 1.0f);
             }
             return BASE_MOVE_SPEED * mult;
         }

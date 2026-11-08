@@ -1,6 +1,7 @@
 using UnityEngine;
 using TwoLadles.Data;
 using TwoLadles.Core;
+using TwoLadles.Player;
 
 namespace TwoLadles.Stations
 {
@@ -23,6 +24,8 @@ namespace TwoLadles.Stations
             new PassSlot()
         };
 
+        private SpriteRenderer[] _slotRenderers = new SpriteRenderer[NUM_SLOTS];
+
         private void Awake()
         {
             InitSlots();
@@ -37,6 +40,50 @@ namespace TwoLadles.Stations
             }
         }
 
+        public override void RefreshStationVisuals()
+        {
+            InitSlots();
+            float[] zOffsets = new float[] { -0.55f, 0.0f, 0.55f };
+            for (int i = 0; i < NUM_SLOTS; i++)
+            {
+                if (_slotRenderers[i] == null)
+                {
+                    Transform existing = transform.Find($"PassSlotSprite_{i}");
+                    if (existing != null)
+                    {
+                        _slotRenderers[i] = existing.GetComponent<SpriteRenderer>();
+                    }
+                    else
+                    {
+                        GameObject go = new GameObject($"PassSlotSprite_{i}");
+                        go.transform.SetParent(transform, false);
+                        go.transform.localPosition = new Vector3(0.0f, 0.94f, zOffsets[i] - 0.18f);
+                        go.transform.localRotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
+                        go.transform.localScale = Vector3.one * 0.68f;
+                        _slotRenderers[i] = go.AddComponent<SpriteRenderer>();
+                        _slotRenderers[i].sortingOrder = 1200 + i;
+                    }
+                }
+
+                var sr = _slotRenderers[i];
+                if (sr != null)
+                {
+                    if (slots[i] != null && slots[i].item != null)
+                    {
+                        sr.gameObject.SetActive(true);
+                        string sprName = PlayerController.ResolveItemSpriteName(slots[i].item.itemId);
+                        Sprite spr = Resources.Load<Sprite>($"Sprites/Items/{sprName}");
+                        if (spr != null) sr.sprite = spr;
+                        sr.sortingOrder = 1200 + i;
+                    }
+                    else
+                    {
+                        sr.gameObject.SetActive(false);
+                    }
+                }
+            }
+        }
+
         public bool PlaceItem(int slotIndex, KitchenItem item, int peerId, float timestamp)
         {
             InitSlots();
@@ -47,6 +94,7 @@ namespace TwoLadles.Stations
             slots[slotIndex].item = item;
             slots[slotIndex].placedByPeer = peerId;
             slots[slotIndex].placedAtTime = timestamp;
+            RefreshStationVisuals();
             return true;
         }
 
@@ -77,6 +125,7 @@ namespace TwoLadles.Stations
                 }
             }
 
+            RefreshStationVisuals();
             return (item, handoffAwarded);
         }
 
@@ -86,7 +135,6 @@ namespace TwoLadles.Stations
 
             if (playerItem != null)
             {
-                // Place into first open slot
                 for (int i = 0; i < NUM_SLOTS; i++)
                 {
                     if (slots[i].item == null)
@@ -99,14 +147,13 @@ namespace TwoLadles.Stations
                             ShiftManager.Instance.AdvanceTutorialStep(5);
                         }
 
-                        return (true, $"Passed item to slot {i + 1}.");
+                        return (true, $"Passed!");
                     }
                 }
-                return (false, "Pass Counter is full (all 3 slots occupied).");
+                return (false, "Pass Counter full.");
             }
             else
             {
-                // Retrieve from first occupied slot
                 for (int i = 0; i < NUM_SLOTS; i++)
                 {
                     if (slots[i].item != null)
@@ -119,17 +166,17 @@ namespace TwoLadles.Stations
                             ShiftManager.Instance.AdvanceTutorialStep(6);
                         }
 
-                        string msg = res.handoffAwarded ? "Coordinated Handoff! +15 Kitchen Flow!" : "Retrieved item from Pass Counter.";
+                        string msg = res.handoffAwarded ? "Handoff! +15 Flow!" : "Retrieved.";
                         return (true, msg);
                     }
                 }
-                return (false, "Pass Counter is empty.");
+                return (false, "Empty.");
             }
         }
 
         public override (bool ok, string reason) InteractSecondary(ref KitchenItem playerItem, int peerId, string characterId)
         {
-            return (false, "Secondary action not applicable to Pass Counter.");
+            return InteractPrimary(ref playerItem, peerId, characterId);
         }
     }
 }

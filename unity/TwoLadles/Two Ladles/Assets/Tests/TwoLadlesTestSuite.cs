@@ -81,6 +81,7 @@ namespace TwoLadles.Tests
             Test12_CampaignLevelsAndProgressionUnlocks();
             Test13_EndlessRushMode();
             Test14_HoldingCounterAndThrowMechanics();
+            Test15_WaveProgressionReputationAndGoldEconomy();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -687,6 +688,76 @@ namespace TwoLadles.Tests
             DestroyImmediate(pObj);
             DestroyImmediate(p2Obj);
             DestroyImmediate(kcObj);
+        }
+
+        // Suite 15: Wave Progression, Reputation Health, Gold Economy, Shop & Level Replay
+        private void Test15_WaveProgressionReputationAndGoldEconomy()
+        {
+            Debug.Log("\n[Suite 15] Wave Progression, Reputation Health, Gold Economy, Shop & Level Replay");
+
+            // 1. Gold Reward Formula Verification (floor(200 * (Remaining Reputation / 100)))
+            Assert(ProgressionManager.CalculateGoldReward(100f, true) == 200, "100 Reputation awards 200 Gold");
+            Assert(ProgressionManager.CalculateGoldReward(75f, true) == 150, "75 Reputation awards 150 Gold");
+            Assert(ProgressionManager.CalculateGoldReward(50f, true) == 100, "50 Reputation awards 100 Gold");
+            Assert(ProgressionManager.CalculateGoldReward(25f, true) == 50, "25 Reputation awards 50 Gold");
+            Assert(ProgressionManager.CalculateGoldReward(10f, true) == 20, "10 Reputation awards 20 Gold");
+            Assert(ProgressionManager.CalculateGoldReward(0f, true) == 0, "0 Reputation awards 0 Gold");
+            Assert(ProgressionManager.CalculateGoldReward(80f, false) == 0, "Failed level awards 0 Gold regardless of remaining reputation");
+
+            // 2. Reputation Health & Wave Initialization
+            ProgressionManager.Instance.ResetProgressionForTesting();
+            ShiftManager.Instance.StartShift(1, GameMode.CAMPAIGN);
+            Assert(Mathf.Approximately(ShiftManager.Instance.reputation, 100.0f), "Shift begins at 100 Reputation health");
+            Assert(ShiftManager.Instance.currentWaveNumber == 1 && ShiftManager.Instance.totalWaves >= 3, "Campaign level initializes at Wave 1 of 3 escalating waves");
+
+            // 3. Reputation Reduction & Clamping
+            ShiftManager.Instance.ApplyReputationDamage(25.0f, "Expired customer order");
+            Assert(Mathf.Approximately(ShiftManager.Instance.reputation, 75.0f), "Expired order reduces Reputation from 100 to 75");
+
+            // 4. Wave Progression Transition
+            int wave1Required = ShiftManager.Instance.waveOrdersRequired;
+            for (int i = 0; i < wave1Required; i++)
+            {
+                if (ShiftManager.Instance.activeOrders.Count == 0)
+                {
+                    ShiftManager.Instance.activeOrders.Add(new OrderTicket($"test_w1_{i}", "banh_mi_thit", "plate", 60.0f));
+                }
+                var order = ShiftManager.Instance.activeOrders[0];
+                var dish = new KitchenItem(order.recipeId, order.recipeId, "plate");
+                ShiftManager.Instance.DeliverDish(dish, 1);
+            }
+            if (ShiftManager.Instance.isWaveTransitioning)
+            {
+                ShiftManager.Instance.TickShift(2.0f);
+            }
+            Assert(ShiftManager.Instance.currentWaveNumber == 2, "Completing all Wave 1 orders advances level to Wave 2");
+
+            // 5. Gold Reward Persistence & Duplicate Claim Prevention
+            int goldBefore = ProgressionManager.Instance.gold;
+            string token = "test_session_lvl1_claim";
+            var claim1 = ProgressionManager.Instance.RecordLevelWaveCompletion(1, 75.0f, true, 600, token);
+            Assert(claim1.goldEarned == 150, "Completing Level 1 with 75 Reputation grants 150 Gold");
+            Assert(ProgressionManager.Instance.gold == goldBefore + 150, "Player Gold balance increases by 150");
+            Assert(ProgressionManager.Instance.IsLevelCompleted(1) && ProgressionManager.Instance.IsLevelUnlocked(2), "Level 1 marked completed and Level 2 unlocked");
+
+            var duplicateClaim = ProgressionManager.Instance.RecordLevelWaveCompletion(1, 75.0f, true, 600, token);
+            Assert(duplicateClaim.goldEarned == 0 && ProgressionManager.Instance.gold == goldBefore + 150, "Duplicate result-screen claim token grants 0 Gold");
+
+            // 6. Upgrade Shop & Level Replay Preservation
+            var buyBoots = ProgressionManager.Instance.PurchaseUpgrade("chef_speed_boots");
+            Assert(buyBoots.ok && ProgressionManager.Instance.IsUpgradeOwned("chef_speed_boots"), "Purchasing Chef Speed Boots succeeds and marks upgrade owned");
+            int goldAfterShop = ProgressionManager.Instance.gold;
+
+            // Replay Level 1 with 50 Reputation -> earns 100 Gold, preserves upgrades and Level 2 unlock
+            var replayRes = ProgressionManager.Instance.RecordLevelWaveCompletion(1, 50.0f, true, 500, "test_session_lvl1_replay");
+            Assert(replayRes.goldEarned == 100 && ProgressionManager.Instance.gold == goldAfterShop + 100, "Replaying completed Level 1 awards 100 Gold at 50 Reputation");
+            Assert(ProgressionManager.Instance.IsUpgradeOwned("chef_speed_boots") && ProgressionManager.Instance.IsLevelUnlocked(2), "Replaying earlier level preserves existing upgrades and unlocked levels");
+
+            // 7. Zero Reputation Defeat Condition
+            ShiftManager.Instance.StartShift(1, GameMode.CAMPAIGN);
+            ShiftManager.Instance.ApplyReputationDamage(120.0f, "Massive kitchen failure");
+            Assert(Mathf.Approximately(ShiftManager.Instance.reputation, 0.0f), "Reputation clamps cleanly at 0 and never goes negative");
+            Assert(!ShiftManager.Instance.shiftActive && !ShiftManager.Instance.levelVictory, "Reaching 0 Reputation immediately ends level in Defeat");
         }
     }
 }

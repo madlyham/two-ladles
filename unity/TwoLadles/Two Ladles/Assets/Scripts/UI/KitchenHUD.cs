@@ -1,16 +1,19 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TwoLadles.Data;
 using TwoLadles.Core;
 using TwoLadles.Kitchen;
+using TwoLadles.Player;
 using TwoLadles.Networking;
 
 namespace TwoLadles.UI
 {
     public class KitchenHUD : MonoBehaviour
     {
-        [Header("Top Header")]
+        [Header("Top Header & Wave/Reputation Bars")]
         public Text shiftTimerText;
         public Text scoreText;
         public Slider flowSlider;
@@ -19,14 +22,37 @@ namespace TwoLadles.UI
         public Button returnToLobbyButton;
         public Button switchChefButton;
         public Text switchChefButtonText;
+        public Button recipeBookButton;
+        public Button touchControlsToggleButton;
+        public Button audioMuteButton;
+        public Text audioMuteButtonText;
+
+        [Header("Reputation Health Bar (Fighting-Game Trailing Damage)")]
+        public Text reputationText;
+        public RectTransform reputationMainFill;
+        public Image reputationMainImage;
+        public RectTransform reputationTrailingFill;
+        public float displayedReputationTarget = 100.0f;
+        public float displayedReputationTrailing = 100.0f;
+        private float reputationTrailHoldTimer = 0.0f;
+        private const float REPUTATION_BAR_WIDTH = 156.0f;
+
+        [Header("Wave Progress Bar")]
+        public RectTransform waveProgressFill;
+        private const float WAVE_BAR_WIDTH = 108.0f;
 
         [Header("Tutorial Guidance")]
         public GameObject tutorialPanelObj;
         public Text tutorialTitleText;
         public Text tutorialInstructionText;
 
-        [Header("Order Queue")]
+        [Header("Visual Order Queue (Progress Bars)")]
         public Text orderListText;
+        private GameObject[] orderCardObjs = new GameObject[4];
+        private Image[] orderCardIcons = new Image[4];
+        private Text[] orderCardLabels = new Text[4];
+        private RectTransform[] orderCardBarFills = new RectTransform[4];
+        private Image[] orderCardBarImages = new Image[4];
 
         [Header("Plate Stack")]
         public Text cleanPlatesText;
@@ -39,7 +65,10 @@ namespace TwoLadles.UI
         public Text hirePrepCooldownText;
         public Text hireDishwasherCooldownText;
 
-        [Header("Mobile Action & D-Pad Buttons")]
+        [Header("Mobile Virtual Joystick & Action Buttons")]
+        public GameObject mobileControlsContainer;
+        public RectTransform joystickBackgroundRect;
+        public RectTransform joystickKnobRect;
         public Button primaryActionButton;
         public Button secondaryActionButton;
         public Button throwActionButton;
@@ -53,10 +82,28 @@ namespace TwoLadles.UI
         public Text feedbackBannerText;
         private float feedbackTimer = 0.0f;
 
-        [Header("End of Shift Modal")]
+        [Header("Recipe Book Modal")]
+        public GameObject recipeBookModal;
+        public Button closeRecipeBookButton;
+
+        [Header("End of Shift / Level Results Modal")]
         public GameObject endShiftModal;
+        public Text endShiftTitleText;
         public Text endShiftDetailsText;
+        public Button openShopFromResultsButton;
         public Button retryShiftButton;
+        public Text retryShiftButtonText;
+        public Button resultsToLobbyButton;
+
+        [Header("Between-Level Upgrade Shop Modal")]
+        public GameObject upgradeShopModal;
+        public Text shopGoldText;
+        public Text shopFeedbackText;
+        public Button shopNextLevelButton;
+        public Button shopCloseButton;
+        private Dictionary<string, Button> shopBuyButtons = new Dictionary<string, Button>();
+        private Dictionary<string, Text> shopBuyLabels = new Dictionary<string, Text>();
+        private Dictionary<string, Text> shopLevelLabels = new Dictionary<string, Text>();
 
         private void Awake()
         {
@@ -69,7 +116,7 @@ namespace TwoLadles.UI
         public static Font GetDefaultFont()
         {
             Font font = null;
-            try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch {}
+            try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { }
             if (font == null)
             {
                 try
@@ -80,16 +127,16 @@ namespace TwoLadles.UI
                         font = Font.CreateDynamicFontFromOSFont(osFonts[0], 14);
                     }
                 }
-                catch {}
+                catch { }
             }
             return font;
         }
 
         private Text CreateLabel(string name, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 anchoredPos, Vector2 sizeDelta, string text, int fontSize, Color color, TextAnchor alignment)
         {
-            GameObject go = new GameObject(name);
+            GameObject go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(parent, false);
-            var rect = go.AddComponent<RectTransform>();
+            var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = anchorMin;
             rect.anchorMax = anchorMax;
             rect.pivot = pivot;
@@ -106,11 +153,11 @@ namespace TwoLadles.UI
             return txt;
         }
 
-        private Button CreateButton(string name, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 anchoredPos, Vector2 sizeDelta, string labelText, Color bgColor, out Text outLabel)
+        private Button CreateButton(string name, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 anchoredPos, Vector2 sizeDelta, string labelText, Color bgColor, out Text outLabel, int fontSize = 12)
         {
-            GameObject go = new GameObject(name);
+            GameObject go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(parent, false);
-            var rect = go.AddComponent<RectTransform>();
+            var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = anchorMin;
             rect.anchorMax = anchorMax;
             rect.pivot = pivot;
@@ -127,15 +174,15 @@ namespace TwoLadles.UI
             colors.pressedColor = bgColor * 0.8f;
             btn.colors = colors;
 
-            outLabel = CreateLabel(name + "_Label", go.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, labelText, 13, Color.white, TextAnchor.MiddleCenter);
+            outLabel = CreateLabel(name + "_Label", go.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-4f, -2f), labelText, fontSize, Color.white, TextAnchor.MiddleCenter);
             return btn;
         }
 
         private Slider CreateFlowSlider(Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 anchoredPos, Vector2 sizeDelta)
         {
-            GameObject sliderObj = new GameObject("FlowSlider");
+            GameObject sliderObj = new GameObject("FlowSlider", typeof(RectTransform));
             sliderObj.transform.SetParent(parent, false);
-            var rect = sliderObj.AddComponent<RectTransform>();
+            var rect = sliderObj.GetComponent<RectTransform>();
             rect.anchorMin = anchorMin;
             rect.anchorMax = anchorMax;
             rect.pivot = pivot;
@@ -146,25 +193,25 @@ namespace TwoLadles.UI
             slider.minValue = 0f;
             slider.maxValue = 1f;
 
-            GameObject bgObj = new GameObject("Background");
+            GameObject bgObj = new GameObject("Background", typeof(RectTransform));
             bgObj.transform.SetParent(sliderObj.transform, false);
-            var bgRect = bgObj.AddComponent<RectTransform>();
+            var bgRect = bgObj.GetComponent<RectTransform>();
             bgRect.anchorMin = Vector2.zero;
             bgRect.anchorMax = Vector2.one;
             bgRect.sizeDelta = Vector2.zero;
             var bgImg = bgObj.AddComponent<Image>();
             bgImg.color = new Color(0.18f, 0.18f, 0.22f, 0.9f);
 
-            GameObject fillArea = new GameObject("Fill Area");
+            GameObject fillArea = new GameObject("Fill Area", typeof(RectTransform));
             fillArea.transform.SetParent(sliderObj.transform, false);
-            var faRect = fillArea.AddComponent<RectTransform>();
+            var faRect = fillArea.GetComponent<RectTransform>();
             faRect.anchorMin = Vector2.zero;
             faRect.anchorMax = Vector2.one;
             faRect.sizeDelta = Vector2.zero;
 
-            GameObject fill = new GameObject("Fill");
+            GameObject fill = new GameObject("Fill", typeof(RectTransform));
             fill.transform.SetParent(fillArea.transform, false);
-            var fRect = fill.AddComponent<RectTransform>();
+            var fRect = fill.GetComponent<RectTransform>();
             fRect.anchorMin = Vector2.zero;
             fRect.anchorMax = Vector2.one;
             fRect.sizeDelta = Vector2.zero;
@@ -191,150 +238,524 @@ namespace TwoLadles.UI
             rootRect.offsetMin = Vector2.zero;
             rootRect.offsetMax = Vector2.zero;
 
-            // 1. Top Bar Panel (Pinned to top border of screen)
-            GameObject topBar = new GameObject("TopBarPanel");
+            // =========================================================================
+            // 1. TOP BAR PANEL (Visual Bars for Reputation, Wave Progress, and Flow)
+            // =========================================================================
+            GameObject topBar = new GameObject("TopBarPanel", typeof(RectTransform));
             topBar.transform.SetParent(root, false);
-            var tbRect = topBar.AddComponent<RectTransform>();
+            var tbRect = topBar.GetComponent<RectTransform>();
             tbRect.anchorMin = new Vector2(0f, 1f);
             tbRect.anchorMax = new Vector2(1f, 1f);
             tbRect.pivot = new Vector2(0.5f, 1f);
             tbRect.anchoredPosition = Vector2.zero;
             tbRect.sizeDelta = new Vector2(0f, 38f);
             var tbImg = topBar.AddComponent<Image>();
-            tbImg.color = new Color(0.08f, 0.08f, 0.12f, 0.90f);
+            tbImg.color = new Color(0.07f, 0.08f, 0.12f, 0.92f);
 
-            scoreText = CreateLabel("ScoreText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(16f, 0f), new Vector2(100f, 28f), "SCORE: 0", 14, Color.yellow, TextAnchor.MiddleLeft);
-            shiftTimerText = CreateLabel("TimerText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(124f, 0f), new Vector2(100f, 28f), "TIME: 90s", 14, Color.white, TextAnchor.MiddleLeft);
-            flowText = CreateLabel("FlowText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(232f, 0f), new Vector2(160f, 28f), "KITCHEN FLOW: 0 / 100", 13, new Color(0.35f, 0.85f, 1.0f), TextAnchor.MiddleLeft);
-            flowSlider = CreateFlowSlider(topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(400f, 0f), new Vector2(100f, 14f));
-            cleanPlatesText = CreateLabel("CleanPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(516f, 0f), new Vector2(100f, 28f), "Clean: 4", 13, new Color(0.7f, 1.0f, 0.7f), TextAnchor.MiddleLeft);
-            dirtyPlatesText = CreateLabel("DirtyPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(624f, 0f), new Vector2(110f, 28f), "Dirty: 0", 13, new Color(1.0f, 0.6f, 0.6f), TextAnchor.MiddleLeft);
+            // A) Fighting-Game Reputation Health Bar (Left: X = 12..250)
+            reputationText = CreateLabel("ReputationLabel", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(12f, 0f), new Vector2(76f, 28f), "REP 100", 13, new Color(0.35f, 1.0f, 0.55f), TextAnchor.MiddleLeft);
 
-            returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(120f, 26f), "Return to Lobby", new Color(0.5f, 0.2f, 0.2f, 0.9f), out _);
-            switchChefButton = CreateButton("SwitchChefBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-146f, 0f), new Vector2(165f, 26f), "Active: LINH [C]", new Color(0.18f, 0.42f, 0.65f, 0.95f), out switchChefButtonText);
+            GameObject repBarBg = new GameObject("ReputationBarBg", typeof(RectTransform));
+            repBarBg.transform.SetParent(topBar.transform, false);
+            var rbgRect = repBarBg.GetComponent<RectTransform>();
+            rbgRect.anchorMin = new Vector2(0f, 0.5f);
+            rbgRect.anchorMax = new Vector2(0f, 0.5f);
+            rbgRect.pivot = new Vector2(0f, 0.5f);
+            rbgRect.anchoredPosition = new Vector2(82f, 0f);
+            rbgRect.sizeDelta = new Vector2(REPUTATION_BAR_WIDTH, 16f);
+            var rbgImg = repBarBg.AddComponent<Image>();
+            rbgImg.color = new Color(0.22f, 0.08f, 0.08f, 0.95f);
 
-            // Tutorial Guidance Card (Pinned Top-Center)
-            GameObject tutPanel = new GameObject("TutorialGuidancePanel");
+            // White Trailing Damage Bar (purely visual, renders behind main green fill)
+            GameObject repTrail = new GameObject("ReputationTrailingFill", typeof(RectTransform));
+            repTrail.transform.SetParent(repBarBg.transform, false);
+            reputationTrailingFill = repTrail.GetComponent<RectTransform>();
+            reputationTrailingFill.anchorMin = new Vector2(0f, 0f);
+            reputationTrailingFill.anchorMax = new Vector2(0f, 1f);
+            reputationTrailingFill.pivot = new Vector2(0f, 0.5f);
+            reputationTrailingFill.anchoredPosition = Vector2.zero;
+            reputationTrailingFill.sizeDelta = new Vector2(REPUTATION_BAR_WIDTH, 0f);
+            var rtImg = repTrail.AddComponent<Image>();
+            rtImg.color = new Color(1.0f, 1.0f, 1.0f, 0.95f);
+
+            // Main Health Bar Fill (decreases immediately on damage)
+            GameObject repMain = new GameObject("ReputationMainFill", typeof(RectTransform));
+            repMain.transform.SetParent(repBarBg.transform, false);
+            reputationMainFill = repMain.GetComponent<RectTransform>();
+            reputationMainFill.anchorMin = new Vector2(0f, 0f);
+            reputationMainFill.anchorMax = new Vector2(0f, 1f);
+            reputationMainFill.pivot = new Vector2(0f, 0.5f);
+            reputationMainFill.anchoredPosition = Vector2.zero;
+            reputationMainFill.sizeDelta = new Vector2(REPUTATION_BAR_WIDTH, 0f);
+            reputationMainImage = repMain.AddComponent<Image>();
+            reputationMainImage.color = new Color(0.22f, 0.88f, 0.42f, 1.0f);
+
+            // B) Level & Wave Progress Bar (X = 252..470)
+            shiftTimerText = CreateLabel("WaveLabel", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(252f, 0f), new Vector2(105f, 28f), "L1 • WAVE 1/3", 12, Color.white, TextAnchor.MiddleLeft);
+
+            GameObject waveBarBg = new GameObject("WaveBarBg", typeof(RectTransform));
+            waveBarBg.transform.SetParent(topBar.transform, false);
+            var wbgRect = waveBarBg.GetComponent<RectTransform>();
+            wbgRect.anchorMin = new Vector2(0f, 0.5f);
+            wbgRect.anchorMax = new Vector2(0f, 0.5f);
+            wbgRect.pivot = new Vector2(0f, 0.5f);
+            wbgRect.anchoredPosition = new Vector2(354f, 0f);
+            wbgRect.sizeDelta = new Vector2(WAVE_BAR_WIDTH, 14f);
+            var wbgImg = waveBarBg.AddComponent<Image>();
+            wbgImg.color = new Color(0.16f, 0.20f, 0.28f, 0.95f);
+
+            GameObject waveFillObj = new GameObject("WaveBarFill", typeof(RectTransform));
+            waveFillObj.transform.SetParent(waveBarBg.transform, false);
+            waveProgressFill = waveFillObj.GetComponent<RectTransform>();
+            waveProgressFill.anchorMin = new Vector2(0f, 0f);
+            waveProgressFill.anchorMax = new Vector2(0f, 1f);
+            waveProgressFill.pivot = new Vector2(0f, 0.5f);
+            waveProgressFill.anchoredPosition = Vector2.zero;
+            waveProgressFill.sizeDelta = new Vector2(0f, 0f);
+            var wfImg = waveFillObj.AddComponent<Image>();
+            wfImg.color = new Color(0.30f, 0.78f, 1.0f, 1.0f);
+
+            // C) Flow Bar & Plates & Score
+            flowText = CreateLabel("FlowText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(474f, 0f), new Vector2(48f, 28f), "FLOW", 11, new Color(1.0f, 0.82f, 0.25f), TextAnchor.MiddleLeft);
+            flowSlider = CreateFlowSlider(topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(518f, 0f), new Vector2(82f, 14f));
+
+            cleanPlatesText = CreateLabel("CleanPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(610f, 0f), new Vector2(72f, 28f), "Clean: 4", 11, new Color(0.75f, 1.0f, 0.75f), TextAnchor.MiddleLeft);
+            dirtyPlatesText = CreateLabel("DirtyPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(674f, 0f), new Vector2(65f, 28f), "Dirty: 0", 11, new Color(1.0f, 0.65f, 0.65f), TextAnchor.MiddleLeft);
+            scoreText = CreateLabel("ScoreText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(738f, 0f), new Vector2(85f, 28f), "0 pts", 12, Color.yellow, TextAnchor.MiddleLeft);
+
+            // D) Top-Right Utility Buttons: Recipes [R], Touch UI, Mute, Switch Chef [C], Lobby
+            returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 0f), new Vector2(72f, 26f), "Lobby", new Color(0.55f, 0.20f, 0.20f, 0.95f), out _, 11);
+            switchChefButton = CreateButton("SwitchChefBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-88f, 0f), new Vector2(115f, 26f), "LINH [C]", new Color(0.18f, 0.42f, 0.65f, 0.95f), out switchChefButtonText, 11);
+            recipeBookButton = CreateButton("RecipeBookBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-209f, 0f), new Vector2(100f, 26f), "Recipes [R]", new Color(0.65f, 0.42f, 0.14f, 0.95f), out _, 11);
+            touchControlsToggleButton = CreateButton("TouchToggleBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-315f, 0f), new Vector2(72f, 26f), "Joypad", new Color(0.24f, 0.36f, 0.48f, 0.95f), out _, 11);
+            audioMuteButton = CreateButton("AudioMuteBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-393f, 0f), new Vector2(68f, 26f), "BGM: ON", new Color(0.22f, 0.25f, 0.32f, 0.95f), out audioMuteButtonText, 11);
+
+            // =========================================================================
+            // 2. TUTORIAL GUIDANCE CARD (Non-Overlapping, Compact Top-Center)
+            // =========================================================================
+            GameObject tutPanel = new GameObject("TutorialGuidancePanel", typeof(RectTransform));
             tutPanel.transform.SetParent(root, false);
             tutorialPanelObj = tutPanel;
-            var tutRect = tutPanel.AddComponent<RectTransform>();
+            var tutRect = tutPanel.GetComponent<RectTransform>();
             tutRect.anchorMin = new Vector2(0.5f, 1f);
             tutRect.anchorMax = new Vector2(0.5f, 1f);
             tutRect.pivot = new Vector2(0.5f, 1f);
             tutRect.anchoredPosition = new Vector2(0f, -44f);
-            tutRect.sizeDelta = new Vector2(560f, 60f);
+            tutRect.sizeDelta = new Vector2(480f, 52f);
 
             var tutImg = tutPanel.AddComponent<Image>();
-            tutImg.color = new Color(0.08f, 0.10f, 0.16f, 0.92f);
+            tutImg.color = new Color(0.08f, 0.11f, 0.18f, 0.94f);
 
-            tutorialTitleText = CreateLabel("TutorialTitle", tutPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -8f), new Vector2(540f, 22f), "TUTORIAL — STEP 1: MOVEMENT", 13, Color.yellow, TextAnchor.MiddleCenter);
-            tutorialInstructionText = CreateLabel("TutorialInstruction", tutPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 6f), new Vector2(540f, 26f), "Use [W, A, S, D] or Arrow Keys to walk around your kitchen zone.", 12, Color.white, TextAnchor.MiddleCenter);
+            tutorialTitleText = CreateLabel("TutorialTitle", tutPanel.transform, new Vector2(0f, 0.52f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -2f), new Vector2(-16f, 0f), "STEP 1: MOVE", 13, new Color(1.0f, 0.88f, 0.2f), TextAnchor.MiddleCenter);
+            tutorialInstructionText = CreateLabel("TutorialInstruction", tutPanel.transform, new Vector2(0f, 0f), new Vector2(1f, 0.52f), new Vector2(0.5f, 0f), new Vector2(0f, 2f), new Vector2(-16f, 0f), "[WASD] or Joystick to walk.", 12, Color.white, TextAnchor.MiddleCenter);
             tutorialPanelObj.SetActive(false);
 
-            // 2. Active Orders Panel (Upper Left Corner, compact)
-            GameObject ordersPanel = new GameObject("OrdersPanel");
+            // =========================================================================
+            // 3. VISUAL ORDER QUEUE CARDS (Upper Left — Dish Icon + Patience Bar!)
+            // =========================================================================
+            GameObject ordersPanel = new GameObject("OrdersPanel", typeof(RectTransform));
             ordersPanel.transform.SetParent(root, false);
-            var opRect = ordersPanel.AddComponent<RectTransform>();
+            var opRect = ordersPanel.GetComponent<RectTransform>();
             opRect.anchorMin = new Vector2(0f, 1f);
             opRect.anchorMax = new Vector2(0f, 1f);
             opRect.pivot = new Vector2(0f, 1f);
-            opRect.anchoredPosition = new Vector2(16f, -44f);
-            opRect.sizeDelta = new Vector2(340f, 96f);
-            var opImg = ordersPanel.AddComponent<Image>();
-            opImg.color = new Color(0.06f, 0.06f, 0.09f, 0.75f);
+            opRect.anchoredPosition = new Vector2(12f, -44f);
+            opRect.sizeDelta = new Vector2(210f, 148f);
 
-            orderListText = CreateLabel("OrderListText", ordersPanel.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-12f, -8f), "ACTIVE ORDERS:\nWaiting for tickets...", 12, Color.white, TextAnchor.UpperLeft);
+            // Hidden fallback text for legacy reference
+            orderListText = CreateLabel("OrderListText", ordersPanel.transform, Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero, "", 1, Color.clear, TextAnchor.UpperLeft);
 
-            // 3. Mobile D-Pad (Bottom Left)
-            GameObject dpadRoot = new GameObject("MobileDPad");
-            dpadRoot.transform.SetParent(root, false);
-            var dpRect = dpadRoot.AddComponent<RectTransform>();
-            dpRect.anchorMin = new Vector2(0f, 0f);
-            dpRect.anchorMax = new Vector2(0f, 0f);
-            dpRect.pivot = new Vector2(0f, 0f);
-            dpRect.anchoredPosition = new Vector2(24f, 24f);
-            dpRect.sizeDelta = new Vector2(140f, 140f);
+            for (int i = 0; i < 4; i++)
+            {
+                GameObject card = new GameObject($"OrderCard_{i}", typeof(RectTransform));
+                card.transform.SetParent(ordersPanel.transform, false);
+                orderCardObjs[i] = card;
+                var cRect = card.GetComponent<RectTransform>();
+                cRect.anchorMin = new Vector2(0f, 1f);
+                cRect.anchorMax = new Vector2(1f, 1f);
+                cRect.pivot = new Vector2(0f, 1f);
+                cRect.anchoredPosition = new Vector2(0f, -(i * 36f));
+                cRect.sizeDelta = new Vector2(0f, 32f);
 
-            Color dpadCol = new Color(0.2f, 0.2f, 0.25f, 0.8f);
-            dpadUpButton = CreateButton("DpadUp", dpadRoot.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 44f), new Vector2(40f, 40f), "▲", dpadCol, out _);
-            dpadDownButton = CreateButton("DpadDown", dpadRoot.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -44f), new Vector2(40f, 40f), "▼", dpadCol, out _);
-            dpadLeftButton = CreateButton("DpadLeft", dpadRoot.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-44f, 0f), new Vector2(40f, 40f), "◀", dpadCol, out _);
-            dpadRightButton = CreateButton("DpadRight", dpadRoot.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(44f, 0f), new Vector2(40f, 40f), "▶", dpadCol, out _);
+                var cBg = card.AddComponent<Image>();
+                cBg.color = new Color(0.08f, 0.09f, 0.14f, 0.86f);
 
-            // 4. Action Buttons (Bottom Right)
-            GameObject actionsRoot = new GameObject("MobileActions");
-            actionsRoot.transform.SetParent(root, false);
-            var actRect = actionsRoot.AddComponent<RectTransform>();
+                // Dish Icon
+                GameObject iconGo = new GameObject("DishIcon", typeof(RectTransform));
+                iconGo.transform.SetParent(card.transform, false);
+                var icRect = iconGo.GetComponent<RectTransform>();
+                icRect.anchorMin = new Vector2(0f, 0.5f);
+                icRect.anchorMax = new Vector2(0f, 0.5f);
+                icRect.pivot = new Vector2(0f, 0.5f);
+                icRect.anchoredPosition = new Vector2(6f, 0f);
+                icRect.sizeDelta = new Vector2(24f, 24f);
+                orderCardIcons[i] = iconGo.AddComponent<Image>();
+
+                // Short Dish Label
+                orderCardLabels[i] = CreateLabel("DishName", card.transform, new Vector2(0f, 0.45f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(36f, -2f), new Vector2(-42f, 0f), "Bánh Mì", 11, Color.white, TextAnchor.MiddleLeft);
+
+                // Patience Progress Bar Bg
+                GameObject pBg = new GameObject("PatienceBarBg", typeof(RectTransform));
+                pBg.transform.SetParent(card.transform, false);
+                var pbRect = pBg.GetComponent<RectTransform>();
+                pbRect.anchorMin = new Vector2(0f, 0f);
+                pbRect.anchorMax = new Vector2(0f, 0f);
+                pbRect.pivot = new Vector2(0f, 0f);
+                pbRect.anchoredPosition = new Vector2(36f, 5f);
+                pbRect.sizeDelta = new Vector2(164f, 8f);
+                var pbImg = pBg.AddComponent<Image>();
+                pbImg.color = new Color(0.20f, 0.20f, 0.24f, 0.95f);
+
+                // Patience Progress Bar Fill
+                GameObject pFill = new GameObject("PatienceBarFill", typeof(RectTransform));
+                pFill.transform.SetParent(pBg.transform, false);
+                orderCardBarFills[i] = pFill.GetComponent<RectTransform>();
+                orderCardBarFills[i].anchorMin = new Vector2(0f, 0f);
+                orderCardBarFills[i].anchorMax = new Vector2(0f, 1f);
+                orderCardBarFills[i].pivot = new Vector2(0f, 0.5f);
+                orderCardBarFills[i].anchoredPosition = Vector2.zero;
+                orderCardBarFills[i].sizeDelta = new Vector2(164f, 0f);
+                orderCardBarImages[i] = pFill.AddComponent<Image>();
+                orderCardBarImages[i].color = new Color(0.25f, 0.92f, 0.45f, 1.0f);
+
+                card.SetActive(false);
+            }
+
+            // =========================================================================
+            // 4. DRAGGABLE VIRTUAL JOYSTICK & TOUCH ACTION BUTTONS
+            // =========================================================================
+            mobileControlsContainer = new GameObject("MobileControlsContainer", typeof(RectTransform));
+            mobileControlsContainer.transform.SetParent(root, false);
+            var mcRect = mobileControlsContainer.GetComponent<RectTransform>();
+            mcRect.anchorMin = Vector2.zero;
+            mcRect.anchorMax = Vector2.one;
+            mcRect.sizeDelta = Vector2.zero;
+
+            // A) Circular Draggable Virtual Joystick (Bottom Left)
+            GameObject joyBgObj = new GameObject("VirtualJoystickPad", typeof(RectTransform));
+            joyBgObj.transform.SetParent(mobileControlsContainer.transform, false);
+            joystickBackgroundRect = joyBgObj.GetComponent<RectTransform>();
+            joystickBackgroundRect.anchorMin = new Vector2(0f, 0f);
+            joystickBackgroundRect.anchorMax = new Vector2(0f, 0f);
+            joystickBackgroundRect.pivot = new Vector2(0.5f, 0.5f);
+            joystickBackgroundRect.anchoredPosition = new Vector2(92f, 92f);
+            joystickBackgroundRect.sizeDelta = new Vector2(128f, 128f);
+
+            var joyBgImg = joyBgObj.AddComponent<Image>();
+            joyBgImg.color = new Color(0.14f, 0.16f, 0.22f, 0.68f);
+
+            // Directional D-Pad sub-buttons around the joystick rim
+            Color dpadCol = new Color(0.22f, 0.25f, 0.32f, 0.70f);
+            dpadUpButton = CreateButton("DpadUp", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 44f), new Vector2(32f, 28f), "▲", dpadCol, out _, 10);
+            dpadDownButton = CreateButton("DpadDown", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -44f), new Vector2(32f, 28f), "▼", dpadCol, out _, 10);
+            dpadLeftButton = CreateButton("DpadLeft", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-44f, 0f), new Vector2(28f, 32f), "◀", dpadCol, out _, 10);
+            dpadRightButton = CreateButton("DpadRight", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(44f, 0f), new Vector2(28f, 32f), "▶", dpadCol, out _, 10);
+
+            // Draggable Center Joystick Knob
+            GameObject knobObj = new GameObject("JoystickKnob", typeof(RectTransform));
+            knobObj.transform.SetParent(joyBgObj.transform, false);
+            joystickKnobRect = knobObj.GetComponent<RectTransform>();
+            joystickKnobRect.anchorMin = new Vector2(0.5f, 0.5f);
+            joystickKnobRect.anchorMax = new Vector2(0.5f, 0.5f);
+            joystickKnobRect.pivot = new Vector2(0.5f, 0.5f);
+            joystickKnobRect.anchoredPosition = Vector2.zero;
+            joystickKnobRect.sizeDelta = new Vector2(48f, 48f);
+            var knobImg = knobObj.AddComponent<Image>();
+            knobImg.color = new Color(0.95f, 0.80f, 0.25f, 0.90f);
+            knobImg.raycastTarget = false;
+
+            SetupDraggableJoystick(joyBgObj);
+
+            // B) Mobile Action Buttons (Bottom Right)
+            GameObject actionsRoot = new GameObject("MobileActions", typeof(RectTransform));
+            actionsRoot.transform.SetParent(mobileControlsContainer.transform, false);
+            var actRect = actionsRoot.GetComponent<RectTransform>();
             actRect.anchorMin = new Vector2(1f, 0f);
             actRect.anchorMax = new Vector2(1f, 0f);
             actRect.pivot = new Vector2(1f, 0f);
-            actRect.anchoredPosition = new Vector2(-24f, 20f);
-            actRect.sizeDelta = new Vector2(220f, 160f);
+            actRect.anchoredPosition = new Vector2(-16f, 24f);
+            actRect.sizeDelta = new Vector2(150f, 145f);
 
-            primaryActionButton = CreateButton("PrimaryActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 104f), new Vector2(210f, 48f), "INTERACT / PASS\n(E / Space)", new Color(0.18f, 0.52f, 0.65f, 0.9f), out _);
-            secondaryActionButton = CreateButton("SecondaryActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 52f), new Vector2(210f, 46f), "STRIKE / SCRUB / BOWL\n(F Key)", new Color(0.72f, 0.42f, 0.15f, 0.9f), out _);
-            throwActionButton = CreateButton("ThrowActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 6f), new Vector2(210f, 40f), "THROW ITEM\n(Q / Right-Click)", new Color(0.58f, 0.22f, 0.55f, 0.9f), out _);
+            primaryActionButton = CreateButton("PrimaryActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 94f), new Vector2(142f, 42f), "USE / PASS [E]", new Color(0.18f, 0.52f, 0.65f, 0.88f), out _, 12);
+            secondaryActionButton = CreateButton("SecondaryActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 46f), new Vector2(142f, 42f), "CHOP / WASH [F]", new Color(0.72f, 0.42f, 0.15f, 0.88f), out _, 12);
+            throwActionButton = CreateButton("ThrowActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 4f), new Vector2(142f, 36f), "THROW [Q]", new Color(0.58f, 0.22f, 0.55f, 0.88f), out _, 11);
 
-            // Desktop players use keyboard & mouse: hide touch overlay buttons to keep playfield uncluttered
-            #if !UNITY_ANDROID && !UNITY_IOS
-            dpadRoot.SetActive(false);
-            actionsRoot.SetActive(false);
-            #endif
+            // Keep joystick & touch buttons visible by default so both mobile & desktop/touchscreen users can use them immediately!
+            mobileControlsContainer.SetActive(true);
 
-            // 5. Jiwon Crew Bar (Bottom Center)
-            jiwonCrewBar = new GameObject("JiwonCrewBar");
+            // =========================================================================
+            // 5. JIWON CREW BAR & COMPACT PROMPT BAR
+            // =========================================================================
+            jiwonCrewBar = new GameObject("JiwonCrewBar", typeof(RectTransform));
             jiwonCrewBar.transform.SetParent(root, false);
-            var cbRect = jiwonCrewBar.AddComponent<RectTransform>();
+            var cbRect = jiwonCrewBar.GetComponent<RectTransform>();
             cbRect.anchorMin = new Vector2(0.5f, 0f);
             cbRect.anchorMax = new Vector2(0.5f, 0f);
             cbRect.pivot = new Vector2(0.5f, 0f);
-            cbRect.anchoredPosition = new Vector2(0f, 42f);
-            cbRect.sizeDelta = new Vector2(440f, 36f);
+            cbRect.anchoredPosition = new Vector2(0f, 38f);
+            cbRect.sizeDelta = new Vector2(360f, 30f);
 
-            hirePrepButton = CreateButton("HirePrepBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-105f, 0f), new Vector2(195f, 32f), "Hire Prep Assistant (20c)", new Color(0.24f, 0.44f, 0.38f, 0.85f), out hirePrepCooldownText);
-            hireDishwasherButton = CreateButton("HireDishwasherBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(105f, 0f), new Vector2(195f, 32f), "Hire Dishwasher (20c)", new Color(0.22f, 0.38f, 0.52f, 0.85f), out hireDishwasherCooldownText);
+            hirePrepButton = CreateButton("HirePrepBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-88f, 0f), new Vector2(168f, 26f), "Prep Helper (20g)", new Color(0.24f, 0.44f, 0.38f, 0.85f), out hirePrepCooldownText, 11);
+            hireDishwasherButton = CreateButton("HireDishwasherBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(88f, 0f), new Vector2(168f, 26f), "Dishwasher (20g)", new Color(0.22f, 0.38f, 0.52f, 0.85f), out hireDishwasherCooldownText, 11);
 
-            // 6. Interaction Prompt (Bottom Center with dark backdrop)
-            GameObject promptBar = new GameObject("PromptBar");
+            GameObject promptBar = new GameObject("PromptBar", typeof(RectTransform));
             promptBar.transform.SetParent(root, false);
-            var pbRect = promptBar.AddComponent<RectTransform>();
-            pbRect.anchorMin = new Vector2(0.5f, 0f);
-            pbRect.anchorMax = new Vector2(0.5f, 0f);
-            pbRect.pivot = new Vector2(0.5f, 0f);
-            pbRect.anchoredPosition = new Vector2(0f, 10f);
-            pbRect.sizeDelta = new Vector2(640f, 28f);
-            var pbImg = promptBar.AddComponent<Image>();
-            pbImg.color = new Color(0.06f, 0.07f, 0.10f, 0.85f);
+            var pbRectBar = promptBar.GetComponent<RectTransform>();
+            pbRectBar.anchorMin = new Vector2(0.5f, 0f);
+            pbRectBar.anchorMax = new Vector2(0.5f, 0f);
+            pbRectBar.pivot = new Vector2(0.5f, 0f);
+            pbRectBar.anchoredPosition = new Vector2(0f, 8f);
+            pbRectBar.sizeDelta = new Vector2(460f, 24f);
+            var pbImgBar = promptBar.AddComponent<Image>();
+            pbImgBar.color = new Color(0.06f, 0.07f, 0.10f, 0.82f);
 
-            promptText = CreateLabel("PromptText", promptBar.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-16f, 0f), "Near: None", 13, new Color(0.95f, 0.95f, 0.95f), TextAnchor.MiddleCenter);
+            promptText = CreateLabel("PromptText", promptBar.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-12f, 0f), "[WASD] Move  •  [TAB] Wheel  •  [E] Use  •  [R] Recipes", 11, new Color(0.92f, 0.94f, 0.98f), TextAnchor.MiddleCenter);
 
-            // 7. Feedback Banner (Top Center)
-            feedbackBannerText = CreateLabel("FeedbackBanner", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -48f), new Vector2(500f, 32f), "", 16, Color.yellow, TextAnchor.MiddleCenter);
+            // Feedback Banner positioned below Tutorial Panel (Y = -102f) so they NEVER overlap!
+            feedbackBannerText = CreateLabel("FeedbackBanner", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -102f), new Vector2(460f, 28f), "", 15, Color.yellow, TextAnchor.MiddleCenter);
             feedbackBannerText.gameObject.SetActive(false);
 
             // Quick-Select Radial Ingredient Wheel
             if (GetComponentInChildren<QuickSelectWheelUI>() == null)
             {
-                GameObject wheelObj = new GameObject("QuickSelectWheelUI");
+                GameObject wheelObj = new GameObject("QuickSelectWheelUI", typeof(RectTransform));
                 wheelObj.transform.SetParent(root, false);
                 wheelObj.AddComponent<QuickSelectWheelUI>();
             }
 
-            // 8. End Shift Modal
-            endShiftModal = new GameObject("EndShiftModal");
+            // =========================================================================
+            // 6. VISUAL RECIPE BOOK MODAL ([R] Key or Button)
+            // =========================================================================
+            BuildRecipeBookModal(root);
+
+            // =========================================================================
+            // 7. LEVEL RESULTS MODAL (Victory / Defeat, Reputation, Gold Reward)
+            // =========================================================================
+            BuildLevelResultsModal(root);
+
+            // =========================================================================
+            // 8. BETWEEN-LEVEL UPGRADE SHOP MODAL
+            // =========================================================================
+            BuildUpgradeShopModal(root);
+        }
+
+        private void BuildRecipeBookModal(Transform root)
+        {
+            recipeBookModal = new GameObject("RecipeBookModal", typeof(RectTransform));
+            recipeBookModal.transform.SetParent(root, false);
+            var rbRect = recipeBookModal.GetComponent<RectTransform>();
+            rbRect.anchorMin = new Vector2(0.5f, 0.5f);
+            rbRect.anchorMax = new Vector2(0.5f, 0.5f);
+            rbRect.pivot = new Vector2(0.5f, 0.5f);
+            rbRect.anchoredPosition = Vector2.zero;
+            rbRect.sizeDelta = new Vector2(620f, 370f);
+            var rbImg = recipeBookModal.AddComponent<Image>();
+            rbImg.color = new Color(0.08f, 0.10f, 0.15f, 0.96f);
+
+            CreateLabel("RBTitle", recipeBookModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(560f, 26f), "📖 KITCHEN RECIPE BOOK (PRESS [R] TO CLOSE)", 15, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
+
+            var recipeRows = new (string title, string vesselIcon, (string icon, string tag)[] steps)[]
+            {
+                ("1. Bánh Mì Thịt", "dish_plate", new[] { ("baguette_bread", "Baguette"), ("pork_belly_raw", "Pork (Chop➔Grill)"), ("pickled_veg", "Daikon (Chop)") }),
+                ("2. Phở Bò", "dish_bowl", new[] { ("noodles_raw", "Noodles (Blanch)"), ("beef_raw", "Beef (Chop)"), ("broth_pot", "Broth (Last!)") }),
+                ("3. Tteokbokki", "dish_bowl", new[] { ("tteok_portioned", "Rice Cakes (Chop➔Wok)"), ("korean_sauce", "Simmer in Wok"), ("dish_bowl", "Bowl Only!") }),
+                ("4. Bokkeumbap", "dish_bowl", new[] { ("rice_portioned", "Rice (Chop➔Wok)"), ("kimchi_slaw", "Simmer in Wok"), ("kimchi_bokkeumbap", "Plate in Bowl") }),
+                ("5. Bulgogi Bánh Mì", "dish_plate", new[] { ("baguette_bread", "Baguette"), ("beef_bulgogi_raw", "Bulgogi (Chop➔Grill)"), ("kimchi_slaw", "Kimchi (Chop)") })
+            };
+
+            for (int i = 0; i < recipeRows.Length; i++)
+            {
+                var row = recipeRows[i];
+                float yPos = -48f - (i * 54f);
+
+                GameObject rowGo = new GameObject($"RecipeRow_{i}", typeof(RectTransform));
+                rowGo.transform.SetParent(recipeBookModal.transform, false);
+                var rRect = rowGo.GetComponent<RectTransform>();
+                rRect.anchorMin = new Vector2(0.5f, 1f);
+                rRect.anchorMax = new Vector2(0.5f, 1f);
+                rRect.pivot = new Vector2(0.5f, 1f);
+                rRect.anchoredPosition = new Vector2(0f, yPos);
+                rRect.sizeDelta = new Vector2(584f, 46f);
+                var rBg = rowGo.AddComponent<Image>();
+                rBg.color = new Color(0.13f, 0.16f, 0.22f, 0.92f);
+
+                CreateLabel("DishTitle", rowGo.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(12f, 0f), new Vector2(135f, 0f), row.title, 12, new Color(1.0f, 0.90f, 0.45f), TextAnchor.MiddleLeft);
+
+                // Vessel Icon
+                CreateRecipeStepBadge(rowGo.transform, 152f, row.vesselIcon, row.vesselIcon == "dish_plate" ? "Plate" : "Bowl");
+
+                for (int s = 0; s < row.steps.Length; s++)
+                {
+                    float sx = 248f + (s * 112f);
+                    CreateRecipeStepBadge(rowGo.transform, sx, row.steps[s].icon, row.steps[s].tag);
+                }
+            }
+
+            closeRecipeBookButton = CreateButton("CloseRecipeBookBtn", recipeBookModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(180f, 32f), "CLOSE [R]", new Color(0.25f, 0.55f, 0.35f, 1f), out _, 12);
+            closeRecipeBookButton.onClick.AddListener(ToggleRecipeBook);
+            recipeBookModal.SetActive(false);
+        }
+
+        private void CreateRecipeStepBadge(Transform parent, float xOffset, string spriteName, string label)
+        {
+            GameObject icoGo = new GameObject("StepIcon", typeof(RectTransform));
+            icoGo.transform.SetParent(parent, false);
+            var iRect = icoGo.GetComponent<RectTransform>();
+            iRect.anchorMin = new Vector2(0f, 0.5f);
+            iRect.anchorMax = new Vector2(0f, 0.5f);
+            iRect.pivot = new Vector2(0f, 0.5f);
+            iRect.anchoredPosition = new Vector2(xOffset, 0f);
+            iRect.sizeDelta = new Vector2(28f, 28f);
+            var img = icoGo.AddComponent<Image>();
+            Sprite spr = Resources.Load<Sprite>($"Sprites/Items/{spriteName}");
+            if (spr != null) img.sprite = spr;
+
+            CreateLabel("StepText", parent, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(xOffset + 32f, 0f), new Vector2(76f, 0f), label, 10, Color.white, TextAnchor.MiddleLeft);
+        }
+
+        private void BuildLevelResultsModal(Transform root)
+        {
+            endShiftModal = new GameObject("EndShiftModal", typeof(RectTransform));
             endShiftModal.transform.SetParent(root, false);
-            var esmRect = endShiftModal.AddComponent<RectTransform>();
+            var esmRect = endShiftModal.GetComponent<RectTransform>();
             esmRect.anchorMin = new Vector2(0.5f, 0.5f);
             esmRect.anchorMax = new Vector2(0.5f, 0.5f);
             esmRect.pivot = new Vector2(0.5f, 0.5f);
             esmRect.anchoredPosition = Vector2.zero;
-            esmRect.sizeDelta = new Vector2(380f, 280f);
+            esmRect.sizeDelta = new Vector2(460f, 300f);
             var esmImg = endShiftModal.AddComponent<Image>();
-            esmImg.color = new Color(0.08f, 0.08f, 0.12f, 0.96f);
+            esmImg.color = new Color(0.07f, 0.09f, 0.14f, 0.97f);
 
-            endShiftDetailsText = CreateLabel("EndShiftDetails", endShiftModal.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), new Vector2(0f, 24f), new Vector2(-24f, -60f), "SHIFT SUMMARY", 14, Color.white, TextAnchor.MiddleCenter);
-            retryShiftButton = CreateButton("RetryShiftBtn", endShiftModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(160f, 36f), "START NEXT SHIFT", new Color(0.2f, 0.6f, 0.35f, 0.95f), out _);
+            endShiftTitleText = CreateLabel("EndShiftTitle", endShiftModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -18f), new Vector2(420f, 32f), "★ LEVEL COMPLETE! ★", 18, new Color(0.3f, 1.0f, 0.5f), TextAnchor.MiddleCenter);
+            endShiftDetailsText = CreateLabel("EndShiftDetails", endShiftModal.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 14f), new Vector2(410f, 150f), "Remaining Reputation: 100 / 100\nGold Earned: +200g", 14, Color.white, TextAnchor.MiddleCenter);
+
+            openShopFromResultsButton = CreateButton("OpenShopResultsBtn", endShiftModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-138f, 22f), new Vector2(132f, 38f), "🛒 UPGRADE SHOP", new Color(0.80f, 0.55f, 0.14f, 1f), out _, 11);
+            retryShiftButton = CreateButton("RetryShiftBtn", endShiftModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(132f, 38f), "▶ NEXT LEVEL", new Color(0.20f, 0.62f, 0.35f, 1f), out retryShiftButtonText, 11);
+            resultsToLobbyButton = CreateButton("ResultsToLobbyBtn", endShiftModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(138f, 22f), new Vector2(132f, 38f), "LEVEL SELECT", new Color(0.24f, 0.38f, 0.56f, 1f), out _, 11);
+
             endShiftModal.SetActive(false);
+        }
+
+        private void BuildUpgradeShopModal(Transform root)
+        {
+            upgradeShopModal = new GameObject("UpgradeShopModal", typeof(RectTransform));
+            upgradeShopModal.transform.SetParent(root, false);
+            var usRect = upgradeShopModal.GetComponent<RectTransform>();
+            usRect.anchorMin = new Vector2(0.5f, 0.5f);
+            usRect.anchorMax = new Vector2(0.5f, 0.5f);
+            usRect.pivot = new Vector2(0.5f, 0.5f);
+            usRect.anchoredPosition = Vector2.zero;
+            usRect.sizeDelta = new Vector2(680f, 410f);
+            var usImg = upgradeShopModal.AddComponent<Image>();
+            usImg.color = new Color(0.07f, 0.09f, 0.14f, 0.98f);
+
+            CreateLabel("ShopTitle", upgradeShopModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -14f), new Vector2(450f, 26f), "🛒 BETWEEN-LEVEL UPGRADE SHOP", 16, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
+            shopGoldText = CreateLabel("ShopGoldText", upgradeShopModal.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-24f, -14f), new Vector2(180f, 26f), "GOLD: 150g", 14, new Color(1.0f, 0.85f, 0.2f), TextAnchor.MiddleRight);
+            shopFeedbackText = CreateLabel("ShopFeedbackText", upgradeShopModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(620f, 20f), "Spend Gold on permanent character & kitchen upgrades!", 12, new Color(0.75f, 0.90f, 1.0f), TextAnchor.MiddleCenter);
+
+            string[] upgradeKeys = new string[]
+            {
+                "chef_speed_boots",
+                "sharp_santoku_knives",
+                "turbo_wok_burners",
+                "high_pressure_sink",
+                "extra_plate_stack",
+                "insulated_broth_pot"
+            };
+
+            string[] defaultTitles = new string[]
+            {
+                "Non-Slip Kitchen Footwear",
+                "Sharp Santoku Knife Set",
+                "High-Output Jet Burners",
+                "High-Pressure Rinse Sprayer",
+                "Porcelain Dish Rack Expansion",
+                "Double-Walled Phở Stockpot"
+            };
+
+            string[] defaultDescs = new string[]
+            {
+                "+18% Movement Speed for both chefs.",
+                "+15% Prep speed & cadence window.",
+                "+25% Faster Cooking Speed on appliances.",
+                "Cleans dirty plates in 3 scrubs instead of 4.",
+                "Starts every level with 6 Clean Vessels.",
+                "+50% longer OPTIMAL heat window."
+            };
+
+            int[] defaultCosts = new int[] { 100, 100, 150, 150, 200, 250 };
+
+            for (int i = 0; i < upgradeKeys.Length; i++)
+            {
+                string uKey = upgradeKeys[i];
+                int col = i % 2;
+                int row = i / 2;
+                float xPos = (col == 0) ? -162f : 162f;
+                float yPos = -68f - (row * 94f);
+
+                GameObject card = new GameObject($"ShopCard_{uKey}", typeof(RectTransform));
+                card.transform.SetParent(upgradeShopModal.transform, false);
+                var cRect = card.GetComponent<RectTransform>();
+                cRect.anchorMin = new Vector2(0.5f, 1f);
+                cRect.anchorMax = new Vector2(0.5f, 1f);
+                cRect.pivot = new Vector2(0.5f, 1f);
+                cRect.anchoredPosition = new Vector2(xPos, yPos);
+                cRect.sizeDelta = new Vector2(310f, 84f);
+                var cBg = card.AddComponent<Image>();
+                cBg.color = new Color(0.13f, 0.16f, 0.22f, 0.96f);
+
+                CreateLabel("UpName", card.transform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, 1f), new Vector2(10f, -6f), new Vector2(-95f, 20f), defaultTitles[i], 12, new Color(1.0f, 0.90f, 0.4f), TextAnchor.MiddleLeft);
+                shopLevelLabels[uKey] = CreateLabel("UpLvl", card.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-10f, -6f), new Vector2(80f, 20f), "Lv 0/1", 11, Color.cyan, TextAnchor.MiddleRight);
+                CreateLabel("UpDesc", card.transform, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(0f, 0.5f), new Vector2(10f, -2f), new Vector2(-110f, 34f), defaultDescs[i], 10, new Color(0.85f, 0.88f, 0.92f), TextAnchor.MiddleLeft);
+
+                Text buyLbl;
+                Button buyBtn = CreateButton($"BuyBtn_{uKey}", card.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-10f, 10f), new Vector2(92f, 28f), $"{defaultCosts[i]}g BUY", new Color(0.20f, 0.58f, 0.34f, 1f), out buyLbl, 11);
+                buyBtn.onClick.AddListener(() => OnBuyUpgradeClicked(uKey));
+                shopBuyButtons[uKey] = buyBtn;
+                shopBuyLabels[uKey] = buyLbl;
+            }
+
+            shopNextLevelButton = CreateButton("ShopNextLevelBtn", upgradeShopModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-115f, 16f), new Vector2(210f, 36f), "▶ CONTINUE TO NEXT LEVEL", new Color(0.20f, 0.62f, 0.35f, 1f), out _, 12);
+            shopCloseButton = CreateButton("ShopCloseBtn", upgradeShopModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(115f, 16f), new Vector2(210f, 36f), "LEVEL SELECT / CLOSE", new Color(0.26f, 0.38f, 0.54f, 1f), out _, 12);
+
+            upgradeShopModal.SetActive(false);
+        }
+
+        private void SetupDraggableJoystick(GameObject joyPadObj)
+        {
+            var trigger = joyPadObj.AddComponent<EventTrigger>();
+
+            var downEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerDown };
+            downEntry.callback.AddListener((data) => OnJoystickDrag((PointerEventData)data));
+            trigger.triggers.Add(downEntry);
+
+            var dragEntry = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
+            dragEntry.callback.AddListener((data) => OnJoystickDrag((PointerEventData)data));
+            trigger.triggers.Add(dragEntry);
+
+            var upEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerUp };
+            upEntry.callback.AddListener((_) =>
+            {
+                if (joystickKnobRect != null) joystickKnobRect.anchoredPosition = Vector2.zero;
+                SetJoystick(Vector2.zero);
+            });
+            trigger.triggers.Add(upEntry);
+        }
+
+        private void OnJoystickDrag(PointerEventData eventData)
+        {
+            if (joystickBackgroundRect == null || eventData == null) return;
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                joystickBackgroundRect, eventData.position, eventData.pressEventCamera, out Vector2 localPt))
+            {
+                float maxRadius = 46.0f;
+                Vector2 clamped = Vector2.ClampMagnitude(localPt, maxRadius);
+                if (joystickKnobRect != null)
+                {
+                    joystickKnobRect.anchoredPosition = clamped;
+                }
+                SetJoystick(clamped / maxRadius);
+            }
         }
 
         private void Start()
@@ -347,6 +768,8 @@ namespace TwoLadles.UI
                 ShiftManager.Instance.OnFeedbackBanner += ShowFeedback;
                 ShiftManager.Instance.OnShiftEnded += ShowEndShiftModal;
                 ShiftManager.Instance.OnTutorialStepChanged += UpdateTutorialGuidance;
+                ShiftManager.Instance.OnReputationChanged += OnReputationChanged;
+                ShiftManager.Instance.OnWaveUpdated += OnWaveUpdated;
 
                 if (ShiftManager.Instance.isTutorial)
                 {
@@ -361,11 +784,44 @@ namespace TwoLadles.UI
                 KitchenController.Instance.OnChefSwitched += UpdateChefSwitchDisplay;
             }
 
+            if (ProgressionManager.Instance != null)
+            {
+                ProgressionManager.Instance.OnProgressionUpdated += RefreshUpgradeShopDisplay;
+            }
+
             if (switchChefButton != null)
             {
-                switchChefButton.onClick.AddListener(() => {
+                switchChefButton.onClick.AddListener(() =>
+                {
                     if (KitchenController.Instance != null)
                         KitchenController.Instance.SwitchLocalChef();
+                });
+            }
+
+            if (recipeBookButton != null)
+            {
+                recipeBookButton.onClick.AddListener(ToggleRecipeBook);
+            }
+
+            if (touchControlsToggleButton != null)
+            {
+                touchControlsToggleButton.onClick.AddListener(() =>
+                {
+                    if (mobileControlsContainer != null)
+                        mobileControlsContainer.SetActive(!mobileControlsContainer.activeSelf);
+                });
+            }
+
+            if (audioMuteButton != null)
+            {
+                audioMuteButton.onClick.AddListener(() =>
+                {
+                    if (AudioManager.Instance != null)
+                    {
+                        AudioManager.Instance.ToggleMute();
+                        if (audioMuteButtonText != null)
+                            audioMuteButtonText.text = AudioManager.Instance.isMuted ? "BGM: OFF" : "BGM: ON";
+                    }
                 });
             }
 
@@ -378,30 +834,56 @@ namespace TwoLadles.UI
             if (returnToLobbyButton != null)
                 returnToLobbyButton.onClick.AddListener(OnReturnToLobbyClicked);
 
+            if (resultsToLobbyButton != null)
+                resultsToLobbyButton.onClick.AddListener(OnReturnToLobbyClicked);
+
+            if (openShopFromResultsButton != null)
+            {
+                openShopFromResultsButton.onClick.AddListener(() =>
+                {
+                    if (endShiftModal != null) endShiftModal.SetActive(false);
+                    OpenUpgradeShopModal();
+                });
+            }
+
+            if (shopNextLevelButton != null)
+                shopNextLevelButton.onClick.AddListener(OnNextOrReplayClicked);
+
+            if (shopCloseButton != null)
+            {
+                shopCloseButton.onClick.AddListener(() =>
+                {
+                    if (upgradeShopModal != null) upgradeShopModal.SetActive(false);
+                    OnReturnToLobbyClicked();
+                });
+            }
+
             if (NetworkManager.Instance != null)
             {
                 NetworkManager.Instance.OnReturnedToMenu += OnReturnedToMenuHandler;
             }
 
             if (primaryActionButton != null)
-                primaryActionButton.onClick.AddListener(() => {
+                primaryActionButton.onClick.AddListener(() =>
+                {
                     if (KitchenController.Instance != null)
                         KitchenController.Instance.LocalPlayerInteractPrimary();
                 });
 
             if (secondaryActionButton != null)
-                secondaryActionButton.onClick.AddListener(() => {
+                secondaryActionButton.onClick.AddListener(() =>
+                {
                     if (KitchenController.Instance != null)
                         KitchenController.Instance.LocalPlayerInteractSecondary();
                 });
 
             if (throwActionButton != null)
-                throwActionButton.onClick.AddListener(() => {
+                throwActionButton.onClick.AddListener(() =>
+                {
                     if (KitchenController.Instance != null)
                         KitchenController.Instance.LocalPlayerThrow();
                 });
 
-            // Mobile D-Pad listeners
             SetupDpadButton(dpadUpButton, Vector2.up);
             SetupDpadButton(dpadDownButton, Vector2.down);
             SetupDpadButton(dpadLeftButton, Vector2.left);
@@ -409,20 +891,87 @@ namespace TwoLadles.UI
 
             if (retryShiftButton != null)
             {
-                retryShiftButton.onClick.AddListener(OnRetryClicked);
+                retryShiftButton.onClick.AddListener(OnNextOrReplayClicked);
             }
+        }
+
+        public void ToggleRecipeBook()
+        {
+            if (recipeBookModal != null)
+            {
+                recipeBookModal.SetActive(!recipeBookModal.activeSelf);
+            }
+        }
+
+        public void OpenUpgradeShopModal()
+        {
+            if (upgradeShopModal != null)
+            {
+                upgradeShopModal.SetActive(true);
+                RefreshUpgradeShopDisplay();
+            }
+        }
+
+        public void RefreshUpgradeShopDisplay()
+        {
+            if (ProgressionManager.Instance == null) return;
+
+            if (shopGoldText != null)
+                shopGoldText.text = $"GOLD: {ProgressionManager.Instance.gold}g";
+
+            foreach (var kvp in ProgressionManager.Instance.catalogUpgrades)
+            {
+                string key = kvp.Key;
+                var up = kvp.Value;
+
+                if (shopLevelLabels.TryGetValue(key, out var lvlTxt) && lvlTxt != null)
+                {
+                    lvlTxt.text = up.purchased ? "OWNED ✓" : $"Lv {up.level}/{up.maxLevel}";
+                    lvlTxt.color = up.purchased ? new Color(0.35f, 1.0f, 0.55f) : Color.cyan;
+                }
+
+                if (shopBuyButtons.TryGetValue(key, out var btn) && btn != null && shopBuyLabels.TryGetValue(key, out var bTxt) && bTxt != null)
+                {
+                    bool canAfford = ProgressionManager.Instance.gold >= up.cost;
+                    btn.interactable = !up.purchased && canAfford;
+                    bTxt.text = up.purchased ? "OWNED" : $"{up.cost}g BUY";
+                    btn.GetComponent<Image>().color = up.purchased
+                        ? new Color(0.22f, 0.28f, 0.25f, 0.8f)
+                        : (canAfford ? new Color(0.20f, 0.58f, 0.34f, 1f) : new Color(0.45f, 0.22f, 0.22f, 0.85f));
+                }
+            }
+        }
+
+        private void OnBuyUpgradeClicked(string upgradeId)
+        {
+            if (ProgressionManager.Instance == null) return;
+            var res = ProgressionManager.Instance.PurchaseUpgrade(upgradeId);
+            if (shopFeedbackText != null)
+            {
+                if (res.ok && ProgressionManager.Instance.catalogUpgrades.TryGetValue(upgradeId, out var up))
+                {
+                    shopFeedbackText.text = $"★ Purchased {up.displayName}! Stat upgraded immediately. ★";
+                    shopFeedbackText.color = new Color(0.35f, 1.0f, 0.55f);
+                }
+                else
+                {
+                    shopFeedbackText.text = res.reason;
+                    shopFeedbackText.color = new Color(1.0f, 0.45f, 0.45f);
+                }
+            }
+            RefreshUpgradeShopDisplay();
         }
 
         private void SetupDpadButton(Button btn, Vector2 dir)
         {
             if (btn == null) return;
-            var trigger = btn.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
+            var trigger = btn.gameObject.AddComponent<EventTrigger>();
 
-            var entryDown = new UnityEngine.EventSystems.EventTrigger.Entry { eventID = UnityEngine.EventSystems.EventTriggerType.PointerDown };
+            var entryDown = new EventTrigger.Entry { eventID = EventTriggerType.PointerDown };
             entryDown.callback.AddListener((_) => SetJoystick(dir));
             trigger.triggers.Add(entryDown);
 
-            var entryUp = new UnityEngine.EventSystems.EventTrigger.Entry { eventID = UnityEngine.EventSystems.EventTriggerType.PointerUp };
+            var entryUp = new EventTrigger.Entry { eventID = EventTriggerType.PointerUp };
             entryUp.callback.AddListener((_) => SetJoystick(Vector2.zero));
             trigger.triggers.Add(entryUp);
         }
@@ -442,55 +991,155 @@ namespace TwoLadles.UI
                 promptText.text = p;
         }
 
+        private void OnReputationChanged(float newRep, float prevRep)
+        {
+            displayedReputationTarget = Mathf.Clamp(newRep, 0.0f, 100.0f);
+            if (newRep < prevRep)
+            {
+                // Keep trailing white bar at the higher value and hold briefly before animating down
+                displayedReputationTrailing = Mathf.Max(displayedReputationTrailing, prevRep);
+                reputationTrailHoldTimer = 0.30f;
+            }
+            else
+            {
+                displayedReputationTrailing = displayedReputationTarget;
+            }
+            UpdateReputationBarImmediate();
+        }
+
+        private void UpdateReputationBarImmediate()
+        {
+            float targetNorm = Mathf.Clamp01(displayedReputationTarget / ShiftManager.MAX_REPUTATION);
+            if (reputationMainFill != null)
+            {
+                reputationMainFill.sizeDelta = new Vector2(REPUTATION_BAR_WIDTH * targetNorm, 0.0f);
+            }
+            if (reputationMainImage != null)
+            {
+                if (displayedReputationTarget > 50.0f)
+                    reputationMainImage.color = new Color(0.22f, 0.88f, 0.42f, 1.0f);
+                else if (displayedReputationTarget > 25.0f)
+                    reputationMainImage.color = new Color(0.95f, 0.72f, 0.18f, 1.0f);
+                else
+                    reputationMainImage.color = new Color(0.95f, 0.22f, 0.20f, 1.0f);
+            }
+            if (reputationText != null)
+            {
+                reputationText.text = $"REP {Mathf.CeilToInt(displayedReputationTarget)}";
+                reputationText.color = displayedReputationTarget > 25.0f ? new Color(0.45f, 1.0f, 0.6f) : new Color(1.0f, 0.35f, 0.35f);
+            }
+        }
+
+        private void AnimateReputationTrailingBar(float dt)
+        {
+            if (displayedReputationTrailing > displayedReputationTarget)
+            {
+                if (reputationTrailHoldTimer > 0.0f)
+                {
+                    reputationTrailHoldTimer -= dt;
+                }
+                else
+                {
+                    // Smooth catch-up animation
+                    float speed = Mathf.Max(22.0f, (displayedReputationTrailing - displayedReputationTarget) * 3.2f);
+                    displayedReputationTrailing = Mathf.MoveTowards(displayedReputationTrailing, displayedReputationTarget, speed * dt);
+                }
+            }
+            else
+            {
+                displayedReputationTrailing = displayedReputationTarget;
+            }
+
+            if (reputationTrailingFill != null)
+            {
+                float trailNorm = Mathf.Clamp01(displayedReputationTrailing / ShiftManager.MAX_REPUTATION);
+                reputationTrailingFill.sizeDelta = new Vector2(REPUTATION_BAR_WIDTH * trailNorm, 0.0f);
+            }
+        }
+
+        private void OnWaveUpdated(int waveNum, int totalWaves, int completedInWave, int requiredInWave)
+        {
+            if (shiftTimerText != null && ShiftManager.Instance != null)
+            {
+                if (ShiftManager.Instance.isTutorial)
+                {
+                    shiftTimerText.text = "ACADEMY";
+                }
+                else if (ShiftManager.Instance.currentMode == GameMode.CAMPAIGN)
+                {
+                    shiftTimerText.text = $"L{ShiftManager.Instance.currentStageId} • W{waveNum}/{totalWaves}";
+                }
+            }
+
+            if (waveProgressFill != null)
+            {
+                float pct = requiredInWave > 0 ? Mathf.Clamp01((float)completedInWave / requiredInWave) : 0.0f;
+                waveProgressFill.sizeDelta = new Vector2(WAVE_BAR_WIDTH * pct, 0.0f);
+            }
+        }
+
         private void Update()
         {
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                ToggleRecipeBook();
+            }
+
+            AnimateReputationTrailingBar(Time.deltaTime);
+
             if (ShiftManager.Instance == null || !ShiftManager.Instance.shiftActive) return;
 
-            // Timer display
             if (shiftTimerText != null)
             {
-                if (ShiftManager.Instance.currentMode == GameMode.CAMPAIGN)
+                if (ShiftManager.Instance.isTutorial)
                 {
-                    int m = Mathf.FloorToInt(ShiftManager.Instance.shiftTimeRemaining / 60.0f);
-                    int s = Mathf.FloorToInt(ShiftManager.Instance.shiftTimeRemaining % 60.0f);
-                    shiftTimerText.text = $"TIME: {m:D2}:{s:D2}";
+                    shiftTimerText.text = "ACADEMY";
+                }
+                else if (ShiftManager.Instance.currentMode == GameMode.CAMPAIGN)
+                {
+                    shiftTimerText.text = $"L{ShiftManager.Instance.currentStageId} • W{ShiftManager.Instance.currentWaveNumber}/{ShiftManager.Instance.totalWaves}";
                 }
                 else
                 {
                     int m = Mathf.FloorToInt(ShiftManager.Instance.shiftElapsedSeconds / 60.0f);
                     int s = Mathf.FloorToInt(ShiftManager.Instance.shiftElapsedSeconds % 60.0f);
-                    shiftTimerText.text = $"SURVIVED: {m:D2}:{s:D2} (Misses: {ShiftManager.Instance.ordersFailed}/3)";
+                    shiftTimerText.text = $"∞ {m:D2}:{s:D2}";
                 }
             }
 
             if (scoreText != null)
-                scoreText.text = $"SCORE: {ShiftManager.Instance.totalScore}";
+                scoreText.text = $"{ShiftManager.Instance.totalScore} pts";
 
             if (cleanPlatesText != null)
-                cleanPlatesText.text = $"CLEAN: {ShiftManager.Instance.cleanPlates}";
+                cleanPlatesText.text = $"Clean: {ShiftManager.Instance.cleanPlates}";
 
             if (dirtyPlatesText != null)
-                dirtyPlatesText.text = $"DIRTY: {ShiftManager.Instance.dirtyPlatesAtReturn}";
+                dirtyPlatesText.text = $"Dirty: {ShiftManager.Instance.dirtyPlatesAtReturn}";
 
-            // Jiwon cooldown display
+            // Jiwon crew bar only shown when Jiwon is Tier >= 2
+            if (jiwonCrewBar != null)
+            {
+                bool showCrew = ProgressionManager.Instance != null && ProgressionManager.Instance.jiwonTier >= 2;
+                if (jiwonCrewBar.activeSelf != showCrew)
+                    jiwonCrewBar.SetActive(showCrew);
+            }
+
             if (KitchenController.Instance != null)
             {
                 if (hirePrepCooldownText != null)
                 {
                     float cd = KitchenController.Instance.workerCooldowns.TryGetValue("prep_assistant", out float val) ? val : 0.0f;
-                    hirePrepCooldownText.text = cd > 0.0f ? $"{cd:F0}s" : "READY (20c)";
+                    hirePrepCooldownText.text = cd > 0.0f ? $"Prep ({cd:F0}s)" : "Prep Helper (20g)";
                 }
                 if (hireDishwasherCooldownText != null)
                 {
                     float cd = KitchenController.Instance.workerCooldowns.TryGetValue("dishwasher", out float val) ? val : 0.0f;
-                    hireDishwasherCooldownText.text = cd > 0.0f ? $"{cd:F0}s" : "READY (20c)";
+                    hireDishwasherCooldownText.text = cd > 0.0f ? $"Wash ({cd:F0}s)" : "Dishwasher (20g)";
                 }
             }
 
-            // Live order queue refresh
             RefreshOrders(ShiftManager.Instance.activeOrders);
 
-            // Tutorial panel visibility
             if (tutorialPanelObj != null)
             {
                 bool shouldShow = ShiftManager.Instance != null && ShiftManager.Instance.isTutorial;
@@ -500,11 +1149,10 @@ namespace TwoLadles.UI
                 }
             }
 
-            // Sync Switch Chef button label
             if (switchChefButtonText != null)
             {
                 int localId = NetworkManager.Instance != null ? NetworkManager.Instance.localPeerId : 1;
-                switchChefButtonText.text = (localId == 1) ? "Active: LINH [C]" : "Active: JIWON [C]";
+                switchChefButtonText.text = (localId == 1) ? "LINH [C]" : "JIWON [C]";
             }
 
             if (feedbackTimer > 0.0f)
@@ -525,7 +1173,7 @@ namespace TwoLadles.UI
             }
             if (tutorialTitleText != null)
             {
-                tutorialTitleText.text = $"TUTORIAL — {title}";
+                tutorialTitleText.text = title;
             }
             if (tutorialInstructionText != null)
             {
@@ -537,18 +1185,18 @@ namespace TwoLadles.UI
         {
             if (switchChefButtonText != null)
             {
-                switchChefButtonText.text = (peerId == 1) ? "Active: LINH [C]" : "Active: JIWON [C]";
+                switchChefButtonText.text = (peerId == 1) ? "LINH [C]" : "JIWON [C]";
             }
         }
 
         private void OnFlowUpdated(float flow, bool rushActive, float rushRemaining)
         {
             if (flowSlider != null)
-                flowSlider.value = flow / ShiftManager.MAX_FLOW;
+                flowSlider.value = rushActive ? (rushRemaining / ShiftManager.RUSH_RHYTHM_DURATION) : (flow / ShiftManager.MAX_FLOW);
 
             if (flowText != null)
             {
-                flowText.text = rushActive ? $"★ RUSH RHYTHM! ({rushRemaining:F1}s) ★" : $"FLOW: {flow:F0}/100";
+                flowText.text = rushActive ? "RUSH!" : "FLOW";
             }
         }
 
@@ -560,29 +1208,48 @@ namespace TwoLadles.UI
 
         private void RefreshOrders(List<OrderTicket> orders)
         {
-            if (orderListText == null || orders == null) return;
+            if (orders == null) return;
 
-            if (orders.Count == 0)
+            for (int i = 0; i < 4; i++)
             {
-                orderListText.text = "ACTIVE ORDERS: None (Waiting for tickets...)";
-                return;
-            }
-
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine("ACTIVE ORDERS:");
-            foreach (var o in orders)
-            {
-                string rName = o.recipeId;
-                int score = 100;
-                if (GameData.Instance != null && GameData.Instance.recipes.TryGetValue(o.recipeId, out var rSpec))
+                if (orderCardObjs[i] == null) continue;
+                if (i < orders.Count)
                 {
-                    rName = rSpec.displayName;
-                    score = rSpec.baseScore;
+                    var o = orders[i];
+                    orderCardObjs[i].SetActive(true);
+
+                    string rName = o.recipeId;
+                    if (GameData.Instance != null && GameData.Instance.recipes.TryGetValue(o.recipeId, out var rSpec))
+                    {
+                        rName = rSpec.displayName;
+                    }
+                    if (orderCardLabels[i] != null)
+                    {
+                        orderCardLabels[i].text = rName;
+                    }
+                    if (orderCardIcons[i] != null)
+                    {
+                        string sprName = PlayerController.ResolveItemSpriteName(o.recipeId);
+                        Sprite spr = Resources.Load<Sprite>($"Sprites/Items/{sprName}");
+                        if (spr != null) orderCardIcons[i].sprite = spr;
+                    }
+                    if (orderCardBarFills[i] != null)
+                    {
+                        float pct = o.initialPatience > 0.01f ? Mathf.Clamp01(o.timeRemaining / o.initialPatience) : 1.0f;
+                        orderCardBarFills[i].sizeDelta = new Vector2(164.0f * pct, 0.0f);
+                        if (orderCardBarImages[i] != null)
+                        {
+                            orderCardBarImages[i].color = pct > 0.5f
+                                ? new Color(0.25f, 0.92f, 0.45f, 1.0f)
+                                : (pct > 0.25f ? new Color(0.95f, 0.78f, 0.20f, 1.0f) : new Color(0.95f, 0.25f, 0.20f, 1.0f));
+                        }
+                    }
                 }
-                string bonusTag = o.handoffBonusClaimed ? "" : " ★Flow+15";
-                sb.AppendLine($"• #{o.ticketId} {rName} [{o.timeRemaining:F0}s] {score}pts{bonusTag}");
+                else
+                {
+                    orderCardObjs[i].SetActive(false);
+                }
             }
-            orderListText.text = sb.ToString();
         }
 
         private void ShowFeedback(string message, Color col)
@@ -592,7 +1259,7 @@ namespace TwoLadles.UI
                 feedbackBannerText.text = message;
                 feedbackBannerText.color = col;
                 feedbackBannerText.gameObject.SetActive(true);
-                feedbackTimer = 2.5f;
+                feedbackTimer = 2.0f;
             }
         }
 
@@ -601,34 +1268,56 @@ namespace TwoLadles.UI
             if (endShiftModal != null)
             {
                 endShiftModal.SetActive(true);
-                if (endShiftDetailsText != null && summary != null)
+                if (summary != null)
                 {
-                    int score = summary.ContainsKey("finalScore") ? System.Convert.ToInt32(summary["finalScore"]) : 0;
-                    int starsCount = summary.ContainsKey("stars") ? System.Convert.ToInt32(summary["stars"]) : 0;
-                    int coins = summary.ContainsKey("coinsEarned") ? System.Convert.ToInt32(summary["coinsEarned"]) : 0;
-                    int served = summary.ContainsKey("ordersServed") ? System.Convert.ToInt32(summary["ordersServed"]) : 0;
-                    int failed = summary.ContainsKey("ordersFailed") ? System.Convert.ToInt32(summary["ordersFailed"]) : 0;
-                    float rush = summary.ContainsKey("rushSeconds") ? System.Convert.ToSingle(summary["rushSeconds"]) : 0.0f;
+                    bool victory = summary.ContainsKey("victory") && Convert.ToBoolean(summary["victory"]);
+                    float rep = summary.ContainsKey("reputation") ? Convert.ToSingle(summary["reputation"]) : 0.0f;
+                    int gold = summary.ContainsKey("gold_earned") ? Convert.ToInt32(summary["gold_earned"]) : 0;
+                    int wavesDone = summary.ContainsKey("waves_completed") ? Convert.ToInt32(summary["waves_completed"]) : 0;
+                    int totalWaves = summary.ContainsKey("total_waves") ? Convert.ToInt32(summary["total_waves"]) : 3;
+                    int served = summary.ContainsKey("ordersServed") ? Convert.ToInt32(summary["ordersServed"]) : 0;
 
-                    string stars = starsCount > 0 ? new string('★', starsCount) : "None";
-                    endShiftDetailsText.text =
-                        $"SHIFT COMPLETE!\n\n" +
-                        $"Final Score: {score}\n" +
-                        $"Stars Earned: {stars}\n" +
-                        $"Coins Earned: +{coins}\n" +
-                        $"Orders Served: {served}\n" +
-                        $"Orders Failed: {failed}\n" +
-                        $"Rush Multiplier Time: {rush:F1}s";
+                    if (endShiftTitleText != null)
+                    {
+                        endShiftTitleText.text = victory ? "★ VICTORY! LEVEL COMPLETE ★" : "✖ DEFEAT — REPUTATION LOST ✖";
+                        endShiftTitleText.color = victory ? new Color(0.30f, 1.0f, 0.50f) : new Color(1.0f, 0.35f, 0.35f);
+                    }
+
+                    if (endShiftDetailsText != null)
+                    {
+                        int totalGold = ProgressionManager.Instance != null ? ProgressionManager.Instance.gold : gold;
+                        endShiftDetailsText.text =
+                            $"Final Reputation: {Mathf.CeilToInt(rep)} / 100\n" +
+                            $"Waves Completed: {wavesDone} / {totalWaves}  (Orders Served: {served})\n" +
+                            $"Gold Earned: +{gold}g\n" +
+                            $"Total Gold Balance: {totalGold}g";
+                    }
+
+                    if (retryShiftButtonText != null)
+                    {
+                        retryShiftButtonText.text = victory ? "▶ NEXT LEVEL" : "↻ RETRY LEVEL";
+                    }
                 }
             }
         }
 
-        private void OnRetryClicked()
+        private void OnNextOrReplayClicked()
         {
             if (endShiftModal != null) endShiftModal.SetActive(false);
+            if (upgradeShopModal != null) upgradeShopModal.SetActive(false);
+
             if (ShiftManager.Instance != null)
             {
-                ShiftManager.Instance.StartShift(ShiftManager.Instance.currentStageId, ShiftManager.Instance.currentMode);
+                int nextStage = ShiftManager.Instance.currentStageId;
+                if (ShiftManager.Instance.levelVictory && nextStage >= 1 && nextStage < 5)
+                {
+                    nextStage++;
+                }
+                else if (nextStage == 0)
+                {
+                    nextStage = 1;
+                }
+                ShiftManager.Instance.StartShift(nextStage, ShiftManager.Instance.currentMode);
             }
         }
 
@@ -636,7 +1325,7 @@ namespace TwoLadles.UI
         {
             if (KitchenController.Instance != null)
             {
-                int peerId = 2; // Jiwon's default peer
+                int peerId = 2;
                 var res = KitchenController.Instance.RequestHireWorker(peerId, roleId);
                 if (!res.ok)
                 {
@@ -647,18 +1336,24 @@ namespace TwoLadles.UI
 
         private void OnReturnToLobbyClicked()
         {
+            if (endShiftModal != null) endShiftModal.SetActive(false);
+            if (upgradeShopModal != null) upgradeShopModal.SetActive(false);
+            if (recipeBookModal != null) recipeBookModal.SetActive(false);
+
             if (NetworkManager.Instance != null)
             {
-                NetworkManager.Instance.ReturnToMenu("Returned to Lobby.");
+                NetworkManager.Instance.ReturnToMenu("Select a level or upgrade your chefs.");
             }
-            if (ShiftManager.Instance != null)
+            if (ShiftManager.Instance != null && ShiftManager.Instance.shiftActive)
             {
-                ShiftManager.Instance.EndShift();
+                ShiftManager.Instance.shiftActive = false;
             }
             var lobby = FindObjectOfType<LobbyUI>(true);
             if (lobby != null)
             {
                 lobby.gameObject.SetActive(true);
+                if (lobby.modalPanel != null) lobby.modalPanel.SetActive(true);
+                lobby.RefreshProgressionDisplay();
             }
         }
 
@@ -666,7 +1361,7 @@ namespace TwoLadles.UI
         {
             if (ShiftManager.Instance != null && ShiftManager.Instance.shiftActive)
             {
-                ShiftManager.Instance.EndShift();
+                ShiftManager.Instance.shiftActive = false;
             }
         }
 
@@ -679,10 +1374,16 @@ namespace TwoLadles.UI
             if (ShiftManager.Instance != null)
             {
                 ShiftManager.Instance.OnTutorialStepChanged -= UpdateTutorialGuidance;
+                ShiftManager.Instance.OnReputationChanged -= OnReputationChanged;
+                ShiftManager.Instance.OnWaveUpdated -= OnWaveUpdated;
             }
             if (KitchenController.Instance != null)
             {
                 KitchenController.Instance.OnChefSwitched -= UpdateChefSwitchDisplay;
+            }
+            if (ProgressionManager.Instance != null)
+            {
+                ProgressionManager.Instance.OnProgressionUpdated -= RefreshUpgradeShopDisplay;
             }
         }
     }

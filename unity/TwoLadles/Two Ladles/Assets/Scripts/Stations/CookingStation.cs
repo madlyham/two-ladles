@@ -25,6 +25,7 @@ namespace TwoLadles.Stations
             heldItem = item;
             cookingElapsedSeconds = 0.0f;
             currentState = CookingState.COOKING;
+            RefreshStationVisuals();
             return true;
         }
 
@@ -34,10 +35,17 @@ namespace TwoLadles.Stations
             {
                 currentState = CookingState.RAW;
                 cookingElapsedSeconds = 0.0f;
+                SetProgressBar(false, 0f, Color.clear);
                 return;
             }
 
-            cookingElapsedSeconds += delta;
+            float speedMult = 1.0f;
+            if (ProgressionManager.Instance != null)
+            {
+                speedMult = ProgressionManager.Instance.GetUpgradeValue("cook_speed", 1.0f);
+            }
+
+            cookingElapsedSeconds += delta * speedMult;
 
             float optStart = applianceSpec != null ? applianceSpec.optimalStartTime : 4.0f;
             float optEnd = applianceSpec != null ? applianceSpec.optimalEndTime : 8.0f;
@@ -51,21 +59,41 @@ namespace TwoLadles.Stations
                 burnTime += extraWindow;
             }
 
+            // Apply Double-Walled Stockpot / Appliance Window upgrade
+            if (ProgressionManager.Instance != null)
+            {
+                float winMult = ProgressionManager.Instance.GetUpgradeValue("stockpot_window", 1.0f);
+                if (winMult > 1.0f)
+                {
+                    float extra = (optEnd - optStart) * (winMult - 1.0f);
+                    optEnd += extra;
+                    burnTime += extra;
+                }
+            }
+
             if (cookingElapsedSeconds < optStart)
             {
                 currentState = CookingState.COOKING;
+                float pct = optStart > 0.01f ? Mathf.Clamp01(cookingElapsedSeconds / optStart) : 1.0f;
+                SetProgressBar(true, pct, new Color(0.95f, 0.80f, 0.20f, 1.0f));
             }
             else if (cookingElapsedSeconds <= optEnd)
             {
                 currentState = CookingState.OPTIMAL;
+                float pulse = Mathf.PingPong(Time.time * 4.0f, 1.0f);
+                Color optCol = Color.Lerp(new Color(0.15f, 0.95f, 0.35f, 1.0f), new Color(0.55f, 1.0f, 0.65f, 1.0f), pulse);
+                SetProgressBar(true, 1.0f, optCol);
             }
             else if (cookingElapsedSeconds < burnTime)
             {
                 currentState = CookingState.OVERCOOKED;
+                float pct = 1.0f - Mathf.Clamp01((cookingElapsedSeconds - optEnd) / Mathf.Max(0.1f, burnTime - optEnd));
+                SetProgressBar(true, Mathf.Max(0.2f, pct), new Color(0.98f, 0.50f, 0.15f, 1.0f));
             }
             else
             {
                 currentState = CookingState.BURNT;
+                SetProgressBar(true, 1.0f, new Color(0.85f, 0.15f, 0.15f, 1.0f));
             }
         }
 
@@ -105,6 +133,8 @@ namespace TwoLadles.Stations
 
             cookingElapsedSeconds = 0.0f;
             currentState = CookingState.RAW;
+            SetProgressBar(false, 0f, Color.clear);
+            RefreshStationVisuals();
             return item;
         }
 
@@ -123,11 +153,11 @@ namespace TwoLadles.Stations
                             ShiftManager.Instance.AdvanceTutorialStep(7);
                         }
 
-                        return (true, $"Cooking started in {displayName}.");
+                        return (true, $"Cooking in {displayName}.");
                     }
-                    return (false, $"{displayName} cannot accept this ingredient.");
+                    return (false, $"Wrong appliance.");
                 }
-                return (false, "Nothing to cook.");
+                return (false, "Empty.");
             }
             else
             {
@@ -140,7 +170,7 @@ namespace TwoLadles.Stations
                         ShiftManager.Instance.AdvanceTutorialStep(8);
                     }
 
-                    return (true, $"Retrieved {playerItem.displayName} from {displayName}.");
+                    return (true, $"Picked {playerItem.displayName}.");
                 }
                 return (false, "Hands full.");
             }
@@ -148,7 +178,7 @@ namespace TwoLadles.Stations
 
         public override (bool ok, string reason) InteractSecondary(ref KitchenItem playerItem, int peerId, string characterId)
         {
-            return (false, "Secondary action not applicable to cooking station.");
+            return InteractPrimary(ref playerItem, peerId, characterId);
         }
     }
 }

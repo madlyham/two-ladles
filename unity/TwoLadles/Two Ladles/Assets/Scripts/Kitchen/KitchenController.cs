@@ -25,6 +25,8 @@ namespace TwoLadles.Kitchen
         public bool autoBuildKitchenOnStart = true;
         private int workerUidCounter = 1;
         private string currentPrompt = "";
+        private GameObject _tutorialArrowObj;
+        private static Sprite _tutorialArrowSprite;
 
         private void Awake()
         {
@@ -80,6 +82,112 @@ namespace TwoLadles.Kitchen
 
             // 3. Update interaction prompt for local player
             UpdateLocalPrompt();
+
+            // 4. Update Tutorial 3D Target Arrow
+            UpdateTutorialArrow();
+        }
+
+        private static Sprite GetTutorialArrowSprite()
+        {
+            if (_tutorialArrowSprite == null)
+            {
+                int w = 24, h = 24;
+                Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Point;
+                Color clear = new Color(0, 0, 0, 0);
+                Color gold = new Color(1.0f, 0.88f, 0.15f, 1.0f);
+                Color outline = new Color(0.12f, 0.10f, 0.05f, 1.0f);
+
+                for (int y = 0; y < h; y++)
+                {
+                    for (int x = 0; x < w; x++)
+                    {
+                        tex.SetPixel(x, y, clear);
+                        // Downward pointing arrow: shaft at top (y=10..21, x=8..15), triangle head at bottom (y=2..11)
+                        bool inShaft = (y >= 11 && y <= 21 && x >= 9 && x <= 14);
+                        int headHalfWidth = y - 2;
+                        bool inHead = (y >= 2 && y <= 11 && Mathf.Abs(x - 11.5f) <= headHalfWidth);
+                        if (inShaft || inHead)
+                        {
+                            bool isEdge = (y == 21 || y == 2 || (inShaft && (x == 9 || x == 14)) || (inHead && Mathf.Abs(Mathf.Abs(x - 11.5f) - headHalfWidth) < 1.2f));
+                            tex.SetPixel(x, y, isEdge ? outline : gold);
+                        }
+                    }
+                }
+                tex.Apply();
+                _tutorialArrowSprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.0f), 24f);
+            }
+            return _tutorialArrowSprite;
+        }
+
+        private void UpdateTutorialArrow()
+        {
+            bool showArrow = ShiftManager.Instance != null && ShiftManager.Instance.shiftActive && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep < 10;
+            if (!showArrow)
+            {
+                if (_tutorialArrowObj != null && _tutorialArrowObj.activeSelf)
+                    _tutorialArrowObj.SetActive(false);
+                return;
+            }
+
+            if (_tutorialArrowObj == null)
+            {
+                _tutorialArrowObj = new GameObject("TutorialTargetArrow");
+                _tutorialArrowObj.transform.SetParent(transform);
+                _tutorialArrowObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
+                _tutorialArrowObj.transform.localScale = Vector3.one * 1.15f;
+                var sr = _tutorialArrowObj.AddComponent<SpriteRenderer>();
+                sr.sprite = GetTutorialArrowSprite();
+                sr.sortingOrder = 1450;
+            }
+
+            if (!_tutorialArrowObj.activeSelf)
+                _tutorialArrowObj.SetActive(true);
+
+            Vector3 targetPos = new Vector3(-2.0f, 0.0f, 0.0f);
+            int step = ShiftManager.Instance.tutorialStep;
+
+            switch (step)
+            {
+                case 1:
+                case 2:
+                    if (playersByPeer.TryGetValue(1, out var linh) && linh != null)
+                        targetPos = linh.transform.position + new Vector3(0f, 0.4f, 0f);
+                    break;
+                case 3:
+                    if (stations.TryGetValue("prep_west", out var prep) && prep != null)
+                        targetPos = prep.transform.position;
+                    break;
+                case 4:
+                    if (stations.TryGetValue("pass_counter", out var pass) && pass != null)
+                        targetPos = pass.transform.position;
+                    break;
+                case 5:
+                    if (playersByPeer.TryGetValue(2, out var jiwon) && jiwon != null)
+                        targetPos = jiwon.transform.position + new Vector3(0f, 0.4f, 0f);
+                    break;
+                case 6:
+                    bool jiwonHasPork = playersByPeer.TryGetValue(2, out var jChef) && jChef != null && jChef.carriedItem != null;
+                    string s6Key = jiwonHasPork ? "grill_pan" : "pass_counter";
+                    if (stations.TryGetValue(s6Key, out var st6) && st6 != null)
+                        targetPos = st6.transform.position;
+                    break;
+                case 7:
+                    if (stations.TryGetValue("grill_pan", out var grill) && grill != null)
+                        targetPos = grill.transform.position;
+                    break;
+                case 8:
+                    if (stations.TryGetValue("assembly_west", out var asm) && asm != null)
+                        targetPos = asm.transform.position;
+                    break;
+                case 9:
+                    if (stations.TryGetValue("serving_station", out var srv) && srv != null)
+                        targetPos = srv.transform.position;
+                    break;
+            }
+
+            float bob = Mathf.Sin(Time.time * 6.5f) * 0.22f;
+            _tutorialArrowObj.transform.position = targetPos + new Vector3(0.0f, 2.15f + bob, -0.35f);
         }
 
         private void UpdateLocalPrompt()
@@ -94,29 +202,29 @@ namespace TwoLadles.Kitchen
             if (nearest != null)
             {
                 if (nearest is PrepStation)
-                    prompt = $"{nearest.displayName}  •  [E] Place / Pick  |  [F] Strike";
+                    prompt = "[E] Place/Pick  •  [F] Chop";
                 else if (nearest is CookingStation)
-                    prompt = $"{nearest.displayName}  •  [E] Cook / Retrieve";
+                    prompt = "[E] Cook / Pick Up";
                 else if (nearest is PassCounter)
-                    prompt = $"Pass Counter  •  [E] Place / Retrieve (+15 Flow)";
+                    prompt = "[E] Pass / Take (+15 Flow)";
                 else if (nearest is CounterStation)
-                    prompt = $"Holding Table  •  [E] Place / Pick Item";
+                    prompt = "[E] Place / Pick";
                 else if (nearest is AssemblyStation)
-                    prompt = $"{nearest.displayName}  •  [E] Add Component / Plate";
+                    prompt = "[E] Plate / Add Ingredient";
                 else if (nearest is ServingStation)
-                    prompt = $"Serving Counter  •  [E] Deliver Completed Dish";
+                    prompt = "[E] Serve Dish";
                 else if (nearest is WashingStation)
-                    prompt = $"Washing Sink  •  [E] Clean Plate  |  [F] Clean Bowl";
+                    prompt = "[E] Plate  •  [F] Bowl / Scrub";
                 else if (nearest is CrateStation crate)
-                    prompt = $"{crate.displayName}  •  [E] Take";
+                    prompt = $"[E] {crate.displayName}";
                 else if (nearest is TrashStation)
-                    prompt = $"Trash Bin  •  [E] Dispose Item";
+                    prompt = "[E] Trash";
                 else
-                    prompt = $"{nearest.displayName}  •  [E] Interact";
+                    prompt = "[E] Use";
             }
             else
             {
-                prompt = "Move near a station to interact  [E: Use | F: Strike | Q: Throw]";
+                prompt = "[WASD] Move  •  [TAB] Wheel  •  [E] Use  •  [F] Action  •  [R] Recipes";
             }
 
             if (prompt != currentPrompt)
@@ -249,40 +357,69 @@ namespace TwoLadles.Kitchen
 
             Sprite cleanSprite = GetStationSprite("floor_tile_clean");
             Sprite brokenSprite = GetStationSprite("floor_tile_broken");
+            Sprite grass1Sprite = GetStationSprite("grass_tile_1");
+            Sprite grass2Sprite = GetStationSprite("grass_tile_2");
+            Sprite woodFloorSprite = GetStationSprite("wood_floor_tile");
 
-            // All floor tiles share the exact same Z-axis plane (local Z = 0.0f)
-            // X from -8.5 to +8.5 (step 1.0m, 18 columns)
-            // Y from -4.5 to +3.5 (step 1.0m, 9 rows meeting the base of the North wall)
-            for (float x = -8.5f; x <= 8.5f; x += 1.0f)
+            // All floor & exterior tiles share the exact same Z-axis plane (local Z = 0.0f)
+            // Expanded grid [-15.5..15.5, -7.5..7.5] eliminates the empty dark void around the kitchen:
+            // - Kitchen Interior: x in [-8.5..8.5], y in [-4.5..3.5]
+            // - Restaurant Dining Patio outside North Double Doors: x in [-5.5..5.5], y in [4.5..6.5]
+            // - Lush Grass Surround on all outer sides
+            for (float x = -15.5f; x <= 15.5f; x += 1.0f)
             {
-                for (float y = -4.5f; y <= 3.5f; y += 1.0f)
+                for (float y = -8.5f; y <= 8.5f; y += 1.0f)
                 {
+                    bool isInsideKitchen = (x >= -8.5f && x <= 8.5f && y >= -4.5f && y <= 3.5f);
+                    bool isRestaurantDining = (!isInsideKitchen && y >= 4.5f && y <= 8.5f && Mathf.Abs(x) <= 6.5f);
+
                     GameObject tileObj = new GameObject($"Tile_{x:F1}_{y:F1}");
                     tileObj.transform.SetParent(floorRoot.transform, false);
                     tileObj.transform.localPosition = new Vector3(x, y, 0.0f);
                     tileObj.transform.localRotation = Quaternion.identity;
-                    tileObj.transform.localScale = Vector3.one * 1.01f;
+                    tileObj.transform.localScale = Vector3.one * 1.015f;
 
                     var sr = tileObj.AddComponent<SpriteRenderer>();
-                    bool isBroken = rng.NextDouble() < 0.16;
-                    sr.sprite = (isBroken && brokenSprite != null) ? brokenSprite : cleanSprite;
-                    sr.sortingOrder = -50;
 
-                    // Authentic subtle kitchen zone tinting
-                    if (Mathf.Abs(x) <= 0.35f)
+                    if (isInsideKitchen)
                     {
-                        // Golden center boundary divider line
-                        sr.color = new Color(0.92f, 0.82f, 0.45f);
+                        bool isBroken = rng.NextDouble() < 0.16;
+                        sr.sprite = (isBroken && brokenSprite != null) ? brokenSprite : cleanSprite;
+                        sr.sortingOrder = -50;
+
+                        if (Mathf.Abs(x) <= 0.35f)
+                        {
+                            sr.color = new Color(0.92f, 0.82f, 0.45f);
+                        }
+                        else if (x < 0f)
+                        {
+                            sr.color = isBroken ? new Color(0.85f, 0.88f, 0.86f) : new Color(0.92f, 0.96f, 0.94f);
+                        }
+                        else
+                        {
+                            sr.color = isBroken ? new Color(0.90f, 0.84f, 0.80f) : new Color(0.96f, 0.92f, 0.88f);
+                        }
                     }
-                    else if (x < 0f)
+                    else if (isRestaurantDining)
                     {
-                        // Linh's West zone: cool teal-grey tile
-                        sr.color = isBroken ? new Color(0.85f, 0.88f, 0.86f) : new Color(0.92f, 0.96f, 0.94f);
+                        sr.sprite = woodFloorSprite != null ? woodFloorSprite : cleanSprite;
+                        sr.sortingOrder = -52;
+                        // Warm red/gold bistro runner carpet directly outside the double doors
+                        if (Mathf.Abs(x) <= 1.5f && y <= 5.5f)
+                        {
+                            sr.color = new Color(0.88f, 0.55f, 0.48f);
+                        }
+                        else
+                        {
+                            sr.color = new Color(0.96f, 0.88f, 0.78f);
+                        }
                     }
                     else
                     {
-                        // Jiwon's East zone: warm terracotta-tinted tile
-                        sr.color = isBroken ? new Color(0.90f, 0.84f, 0.80f) : new Color(0.96f, 0.92f, 0.88f);
+                        bool useFlowers = rng.NextDouble() < 0.25;
+                        sr.sprite = (useFlowers && grass2Sprite != null) ? grass2Sprite : (grass1Sprite != null ? grass1Sprite : cleanSprite);
+                        sr.sortingOrder = -55;
+                        sr.color = (grass1Sprite != null) ? Color.white : new Color(0.38f, 0.64f, 0.32f);
                     }
                 }
             }
@@ -308,18 +445,16 @@ namespace TwoLadles.Kitchen
 
             if (wallSprite != null)
             {
-                float[] wallYLevels = new float[] { 1.8f, 3.0f, 4.2f };
+                float[] wallYLevels = new float[] { 1.8f, 2.8f };
                 for (int i = 0; i < wallYLevels.Length; i++)
                 {
                     float y = wallYLevels[i];
-                    // Reverse order: front/lower tier (i=0, y=1.8) has higher sortingOrder (-14)
-                    // than back/upper tiers (-15, -16), hiding repeated baseboards on upper tiers.
                     int tierSortingOrder = -14 - i;
 
                     for (float x = -8.5f; x <= 8.5f; x += 1.0f)
                     {
-                        // Door opening is 2.8m wide, 2.2m tall: skip tiles inside door frame
-                        if (y < 2.2f && Mathf.Abs(x) < 1.4f) continue;
+                        // Door opening is 2.8m wide: leave open so double doors & restaurant dining beyond are framed cleanly
+                        if (Mathf.Abs(x) < 1.4f) continue;
 
                         GameObject wObj = new GameObject($"WallTile_{x:F1}_{y:F1}");
                         wObj.transform.SetParent(wallRoot.transform);
@@ -834,6 +969,28 @@ namespace TwoLadles.Kitchen
 
             // 4. Fallback to separate single-tile files
             Sprite fallback = Resources.Load<Sprite>($"Sprites/Kitchen/{name}");
+            if (fallback == null)
+            {
+                Texture2D rawTex = Resources.Load<Texture2D>($"Sprites/Kitchen/{name}");
+                if (rawTex != null)
+                {
+                    rawTex.filterMode = FilterMode.Point;
+                    fallback = Sprite.Create(rawTex, new Rect(0, 0, rawTex.width, rawTex.height), new Vector2(0.5f, 0.5f), 32f);
+                }
+                else if (name == "dining_table_1" || name == "dining_table_2")
+                {
+                    Texture2D pkTex = Resources.Load<Texture2D>("Sprites/Kitchen/professional_kitchen");
+                    if (pkTex != null)
+                    {
+                        float rx = (name == "dining_table_1") ? 0f : 32f;
+                        fallback = Sprite.Create(pkTex, new Rect(rx, 0f, 32f, 42f), new Vector2(0.5f, 0.0f), 32f);
+                    }
+                }
+            }
+            if (fallback != null)
+            {
+                _kitchenSpritesCache[name] = fallback;
+            }
             return fallback;
         }
 

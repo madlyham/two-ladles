@@ -10,6 +10,7 @@ namespace TwoLadles.Core
     {
         public int stars;
         public int bestScore;
+        public float bestReputation;
         public bool completed;
     }
 
@@ -17,9 +18,12 @@ namespace TwoLadles.Core
     public class UpgradeItem
     {
         public string id;
+        public string category;
         public string displayName;
         public int cost;
         public string description;
+        public int level;
+        public int maxLevel = 1;
         public bool purchased;
         public string effectType;
         public float value;
@@ -50,7 +54,14 @@ namespace TwoLadles.Core
         public event Action<string> OnUpgradePurchased;
         public event Action<int> OnStageUnlocked;
 
+        // Gold is the unified progression currency (aliased with coins for test compatibility)
         public int coins = 150;
+        public int gold
+        {
+            get => coins;
+            set => coins = Mathf.Max(0, value);
+        }
+
         public int totalCareerScore = 0;
         public int highestUnlockedStage = 1;
         public int selectedStage = 1;
@@ -63,6 +74,7 @@ namespace TwoLadles.Core
 
         public Dictionary<int, StageRecord> stageRecords = new Dictionary<int, StageRecord>();
         public Dictionary<string, UpgradeItem> catalogUpgrades = new Dictionary<string, UpgradeItem>();
+        private HashSet<string> claimedRewardTokens = new HashSet<string>();
 
         private string saveFilePath;
 
@@ -84,33 +96,180 @@ namespace TwoLadles.Core
         public void InitDefaults()
         {
             saveFilePath = Path.Combine(Application.persistentDataPath, "progression.json");
+            claimedRewardTokens.Clear();
 
             for (int i = 1; i <= 8; i++)
             {
-                stageRecords[i] = new StageRecord { stars = 0, bestScore = 0, completed = false };
+                stageRecords[i] = new StageRecord { stars = 0, bestScore = 0, bestReputation = 0f, completed = false };
             }
+
+            catalogUpgrades.Clear();
 
             catalogUpgrades["sharp_santoku_knives"] = new UpgradeItem
             {
                 id = "sharp_santoku_knives",
+                category = "Prep Speed",
                 displayName = "Sharp Santoku Knife Set",
                 cost = 100,
-                description = "Widens Prep Counter cadence sweet-spot by +15% for both chefs.",
+                description = "+15% Prep Counter speed & cadence sweet-spot.",
+                level = 0,
+                maxLevel = 1,
                 purchased = false,
                 effectType = "prep_window",
                 value = 1.15f
             };
 
+            catalogUpgrades["chef_speed_boots"] = new UpgradeItem
+            {
+                id = "chef_speed_boots",
+                category = "Movement Speed",
+                displayName = "Non-Slip Kitchen Footwear",
+                cost = 100,
+                description = "+18% Movement Speed for both Linh & Jiwon.",
+                level = 0,
+                maxLevel = 1,
+                purchased = false,
+                effectType = "move_speed",
+                value = 1.18f
+            };
+
+            catalogUpgrades["turbo_wok_burners"] = new UpgradeItem
+            {
+                id = "turbo_wok_burners",
+                category = "Cooking Speed",
+                displayName = "High-Output Jet Burners",
+                cost = 150,
+                description = "+25% Faster Cooking Speed on Grill, Wok & Blancher.",
+                level = 0,
+                maxLevel = 1,
+                purchased = false,
+                effectType = "cook_speed",
+                value = 1.25f
+            };
+
+            catalogUpgrades["high_pressure_sink"] = new UpgradeItem
+            {
+                id = "high_pressure_sink",
+                category = "Interaction Speed",
+                displayName = "High-Pressure Rinse Sprayer",
+                cost = 150,
+                description = "Cleans dirty plates in 3 scrubs instead of 4.",
+                level = 0,
+                maxLevel = 1,
+                purchased = false,
+                effectType = "wash_speed",
+                value = 0.75f
+            };
+
+            catalogUpgrades["extra_plate_stack"] = new UpgradeItem
+            {
+                id = "extra_plate_stack",
+                category = "Station Efficiency",
+                displayName = "Porcelain Dish Rack Expansion",
+                cost = 200,
+                description = "Starts every level with 6 Clean Vessels instead of 4.",
+                level = 0,
+                maxLevel = 1,
+                purchased = false,
+                effectType = "extra_plates",
+                value = 2.0f
+            };
+
             catalogUpgrades["insulated_broth_pot"] = new UpgradeItem
             {
                 id = "insulated_broth_pot",
+                category = "Appliance Mastery",
                 displayName = "Double-Walled Phở Stockpot",
                 cost = 250,
-                description = "Stockpot remains in OPTIMAL window for +50% longer duration.",
+                description = "Appliances remain in OPTIMAL window for +50% longer.",
+                level = 0,
+                maxLevel = 1,
                 purchased = false,
                 effectType = "stockpot_window",
                 value = 1.50f
             };
+        }
+
+        /// <summary>
+        /// Calculates the Gold Reward for completing a level based on remaining reputation.
+        /// Formula: Gold Reward = floor(200 * (Remaining Reputation / 100))
+        /// Failed levels (victory == false or remainingReputation <= 0) grant 0 Gold.
+        /// </summary>
+        public static int CalculateGoldReward(float remainingReputation, bool victory = true)
+        {
+            if (!victory || remainingReputation <= 0.0f)
+                return 0;
+
+            float clampedRep = Mathf.Clamp(remainingReputation, 0.0f, 100.0f);
+            return Mathf.FloorToInt(200.0f * ((clampedRep / 100.0f) + 1e-6f));
+        }
+
+        /// <summary>
+        /// Records completion of a wave-based level using Reputation -> Gold scaling.
+        /// Prevents duplicate reward claims via claimToken.
+        /// </summary>
+        public (bool ok, int goldEarned, bool newlyUnlocked, bool tierUpgraded) RecordLevelWaveCompletion(
+            int stageId,
+            float remainingReputation,
+            bool victory,
+            int score,
+            string claimToken = "")
+        {
+            if (!string.IsNullOrEmpty(claimToken))
+            {
+                if (claimedRewardTokens.Contains(claimToken))
+                {
+                    return (false, 0, false, false);
+                }
+                claimedRewardTokens.Add(claimToken);
+            }
+
+            if (!victory || remainingReputation <= 0.0f)
+            {
+                SaveProgression();
+                OnProgressionUpdated?.Invoke();
+                return (true, 0, false, false);
+            }
+
+            int earnedGold = CalculateGoldReward(remainingReputation, true);
+            coins += earnedGold;
+            totalCareerScore += score;
+
+            if (!stageRecords.ContainsKey(stageId))
+                stageRecords[stageId] = new StageRecord();
+
+            var rec = stageRecords[stageId];
+            int stars = remainingReputation >= 75f ? 3 : (remainingReputation >= 40f ? 2 : 1);
+            rec.stars = Math.Max(rec.stars, stars);
+            rec.bestScore = Math.Max(rec.bestScore, score);
+            rec.bestReputation = Mathf.Max(rec.bestReputation, remainingReputation);
+            rec.completed = true;
+
+            bool newlyUnlocked = false;
+            if (stageId >= 1 && stageId == highestUnlockedStage && highestUnlockedStage < 5)
+            {
+                highestUnlockedStage = stageId + 1;
+                newlyUnlocked = true;
+                OnStageUnlocked?.Invoke(highestUnlockedStage);
+            }
+
+            bool tierUpgraded = false;
+            if (stageId == 3 && linhTier < 2)
+            {
+                linhTier = 2;
+                jiwonTier = 2;
+                tierUpgraded = true;
+            }
+            if (stageId == 5 && linhTier < 3)
+            {
+                linhTier = 3;
+                jiwonTier = 3;
+                tierUpgraded = true;
+            }
+
+            SaveProgression();
+            OnProgressionUpdated?.Invoke();
+            return (true, earnedGold, newlyUnlocked, tierUpgraded);
         }
 
         public (bool ok, string reason, int earnedCoins, bool newlyUnlocked, bool tierUpgraded) RecordShiftResults(
@@ -136,7 +295,6 @@ namespace TwoLadles.Core
                 OnStageUnlocked?.Invoke(highestUnlockedStage);
             }
 
-            // Milestone 3 Character Tier Unlocks based on campaign progress:
             bool tierUpgraded = false;
             if (stageId == 3 && stars >= 1 && linhTier < 2)
             {
@@ -185,14 +343,15 @@ namespace TwoLadles.Core
                 return (false, "Upgrade not found.");
 
             var up = catalogUpgrades[upgradeId];
-            if (up.purchased)
+            if (up.purchased || up.level >= up.maxLevel)
                 return (false, "Already owned.");
 
             if (coins < up.cost)
-                return (false, $"Not enough coins ({coins}/{up.cost}).");
+                return (false, $"Not enough gold ({coins}/{up.cost}).");
 
             coins -= up.cost;
-            up.purchased = true;
+            up.level++;
+            up.purchased = (up.level >= up.maxLevel);
 
             SaveProgression();
             OnUpgradePurchased?.Invoke(upgradeId);
@@ -214,6 +373,19 @@ namespace TwoLadles.Core
                     return up.value;
             }
             return defaultValue;
+        }
+
+        public bool IsLevelUnlocked(int stageId)
+        {
+            if (stageId <= 1) return true;
+            if (stageId <= highestUnlockedStage) return true;
+            if (stageRecords.TryGetValue(stageId - 1, out var prevRec) && prevRec.completed) return true;
+            return false;
+        }
+
+        public bool IsLevelCompleted(int stageId)
+        {
+            return stageRecords.TryGetValue(stageId, out var rec) && rec.completed;
         }
 
         public bool SaveProgression()
@@ -280,12 +452,21 @@ namespace TwoLadles.Core
                 endlessBestOrders = data.endlessBestOrders;
                 endlessBestDuration = data.endlessBestDuration;
 
+                foreach (var up in catalogUpgrades.Values)
+                {
+                    up.purchased = false;
+                    up.level = 0;
+                }
+
                 if (data.purchasedUpgrades != null)
                 {
                     foreach (var uid in data.purchasedUpgrades)
                     {
                         if (catalogUpgrades.ContainsKey(uid))
+                        {
                             catalogUpgrades[uid].purchased = true;
+                            catalogUpgrades[uid].level = catalogUpgrades[uid].maxLevel;
+                        }
                     }
                 }
 
@@ -318,14 +499,16 @@ namespace TwoLadles.Core
             endlessBestScore = 0;
             endlessBestOrders = 0;
             endlessBestDuration = 0.0f;
+            claimedRewardTokens.Clear();
 
             foreach (var k in new List<int>(stageRecords.Keys))
             {
-                stageRecords[k] = new StageRecord { stars = 0, bestScore = 0, completed = false };
+                stageRecords[k] = new StageRecord { stars = 0, bestScore = 0, bestReputation = 0f, completed = false };
             }
             foreach (var k in new List<string>(catalogUpgrades.Keys))
             {
                 catalogUpgrades[k].purchased = false;
+                catalogUpgrades[k].level = 0;
             }
 
             SaveProgression();

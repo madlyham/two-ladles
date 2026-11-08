@@ -65,6 +65,13 @@ namespace TwoLadles.UI
 
         private void Update()
         {
+            bool inActiveShift = ShiftManager.Instance != null && ShiftManager.Instance.shiftActive;
+            if (!inActiveShift)
+            {
+                if (IsOpen) CloseWheel();
+                return;
+            }
+
             // Desktop Key Trigger: Hold TAB to keep wheel open, release to select!
             if (Input.GetKeyDown(KeyCode.Tab))
             {

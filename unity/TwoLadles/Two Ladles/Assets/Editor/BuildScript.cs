@@ -269,10 +269,28 @@ public class BuildScript
             File.WriteAllBytes(previewFile, bytes);
             Debug.Log($"[BuildScript] Unity preview successfully rendered and saved to {previewFile} ({bytes.Length} bytes)");
 
+            // Also capture gameplay HUD view with Lobby hidden so exterior dining room, grass, reputation bar & joystick are clearly visible
+            lobbyObj.SetActive(false);
+            Canvas.ForceUpdateCanvases();
+            RenderTexture rtGame = new RenderTexture(width, height, 24);
+            cam.targetTexture = rtGame;
+            cam.Render();
+            RenderTexture.active = rtGame;
+            Texture2D texGame = new Texture2D(width, height, TextureFormat.RGB24, false);
+            texGame.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+            texGame.Apply();
+            cam.targetTexture = null;
+            RenderTexture.active = null;
+            UnityEngine.Object.DestroyImmediate(rtGame);
+            byte[] gameBytes = texGame.EncodeToPNG();
+            UnityEngine.Object.DestroyImmediate(texGame);
+            string gameplayPreviewFile = $"{previewDir}/unity_kitchen_gameplay_view.png";
+            File.WriteAllBytes(gameplayPreviewFile, gameBytes);
+
             string webPreview = Path.GetFullPath(Path.Combine(Application.dataPath, "../../../../web/assets/kitchen_preview.png"));
             if (File.Exists(webPreview) || Directory.Exists(Path.GetDirectoryName(webPreview)))
             {
-                File.WriteAllBytes(webPreview, bytes);
+                File.WriteAllBytes(webPreview, gameBytes);
                 Debug.Log($"[BuildScript] Web preview also updated at: {webPreview}");
             }
             EditorApplication.Exit(0);

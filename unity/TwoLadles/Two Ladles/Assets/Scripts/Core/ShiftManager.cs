@@ -56,10 +56,15 @@ namespace TwoLadles.Core
         public event Action<List<OrderTicket>> OnOrderQueueUpdated;
         public event Action<string, Color> OnFeedbackBanner;
         public event Action<Dictionary<string, object>> OnShiftEnded;
+        public event Action<int, string, string> OnTutorialStepChanged;
 
         public bool shiftActive = false;
         public GameMode currentMode = GameMode.CAMPAIGN;
         public int currentStageId = 1;
+        public bool isTutorial => currentStageId == 0;
+        public int tutorialStep = 1;
+        public string tutorialStepTitle = "";
+        public string tutorialStepInstruction = "";
         public float shiftTimeRemaining = 180.0f;
         public float shiftElapsedSeconds = 0.0f;
 
@@ -152,23 +157,32 @@ namespace TwoLadles.Core
                 }
             }
 
-            // Tick active orders patience
-            for (int i = activeOrders.Count - 1; i >= 0; i--)
+            // Tutorial Step 1 progress check
+            if (isTutorial && tutorialStep == 1 && shiftElapsedSeconds > 2.0f)
             {
-                var ord = activeOrders[i];
-                ord.timeRemaining -= dt;
-                if (ord.timeRemaining <= 0.0f)
-                {
-                    ord.isFailed = true;
-                    ordersFailed++;
-                    activeOrders.RemoveAt(i);
-                    AddKitchenFlow(-15.0f);
-                    OnFeedbackBanner?.Invoke($"Order Expired! (-15 Flow)", new Color(0.95f, 0.25f, 0.2f));
+                AdvanceTutorialStep(2);
+            }
 
-                    if (currentMode == GameMode.ENDLESS_RUSH && ordersFailed >= 3)
+            // Tick active orders patience (frozen during tutorial so players can learn without stress)
+            if (!isTutorial)
+            {
+                for (int i = activeOrders.Count - 1; i >= 0; i--)
+                {
+                    var ord = activeOrders[i];
+                    ord.timeRemaining -= dt;
+                    if (ord.timeRemaining <= 0.0f)
                     {
-                        EndShift("Shift Over! 3 Orders Missed.");
-                        return;
+                        ord.isFailed = true;
+                        ordersFailed++;
+                        activeOrders.RemoveAt(i);
+                        AddKitchenFlow(-15.0f);
+                        OnFeedbackBanner?.Invoke($"Order Expired! (-15 Flow)", new Color(0.95f, 0.25f, 0.2f));
+
+                        if (currentMode == GameMode.ENDLESS_RUSH && ordersFailed >= 3)
+                        {
+                            EndShift("Shift Over! 3 Orders Missed.");
+                            return;
+                        }
                     }
                 }
             }
@@ -179,6 +193,60 @@ namespace TwoLadles.Core
             {
                 TrySpawnNextOrder();
             }
+        }
+
+        public void AdvanceTutorialStep(int step)
+        {
+            if (!isTutorial) return;
+            if (step <= tutorialStep && step != 1) return;
+            tutorialStep = step;
+
+            switch (tutorialStep)
+            {
+                case 1:
+                    tutorialStepTitle = "STEP 1: MOVEMENT";
+                    tutorialStepInstruction = "Use [W, A, S, D] or Arrow Keys to walk around your kitchen zone.";
+                    break;
+                case 2:
+                    tutorialStepTitle = "STEP 2: INGREDIENT WHEEL";
+                    tutorialStepInstruction = "Hold [TAB] or Right-Click anywhere to open Wheel. Select 'Raw Pork Belly'.";
+                    break;
+                case 3:
+                    tutorialStepTitle = "STEP 3: PREP TABLE SLICING";
+                    tutorialStepInstruction = "Walk to Prep Table. Press [E] to place Pork, then strike [F] 4 times to slice it.";
+                    break;
+                case 4:
+                    tutorialStepTitle = "STEP 4: PASS COUNTER HANDOFF";
+                    tutorialStepInstruction = "Walk to center Pass Counter. Press [E] to place Sliced Pork for Chef Jiwon.";
+                    break;
+                case 5:
+                    tutorialStepTitle = "STEP 5: SWITCH TO CHEF JIWON";
+                    tutorialStepInstruction = "Press [C] or click 'Switch Chef' button to take control of Chef Jiwon (East Zone)!";
+                    break;
+                case 6:
+                    tutorialStepTitle = "STEP 6: RETRIEVE & GRILL";
+                    tutorialStepInstruction = "As Jiwon, press [E] to retrieve pork from Pass Counter (+15 Flow!), then [E] at Grill Pan.";
+                    break;
+                case 7:
+                    tutorialStepTitle = "STEP 7: OPTIMAL COOKING HEAT";
+                    tutorialStepInstruction = "Watch cooking gauge! When it hits the OPTIMAL (Green) zone, press [E] to retrieve Grilled Pork.";
+                    break;
+                case 8:
+                    tutorialStepTitle = "STEP 8: ASSEMBLE BÁNH MÌ";
+                    tutorialStepInstruction = "Pass grilled pork to Linh [E on Pass Counter], switch to Linh [C], bring Baguette & Pickled Veg to Assembly Table [E]!";
+                    break;
+                case 9:
+                    tutorialStepTitle = "STEP 9: DELIVER TO SERVICE";
+                    tutorialStepInstruction = "Pick up finished Bánh Mì and deliver it to the North Service Door [E] to complete the order!";
+                    break;
+                case 10:
+                    tutorialStepTitle = "★ TUTORIAL COMPLETE! ★";
+                    tutorialStepInstruction = "Mastery achieved! Clean dirty plates at the sink [E/F]. Press [TAB] to return to Lobby anytime!";
+                    break;
+            }
+
+            OnTutorialStepChanged?.Invoke(tutorialStep, tutorialStepTitle, tutorialStepInstruction);
+            OnFeedbackBanner?.Invoke($"TUTORIAL: {tutorialStepTitle}", new Color(1.0f, 0.85f, 0.2f));
         }
 
         public void StartShift(int stageId, GameMode mode = GameMode.CAMPAIGN)
@@ -203,7 +271,20 @@ namespace TwoLadles.Core
             ticketCounter = 0;
 
             float duration = DEFAULT_SHIFT_DURATION;
-            if (currentMode == GameMode.CAMPAIGN && GameData.Instance != null && GameData.Instance.campaignLevels.TryGetValue(stageId, out var spec))
+            if (isTutorial)
+            {
+                var spec = GameData.Instance != null ? GameData.Instance.tutorialLevel : null;
+                duration = spec != null ? spec.shiftDuration : 600.0f;
+                orderSpawnInterval = spec != null ? spec.orderSpawnInterval : 45.0f;
+                dynamicMaxOrders = 1;
+
+                // Starter Bánh Mì Thịt order
+                ticketCounter++;
+                var ticket = new OrderTicket($"ticket_{ticketCounter}", "banh_mi_thit", "plate", 600.0f);
+                activeOrders.Add(ticket);
+                OnOrderQueueUpdated?.Invoke(activeOrders);
+            }
+            else if (currentMode == GameMode.CAMPAIGN && GameData.Instance != null && GameData.Instance.campaignLevels.TryGetValue(stageId, out var spec))
             {
                 duration = spec.shiftDuration;
                 orderSpawnInterval = spec.orderSpawnInterval;
@@ -217,8 +298,13 @@ namespace TwoLadles.Core
             }
             shiftTimeRemaining = duration;
 
-            orderSpawnTimer = 1.0f;
+            orderSpawnTimer = isTutorial ? 99999.0f : 1.0f;
             OnFlowUpdated?.Invoke(kitchenFlow, false, 0.0f);
+
+            if (isTutorial)
+            {
+                AdvanceTutorialStep(1);
+            }
         }
 
         public void EndShift(string endReason = "")
@@ -227,7 +313,11 @@ namespace TwoLadles.Core
             shiftActive = false;
 
             int stars = 0;
-            if (currentMode == GameMode.CAMPAIGN && GameData.Instance != null && GameData.Instance.campaignLevels.TryGetValue(currentStageId, out var spec))
+            if (isTutorial && GameData.Instance != null && GameData.Instance.tutorialLevel != null)
+            {
+                stars = GameData.Instance.tutorialLevel.EvaluateStars(totalScore);
+            }
+            else if (currentMode == GameMode.CAMPAIGN && GameData.Instance != null && GameData.Instance.campaignLevels.TryGetValue(currentStageId, out var spec))
             {
                 stars = spec.EvaluateStars(totalScore);
             }
@@ -345,6 +435,11 @@ namespace TwoLadles.Core
                     ordersServed++;
                     activeOrders.RemoveAt(i);
 
+                    if (isTutorial && (tutorialStep == 8 || tutorialStep == 9))
+                    {
+                        AdvanceTutorialStep(10);
+                    }
+
                     // Flow award
                     float flowBonus = dish.quality == QualityTier.OPTIMAL ? 20.0f : 12.0f;
                     AddKitchenFlow(flowBonus);
@@ -382,7 +477,14 @@ namespace TwoLadles.Core
             float interval = 12.0f;
             List<string> allowedRecipes = new List<string> { "banh_mi_thit", "pho_bo" };
 
-            if (currentMode == GameMode.CAMPAIGN && GameData.Instance != null && GameData.Instance.campaignLevels.TryGetValue(currentStageId, out var spec))
+            if (isTutorial)
+            {
+                var spec = GameData.Instance != null ? GameData.Instance.tutorialLevel : null;
+                maxOrders = spec != null ? spec.maxConcurrentOrders : 1;
+                interval = spec != null ? spec.orderSpawnInterval : 45.0f;
+                allowedRecipes = spec != null ? spec.allowedRecipes : new List<string> { "banh_mi_thit" };
+            }
+            else if (currentMode == GameMode.CAMPAIGN && GameData.Instance != null && GameData.Instance.campaignLevels.TryGetValue(currentStageId, out var spec))
             {
                 maxOrders = spec.maxConcurrentOrders;
                 interval = spec.orderSpawnInterval;

@@ -117,6 +117,12 @@ namespace TwoLadles.Stations
                     if (PlaceIngredient(playerItem))
                     {
                         playerItem = null;
+
+                        if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 6)
+                        {
+                            ShiftManager.Instance.AdvanceTutorialStep(7);
+                        }
+
                         return (true, $"Cooking started in {displayName}.");
                     }
                     return (false, $"{displayName} cannot accept this ingredient.");
@@ -128,6 +134,12 @@ namespace TwoLadles.Stations
                 if (playerItem == null)
                 {
                     playerItem = RetrieveCookedItem();
+
+                    if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 7 && playerItem != null && playerItem.itemId.Contains("pork_grilled"))
+                    {
+                        ShiftManager.Instance.AdvanceTutorialStep(8);
+                    }
+
                     return (true, $"Retrieved {playerItem.displayName} from {displayName}.");
                 }
                 return (false, "Hands full.");

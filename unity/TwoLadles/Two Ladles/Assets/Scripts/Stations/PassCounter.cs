@@ -93,6 +93,12 @@ namespace TwoLadles.Stations
                     {
                         PlaceItem(i, playerItem, peerId, now);
                         playerItem = null;
+
+                        if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 4)
+                        {
+                            ShiftManager.Instance.AdvanceTutorialStep(5);
+                        }
+
                         return (true, $"Passed item to slot {i + 1}.");
                     }
                 }
@@ -107,6 +113,12 @@ namespace TwoLadles.Stations
                     {
                         var res = RetrieveItem(i, peerId, now);
                         playerItem = res.item;
+
+                        if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 5)
+                        {
+                            ShiftManager.Instance.AdvanceTutorialStep(6);
+                        }
+
                         string msg = res.handoffAwarded ? "Coordinated Handoff! +15 Kitchen Flow!" : "Retrieved item from Pass Counter.";
                         return (true, msg);
                     }

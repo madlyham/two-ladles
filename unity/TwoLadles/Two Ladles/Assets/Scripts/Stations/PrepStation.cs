@@ -169,6 +169,11 @@ namespace TwoLadles.Stations
                 string outputId = GameData.Instance != null ? GameData.Instance.GetPrepOutput(heldItem.itemId) : heldItem.itemId + "_portioned";
                 heldItem.itemId = outputId;
                 heldItem.quality = quality;
+
+                if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 3)
+                {
+                    ShiftManager.Instance.AdvanceTutorialStep(4);
+                }
             }
 
             UpdateVisuals();

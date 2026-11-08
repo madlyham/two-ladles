@@ -115,6 +115,15 @@ namespace TwoLadles.Player
             {
                 ThrowItem(facingDirection);
             }
+
+            // Switch Chef: C key (solo testing / local practice / tutorial)
+            if (Input.GetKeyDown(KeyCode.C))
+            {
+                if (KitchenController.Instance != null && (NetworkManager.Instance == null || !NetworkManager.Instance.isLanActive || NetworkManager.Instance.players.Count <= 1))
+                {
+                    KitchenController.Instance.SwitchLocalChef();
+                }
+            }
         }
 
         public (bool ok, string reason) TryInteractPrimary()

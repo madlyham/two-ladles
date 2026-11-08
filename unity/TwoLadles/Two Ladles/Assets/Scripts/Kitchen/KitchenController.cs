@@ -15,6 +15,7 @@ namespace TwoLadles.Kitchen
 
         public event Action<string, Color> OnStatusToast;
         public event Action<string> OnPromptChanged;
+        public event Action<int> OnChefSwitched;
 
         public Dictionary<int, PlayerController> playersByPeer = new Dictionary<int, PlayerController>();
         public Dictionary<string, StationBase> stations = new Dictionary<string, StationBase>();
@@ -154,6 +155,29 @@ namespace TwoLadles.Kitchen
             if (playersByPeer.TryGetValue(localPeer, out var localChef))
             {
                 localChef.ThrowItem(localChef.facingDirection);
+            }
+        }
+
+        public void SwitchLocalChef()
+        {
+            int currentLocal = NetworkManager.Instance != null ? NetworkManager.Instance.localPeerId : 1;
+            int nextLocal = (currentLocal == 1) ? 2 : 1;
+            if (NetworkManager.Instance != null)
+            {
+                NetworkManager.Instance.localPeerId = nextLocal;
+            }
+            foreach (var kvp in playersByPeer)
+            {
+                kvp.Value.isLocalPlayer = (kvp.Key == nextLocal);
+            }
+            UpdateLocalPrompt();
+            string chefName = (nextLocal == 1) ? "Chef Linh (West Zone)" : "Chef Jiwon (East Zone)";
+            TriggerStatusToast($"Active Chef: {chefName}", new Color(0.35f, 0.9f, 1.0f));
+            OnChefSwitched?.Invoke(nextLocal);
+
+            if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 5 && nextLocal == 2)
+            {
+                ShiftManager.Instance.AdvanceTutorialStep(6);
             }
         }
 

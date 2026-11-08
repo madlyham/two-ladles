@@ -24,8 +24,10 @@ namespace TwoLadles.UI
         public Toggle endlessToggle;
         public Button readyButton;
         public Button startShiftButton;
+        public Button playTutorialButton;
         public Text readyButtonText;
         public Text playersListText;
+        public Text controlsGuideText;
 
         [Header("Progression & Shop")]
         public Text coinsText;
@@ -187,7 +189,7 @@ namespace TwoLadles.UI
             mRect.anchorMax = new Vector2(0.5f, 1f);
             mRect.pivot = new Vector2(0.5f, 1f);
             mRect.anchoredPosition = new Vector2(0f, -10f);
-            mRect.sizeDelta = new Vector2(620f, 260f);
+            mRect.sizeDelta = new Vector2(640f, 305f);
 
             var mImg = modal.AddComponent<Image>();
             mImg.color = new Color(0.08f, 0.10f, 0.14f, 0.90f); // Sleek dark card
@@ -210,13 +212,17 @@ namespace TwoLadles.UI
             statusText = CreateLabel("StatusText", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -106f), new Vector2(600f, 22f), "Ready to host or join LAN session.", 12, Color.white, TextAnchor.MiddleCenter);
             playersListText = CreateLabel("PlayersList", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -132f), new Vector2(600f, 32f), "Connected: Host (Linh) [READY]  •  Client (Jiwon) [READY]", 12, new Color(0.85f, 0.85f, 0.9f), TextAnchor.MiddleCenter);
 
-            // Buttons: Ready & Start Shift
-            readyButton = CreateButton("ReadyBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-110f, -182f), new Vector2(180f, 38f), "TOGGLE READY", new Color(0.3f, 0.5f, 0.7f, 1f), out readyButtonText);
-            startShiftButton = CreateButton("StartShiftBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(110f, -182f), new Vector2(180f, 38f), "START SHIFT", new Color(0.85f, 0.45f, 0.15f, 1f), out _);
+            // Primary Action Buttons: Ready, Play Tutorial, Start Shift
+            readyButton = CreateButton("ReadyBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-208f, -178f), new Vector2(180f, 36f), "TOGGLE READY", new Color(0.3f, 0.5f, 0.7f, 1f), out readyButtonText);
+            playTutorialButton = CreateButton("PlayTutorialBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -178f), new Vector2(208f, 36f), "★ PLAY TUTORIAL ★", new Color(0.18f, 0.65f, 0.38f, 1f), out _);
+            startShiftButton = CreateButton("StartShiftBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(208f, -178f), new Vector2(180f, 36f), "START SHIFT", new Color(0.85f, 0.45f, 0.15f, 1f), out _);
+
+            // Controls Guide Quick Reference
+            controlsGuideText = CreateLabel("ControlsGuide", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -225f), new Vector2(620f, 22f), "CONTROLS: [WASD] Move  •  [TAB] Wheel  •  [E] Use  •  [F] Strike/Scrub  •  [C] Switch Chef  •  [Q] Throw", 11, new Color(0.75f, 0.88f, 0.98f), TextAnchor.MiddleCenter);
 
             // Career / Coins
-            coinsText = CreateLabel("CoinsText", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-130f, -228f), new Vector2(220f, 22f), "Coins: 0", 13, Color.yellow, TextAnchor.MiddleCenter);
-            careerScoreText = CreateLabel("CareerScoreText", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(130f, -228f), new Vector2(220f, 22f), "Career Score: 0", 13, Color.cyan, TextAnchor.MiddleCenter);
+            coinsText = CreateLabel("CoinsText", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-130f, -265f), new Vector2(220f, 22f), "Coins: 0", 13, Color.yellow, TextAnchor.MiddleCenter);
+            careerScoreText = CreateLabel("CareerScoreText", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(130f, -265f), new Vector2(220f, 22f), "Career Score: 0", 13, Color.cyan, TextAnchor.MiddleCenter);
         }
 
         private void Update()
@@ -245,6 +251,7 @@ namespace TwoLadles.UI
             if (hostButton != null) hostButton.onClick.AddListener(OnHostClicked);
             if (joinButton != null) joinButton.onClick.AddListener(OnJoinClicked);
             if (readyButton != null) readyButton.onClick.AddListener(OnReadyClicked);
+            if (playTutorialButton != null) playTutorialButton.onClick.AddListener(OnPlayTutorialClicked);
             if (startShiftButton != null) startShiftButton.onClick.AddListener(OnStartShiftClicked);
             if (buyKnivesButton != null) buyKnivesButton.onClick.AddListener(() => OnBuyUpgrade("sharp_santoku_knives"));
             if (buyStockpotButton != null) buyStockpotButton.onClick.AddListener(() => OnBuyUpgrade("insulated_broth_pot"));
@@ -291,6 +298,24 @@ namespace TwoLadles.UI
             {
                 NetworkManager.Instance.SetPlayerReady(localId, !p.ready);
             }
+        }
+
+        private void OnPlayTutorialClicked()
+        {
+            if (NetworkManager.Instance != null && !NetworkManager.Instance.isLanActive && NetworkManager.Instance.players.Count == 0)
+            {
+                NetworkManager.Instance.HostGame(24567, "Chef Linh");
+            }
+
+            if (NetworkManager.Instance != null && NetworkManager.Instance.IsHost())
+            {
+                NetworkManager.Instance.BroadcastShiftStart(0, GameMode.CAMPAIGN);
+            }
+            if (ShiftManager.Instance != null)
+            {
+                ShiftManager.Instance.StartShift(0, GameMode.CAMPAIGN);
+            }
+            gameObject.SetActive(false);
         }
 
         private void OnStartShiftClicked()

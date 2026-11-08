@@ -13,6 +13,7 @@ namespace TwoLadles.Core
         public Dictionary<string, RecipeSpec> recipes = new Dictionary<string, RecipeSpec>();
         public Dictionary<string, SpecializationSpec> specializations = new Dictionary<string, SpecializationSpec>();
         public Dictionary<int, CampaignLevelSpec> campaignLevels = new Dictionary<int, CampaignLevelSpec>();
+        public CampaignLevelSpec tutorialLevel;
         public Dictionary<int, LinhTierSpec> linhTiers = new Dictionary<int, LinhTierSpec>();
         public Dictionary<int, JiwonTierSpec> jiwonTiers = new Dictionary<int, JiwonTierSpec>();
         public Dictionary<string, WorkerSpec> workerCatalog = new Dictionary<string, WorkerSpec>();
@@ -162,6 +163,15 @@ namespace TwoLadles.Core
 
         private void RegisterCampaignLevels()
         {
+            // Level 0: Dedicated Interactive Tutorial (Kitchen Academy)
+            tutorialLevel = new CampaignLevelSpec(
+                0, "Kitchen Academy", "Training Kitchen", "Cooking Academy",
+                600.0f, 100, 200, 300,
+                new List<string> { "banh_mi_thit" },
+                1, 45.0f,
+                "Master kitchen fundamentals: Movement, Ingredient Wheel, Prepping strikes, Pass Counter handoffs, Grilling, Assembling, and Serving!"
+            );
+
             // Level 1: 1 Recipe only (Bánh Mì Thịt) - Tutorial pace, master basic prep, grill & assembly
             campaignLevels[1] = new CampaignLevelSpec(
                 1, "First Customer", "Rural Roadside Food Stand", "Rural Vietnam",
@@ -202,6 +212,13 @@ namespace TwoLadles.Core
                 4, 8.5f,
                 "Grand Opening! All 5 authentic dishes in rapid succession. Trigger Rush Rhythm and unlock Character Tier 3!"
             );
+        }
+
+        public CampaignLevelSpec GetLevelSpec(int stageId)
+        {
+            if (stageId == 0) return tutorialLevel;
+            if (campaignLevels.ContainsKey(stageId)) return campaignLevels[stageId];
+            return campaignLevels.ContainsKey(1) ? campaignLevels[1] : tutorialLevel;
         }
 
         private void RegisterCharacterTiers()

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TwoLadles.Data;
+using TwoLadles.Core;
 using TwoLadles.Kitchen;
 using TwoLadles.Player;
 using TwoLadles.Networking;
@@ -170,6 +171,11 @@ namespace TwoLadles.UI
             string dName = !string.IsNullOrEmpty(chosen.displayName) ? chosen.displayName : itemId;
             localChef.carriedItem = new KitchenItem(itemId, dName, "none", QualityTier.STANDARD);
             localChef.RefreshVisuals();
+
+            if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 2 && itemId == "pork_raw")
+            {
+                ShiftManager.Instance.AdvanceTutorialStep(3);
+            }
 
             KitchenController.Instance.TriggerStatusToast($"Picked {dName}!", new Color(0.35f, 1.0f, 0.6f));
         }

@@ -17,6 +17,13 @@ namespace TwoLadles.UI
         public Text flowText;
         public GameObject rushBannerObj;
         public Button returnToLobbyButton;
+        public Button switchChefButton;
+        public Text switchChefButtonText;
+
+        [Header("Tutorial Guidance")]
+        public GameObject tutorialPanelObj;
+        public Text tutorialTitleText;
+        public Text tutorialInstructionText;
 
         [Header("Order Queue")]
         public Text orderListText;
@@ -202,6 +209,25 @@ namespace TwoLadles.UI
             dirtyPlatesText = CreateLabel("DirtyPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(624f, 0f), new Vector2(110f, 28f), "Dirty: 0", 13, new Color(1.0f, 0.6f, 0.6f), TextAnchor.MiddleLeft);
 
             returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(120f, 26f), "Return to Lobby", new Color(0.5f, 0.2f, 0.2f, 0.9f), out _);
+            switchChefButton = CreateButton("SwitchChefBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-146f, 0f), new Vector2(165f, 26f), "Active: LINH [C]", new Color(0.18f, 0.42f, 0.65f, 0.95f), out switchChefButtonText);
+
+            // Tutorial Guidance Card (Pinned Top-Center)
+            GameObject tutPanel = new GameObject("TutorialGuidancePanel");
+            tutPanel.transform.SetParent(root, false);
+            tutorialPanelObj = tutPanel;
+            var tutRect = tutPanel.AddComponent<RectTransform>();
+            tutRect.anchorMin = new Vector2(0.5f, 1f);
+            tutRect.anchorMax = new Vector2(0.5f, 1f);
+            tutRect.pivot = new Vector2(0.5f, 1f);
+            tutRect.anchoredPosition = new Vector2(0f, -44f);
+            tutRect.sizeDelta = new Vector2(560f, 60f);
+
+            var tutImg = tutPanel.AddComponent<Image>();
+            tutImg.color = new Color(0.08f, 0.10f, 0.16f, 0.92f);
+
+            tutorialTitleText = CreateLabel("TutorialTitle", tutPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -8f), new Vector2(540f, 22f), "TUTORIAL — STEP 1: MOVEMENT", 13, Color.yellow, TextAnchor.MiddleCenter);
+            tutorialInstructionText = CreateLabel("TutorialInstruction", tutPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 6f), new Vector2(540f, 26f), "Use [W, A, S, D] or Arrow Keys to walk around your kitchen zone.", 12, Color.white, TextAnchor.MiddleCenter);
+            tutorialPanelObj.SetActive(false);
 
             // 2. Active Orders Panel (Upper Left Corner, compact)
             GameObject ordersPanel = new GameObject("OrdersPanel");
@@ -318,12 +344,27 @@ namespace TwoLadles.UI
                 ShiftManager.Instance.OnOrderQueueUpdated += RefreshOrders;
                 ShiftManager.Instance.OnFeedbackBanner += ShowFeedback;
                 ShiftManager.Instance.OnShiftEnded += ShowEndShiftModal;
+                ShiftManager.Instance.OnTutorialStepChanged += UpdateTutorialGuidance;
+
+                if (ShiftManager.Instance.isTutorial)
+                {
+                    UpdateTutorialGuidance(ShiftManager.Instance.tutorialStep, ShiftManager.Instance.tutorialStepTitle, ShiftManager.Instance.tutorialStepInstruction);
+                }
             }
 
             if (KitchenController.Instance != null)
             {
                 KitchenController.Instance.OnStatusToast += ShowFeedback;
                 KitchenController.Instance.OnPromptChanged += UpdatePrompt;
+                KitchenController.Instance.OnChefSwitched += UpdateChefSwitchDisplay;
+            }
+
+            if (switchChefButton != null)
+            {
+                switchChefButton.onClick.AddListener(() => {
+                    if (KitchenController.Instance != null)
+                        KitchenController.Instance.SwitchLocalChef();
+                });
             }
 
             if (hirePrepButton != null)
@@ -447,6 +488,23 @@ namespace TwoLadles.UI
             // Live order queue refresh
             RefreshOrders(ShiftManager.Instance.activeOrders);
 
+            // Tutorial panel visibility
+            if (tutorialPanelObj != null)
+            {
+                bool shouldShow = ShiftManager.Instance != null && ShiftManager.Instance.isTutorial;
+                if (tutorialPanelObj.activeSelf != shouldShow)
+                {
+                    tutorialPanelObj.SetActive(shouldShow);
+                }
+            }
+
+            // Sync Switch Chef button label
+            if (switchChefButtonText != null)
+            {
+                int localId = NetworkManager.Instance != null ? NetworkManager.Instance.localPeerId : 1;
+                switchChefButtonText.text = (localId == 1) ? "Active: LINH [C]" : "Active: JIWON [C]";
+            }
+
             if (feedbackTimer > 0.0f)
             {
                 feedbackTimer -= Time.deltaTime;
@@ -454,6 +512,30 @@ namespace TwoLadles.UI
                 {
                     feedbackBannerText.gameObject.SetActive(false);
                 }
+            }
+        }
+
+        private void UpdateTutorialGuidance(int step, string title, string instruction)
+        {
+            if (tutorialPanelObj != null)
+            {
+                tutorialPanelObj.SetActive(true);
+            }
+            if (tutorialTitleText != null)
+            {
+                tutorialTitleText.text = $"TUTORIAL — {title}";
+            }
+            if (tutorialInstructionText != null)
+            {
+                tutorialInstructionText.text = instruction;
+            }
+        }
+
+        private void UpdateChefSwitchDisplay(int peerId)
+        {
+            if (switchChefButtonText != null)
+            {
+                switchChefButtonText.text = (peerId == 1) ? "Active: LINH [C]" : "Active: JIWON [C]";
             }
         }
 
@@ -591,6 +673,14 @@ namespace TwoLadles.UI
             if (NetworkManager.Instance != null)
             {
                 NetworkManager.Instance.OnReturnedToMenu -= OnReturnedToMenuHandler;
+            }
+            if (ShiftManager.Instance != null)
+            {
+                ShiftManager.Instance.OnTutorialStepChanged -= UpdateTutorialGuidance;
+            }
+            if (KitchenController.Instance != null)
+            {
+                KitchenController.Instance.OnChefSwitched -= UpdateChefSwitchDisplay;
             }
         }
     }

@@ -58,6 +58,12 @@ namespace TwoLadles.Stations
                 heldItem.itemId = matchId;
                 var spec = GameData.Instance != null && GameData.Instance.recipes.TryGetValue(matchId, out var r) ? r : null;
                 heldItem.displayName = spec != null ? spec.displayName : matchId;
+
+                if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 8)
+                {
+                    ShiftManager.Instance.AdvanceTutorialStep(9);
+                }
+
                 return (true, $"Completed dish: {heldItem.displayName}!", true, matchId);
             }
 

@@ -71,8 +71,7 @@ namespace TwoLadles.Stations
                     if (slots[i] != null && slots[i].item != null)
                     {
                         sr.gameObject.SetActive(true);
-                        string sprName = PlayerController.ResolveItemSpriteName(slots[i].item.itemId);
-                        Sprite spr = Resources.Load<Sprite>($"Sprites/Items/{sprName}");
+                        Sprite spr = PlayerController.LoadItemSprite(slots[i].item.itemId);
                         if (spr != null) sr.sprite = spr;
                         sr.sortingOrder = 1200 + i;
                     }
@@ -135,6 +134,19 @@ namespace TwoLadles.Stations
 
             if (playerItem != null)
             {
+                // First check if carried item can self-assemble with an item waiting on the Pass Counter!
+                for (int i = 0; i < NUM_SLOTS; i++)
+                {
+                    if (slots[i] != null && slots[i].item != null &&
+                        GameData.TryCombineItems(slots[i].item, playerItem, out var combined))
+                    {
+                        var res = RetrieveItem(i, peerId, now);
+                        playerItem = combined;
+                        string bonusMsg = res.handoffAwarded ? " (+15 Flow!)" : "";
+                        return (true, $"Assembled {combined.displayName}!{bonusMsg}");
+                    }
+                }
+
                 for (int i = 0; i < NUM_SLOTS; i++)
                 {
                     if (slots[i].item == null)

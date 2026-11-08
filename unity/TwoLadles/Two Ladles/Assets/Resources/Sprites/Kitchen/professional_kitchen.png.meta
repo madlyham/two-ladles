@@ -93,6 +93,19 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
@@ -894,6 +907,174 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
+    - serializedVersion: 2
+      name: garlic
+      rect:
+        serializedVersion: 2
+        x: 3
+        y: 530
+        width: 12
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 77924c0b73b0de3419eb986456b46d1a
+      internalID: 973087900
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: bulgogi
+      rect:
+        serializedVersion: 2
+        x: 66
+        y: 548
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 232bcfd550278ba4eaaf7fe9dd3660db
+      internalID: -851968300
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tomato
+      rect:
+        serializedVersion: 2
+        x: 20
+        y: 564
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f934bb912f7b61e45860ff204d03c8cf
+      internalID: -1029866212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: clean dish
+      rect:
+        serializedVersion: 2
+        x: 145
+        y: 546
+        width: 14
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a1706e53c85f927469fd04920ace8a51
+      internalID: -1225925840
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: eggs
+      rect:
+        serializedVersion: 2
+        x: 211
+        y: 512
+        width: 11
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5f4269f3474bfd344879aa5cc44285ba
+      internalID: -2126764083
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: baguette
+      rect:
+        serializedVersion: 2
+        x: 242
+        y: 512
+        width: 11
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c2923fc2050e98d4882a60221c241ce4
+      internalID: 1764758181
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: seasoning
+      rect:
+        serializedVersion: 2
+        x: 274
+        y: 561
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2a4127888ee13bf469cce06dd1784a97
+      internalID: -1043020783
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tomato sauce
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 562
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: fbedef3889bba214b9dce555cc78a7a8
+      internalID: -1711290904
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     physicsShape: []
     bones: []
@@ -905,6 +1086,10 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     nameFileIdTable:
+      baguette: 1764758181
+      bulgogi: -851968300
+      clean dish: -1225925840
+      eggs: -2126764083
       empty double table(horizontal: -804448089
       empty double table(verticle): 230100748
       empty mixing bowl: -737986133
@@ -916,12 +1101,13 @@ TextureImporter:
       fridge south: -223881395
       fridge south open: -197114245
       full mixing bowl: 2081589766
+      garlic: -1494659711
       grill south: -1693650353
       mixer side ways: -1673324468
       mixer straight on: 105669273
       prep table dry: 937981792
       prep table pot: -500163438
-      professional_kitchen_0: -1494659711
+      seasoning: -1043020783
       shef of stuff (horizontal): -340157094
       shelf of stuff verticle: 259301159
       single faucet south: -1412226371
@@ -937,6 +1123,8 @@ TextureImporter:
       stove_south_off: -1858030047
       tile broken: 108422374
       tile not broken: -2080588309
+      tomato: -1029866212
+      tomato sauce: -1711290904
       two faucets north: 157573309
       two faucets sout: -896493629
       unwashed dish 1: -185625996

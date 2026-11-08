@@ -144,13 +144,19 @@ namespace TwoLadles.Stations
             {
                 if (playerItem != null)
                 {
+                    string placedId = playerItem.itemId;
                     if (PlaceIngredient(playerItem))
                     {
                         playerItem = null;
 
-                        if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 6)
+                        if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial)
                         {
-                            ShiftManager.Instance.AdvanceTutorialStep(7);
+                            if (ShiftManager.Instance.tutorialStep == 6)
+                                ShiftManager.Instance.AdvanceTutorialStep(7);
+                            else if (ShiftManager.Instance.tutorialStep <= 4 && placedId == "tteokbokki_raw")
+                                ShiftManager.Instance.AdvanceTutorialStep(5);
+                            else if (ShiftManager.Instance.tutorialStep <= 3 && (placedId == "tteok_portioned" || placedId == "gochujang"))
+                                ShiftManager.Instance.AdvanceTutorialStep(4);
                         }
 
                         return (true, $"Cooking in {displayName}.");
@@ -165,12 +171,79 @@ namespace TwoLadles.Stations
                 {
                     playerItem = RetrieveCookedItem();
 
-                    if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 7 && playerItem != null && playerItem.itemId.Contains("pork_grilled"))
+                    if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && playerItem != null)
                     {
-                        ShiftManager.Instance.AdvanceTutorialStep(8);
+                        if (ShiftManager.Instance.tutorialStep == 7 && playerItem.itemId.Contains("pork_grilled"))
+                            ShiftManager.Instance.AdvanceTutorialStep(8);
+                        else if (ShiftManager.Instance.tutorialStep <= 5 && playerItem.itemId == "tteokbokki")
+                            ShiftManager.Instance.AdvanceTutorialStep(6);
                     }
 
                     return (true, $"Picked {playerItem.displayName}.");
+                }
+                else
+                {
+                    // Allow adding a 2nd ingredient directly into the pan or self-assembling with cooked item!
+                    KitchenItem effectivePanItem = heldItem.Clone();
+                    bool panFinished = (currentState == CookingState.OPTIMAL || currentState == CookingState.OVERCOOKED);
+                    if (panFinished && GameData.Instance != null &&
+                        GameData.Instance.ingredients.TryGetValue(effectivePanItem.itemId, out var ingSpec) &&
+                        !string.IsNullOrEmpty(ingSpec.cookedId))
+                    {
+                        effectivePanItem.itemId = ingSpec.cookedId;
+                        if (GameData.Instance.ingredients.TryGetValue(effectivePanItem.itemId, out var outSpec))
+                            effectivePanItem.displayName = outSpec.displayName;
+                    }
+
+                    if (GameData.TryCombineItems(effectivePanItem, playerItem, out var combined) ||
+                        GameData.TryCombineItems(heldItem, playerItem, out combined))
+                    {
+                        // Case 1: Cooked Flour + Egg -> needs to cook again in pan into Bột Chiên!
+                        if (combined.itemId == "bot_chien_batter")
+                        {
+                            heldItem = combined;
+                            playerItem = null;
+                            cookingElapsedSeconds = 0.0f;
+                            currentState = CookingState.COOKING;
+                            RefreshStationVisuals();
+                            return (true, "Added Egg! Cooking Bột Chiên...");
+                        }
+
+                        // Case 2: Raw Flour + Egg or Raw Toboki + Gochujang while still cooking -> finishes cooking in pan
+                        if ((combined.itemId == "baguette_dough" || combined.itemId == "tteokbokki_raw") && !panFinished)
+                        {
+                            heldItem = combined;
+                            playerItem = null;
+                            RefreshStationVisuals();
+                            if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep <= 4)
+                            {
+                                ShiftManager.Instance.AdvanceTutorialStep(5);
+                            }
+                            return (true, $"Cooking {combined.displayName}...");
+                        }
+
+                        // Case 3: Toboki + Gochujang when pan is already cooked -> immediately yields Tteokbokki!
+                        if (combined.itemId == "tteokbokki_raw" && panFinished)
+                        {
+                            combined.itemId = "tteokbokki";
+                            combined.displayName = "Tteokbokki";
+                        }
+
+                        // Finished dish / self-assembly -> give directly to player and clear pan
+                        heldItem = null;
+                        cookingElapsedSeconds = 0.0f;
+                        currentState = CookingState.RAW;
+                        SetProgressBar(false, 0f, Color.clear);
+                        playerItem = combined;
+                        RefreshStationVisuals();
+
+                        if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && playerItem.itemId == "tteokbokki")
+                        {
+                            ShiftManager.Instance.AdvanceTutorialStep(6);
+                        }
+
+                        return (true, $"Assembled {combined.displayName}!");
+                    }
                 }
                 return (false, "Hands full.");
             }

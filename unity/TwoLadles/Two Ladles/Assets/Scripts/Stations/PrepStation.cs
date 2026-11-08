@@ -56,7 +56,21 @@ namespace TwoLadles.Stations
                 return (false, "Empty.", CadenceGrade.MISS, QualityTier.STANDARD, false, 0);
 
             if (strikesCompleted >= REQUIRED_STRIKES)
-                return (false, "Ready!", CadenceGrade.MISS, QualityTier.STANDARD, true, 0);
+            {
+                // Allow a second cut stage if the current item has a valid next prep output (e.g., korean_bbq_raw -> bulgogi_portioned)
+                string nextOut = GameData.Instance != null ? GameData.Instance.GetPrepOutput(heldItem.itemId) : "";
+                if (!string.IsNullOrEmpty(nextOut) && nextOut != heldItem.itemId)
+                {
+                    strikesCompleted = 0;
+                    lastStrikeTime = 0.0f;
+                    hasMissedCadence = false;
+                    perfectCadenceCount = 0;
+                }
+                else
+                {
+                    return (false, "Ready!", CadenceGrade.MISS, QualityTier.STANDARD, true, 0);
+                }
+            }
 
             float speedMult = customSpeedMultiplier;
             if (characterId == "linh" && ProgressionManager.Instance != null && GameData.Instance != null)
@@ -170,6 +184,14 @@ namespace TwoLadles.Stations
                     heldItem = null;
                     UpdateVisuals();
                     return (true, "Picked up.");
+                }
+                else if (GameData.TryCombineItems(heldItem, playerItem, out var combined))
+                {
+                    heldItem = null;
+                    strikesCompleted = 0;
+                    playerItem = combined;
+                    UpdateVisuals();
+                    return (true, $"Assembled {combined.displayName}!");
                 }
                 return (false, "Hands full.");
             }

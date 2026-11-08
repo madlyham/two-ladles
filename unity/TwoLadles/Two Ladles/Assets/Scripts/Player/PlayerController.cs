@@ -10,8 +10,8 @@ namespace TwoLadles.Player
     public class PlayerController : MonoBehaviour
     {
         public const float BASE_MOVE_SPEED = 6.2f;
-        public const float KITCHEN_BOUNDS_X = 8.8f;
-        public const float KITCHEN_BOUNDS_Z = 5.2f;
+        public const float KITCHEN_BOUNDS_X = 10.4f;
+        public const float KITCHEN_BOUNDS_Z = 6.6f;
 
         [Header("Identity")]
         public int peerId = 1;
@@ -387,32 +387,66 @@ namespace TwoLadles.Player
             return true;
         }
 
+        private static System.Collections.Generic.Dictionary<string, Sprite> _itemSpriteCache = new System.Collections.Generic.Dictionary<string, Sprite>();
+
+        public static Sprite LoadItemSprite(string itemIdOrSpriteName)
+        {
+            if (string.IsNullOrEmpty(itemIdOrSpriteName)) return null;
+            string sprName = ResolveItemSpriteName(itemIdOrSpriteName);
+            if (_itemSpriteCache.TryGetValue(sprName, out Sprite cached) && cached != null)
+                return cached;
+
+            Sprite spr = Resources.Load<Sprite>($"Sprites/Items/{sprName}");
+            if (spr == null)
+            {
+                Texture2D tex = Resources.Load<Texture2D>($"Sprites/Items/{sprName}");
+#if UNITY_EDITOR
+                if (tex == null)
+                {
+                    tex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>($"Assets/Resources/Sprites/Items/{sprName}.png");
+                    if (tex == null)
+                        tex = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>($"Assets/Sprites/Items/{sprName}.png");
+                }
+#endif
+                if (tex != null)
+                {
+                    tex.filterMode = FilterMode.Point;
+                    float ppu = Mathf.Max(32f, tex.width);
+                    spr = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), ppu);
+                }
+            }
+            if (spr != null)
+                _itemSpriteCache[sprName] = spr;
+            return spr;
+        }
+
         public static string ResolveItemSpriteName(string itemId)
         {
             switch (itemId)
             {
-                case "pork_raw": return "pork_belly_raw";
-                case "pork_portioned": case "pork_cooked": return "pork_portioned";
-                case "bulgogi_raw": return "beef_bulgogi_raw";
-                case "beef_raw": return "beef_raw";
-                case "bulgogi_portioned": case "beef_sliced": case "bulgogi_cooked": return "bulgogi_portioned";
+                case "unprocessed_raw_meat": case "pork_raw": case "beef_raw": return "unprocessed_raw_meat";
+                case "korean_bbq_raw": case "pork_portioned": return "korean_bbq_raw";
+                case "bulgogi_raw": case "bulgogi_portioned": case "beef_sliced": return "bulgogi_portioned";
+                case "bbq_beef": case "bulgogi_seared": case "bulgogi_cooked": case "pork_grilled": case "pork_cooked": case "bbq_with_egg": return "bulgogi";
                 case "tteok_raw": case "tteok_portioned": case "tteok_cooked": return "tteok_portioned";
-                case "noodles_raw": return "noodles_raw";
-                case "noodles_blanched": return "dish_bowl";
-                case "flour": case "flour_sack": return "flour";
-                case "broth_hot": return "broth_pot";
-                case "baguette": return "baguette_bread";
-                case "daikon_carrot_raw": case "pickled_veg": return "pickled_veg";
-                case "kimchi_raw": case "kimchi_slaw": return "kimchi_slaw";
-                case "eomuk_raw": case "fish_cake_raw": return "fish_cake_raw";
-                case "eomuk_prepared": case "eomuk_cooked": return "eomuk_prepared";
-                case "gochujang_sauce": case "korean_sauce": return "korean_sauce";
-                case "clean_plate": case "dish_plate": return "dish_plate";
-                case "clean_bowl": case "dish_bowl": return "dish_bowl";
-                case "kimchi_bokkeumbap": return "kimchi_bokkeumbap";
-                case "banh_mi_thit": case "bulgogi_banh_mi": return "baguette_bread";
-                case "pho_bo": case "tteokbokki": return "dish_bowl";
-                case "burnt_waste": return "dish_brush";
+                case "tteokbokki_raw": case "tteokbokki_simmered": case "tteokbokki": return "tteokbokki";
+                case "gochujang": case "gochujang_sauce": case "korean_sauce": return "gochujang";
+                case "flour": case "flour_sack": case "baguette_dough": return "flour";
+                case "cooked_flour": case "bot_chien_batter": return "cooked_flour";
+                case "bot_chien": return "bot_chien";
+                case "rice_raw": case "rice_portioned": return "rice_portioned";
+                case "cooked_rice": case "rice_with_egg": return "cooked_rice";
+                case "korean_bbq_rice": case "kimchi_bokkeumbap": case "kimchi_bokkeumbap_simmered": return "korean_bbq_rice";
+                case "viet_broken_rice": return "viet_broken_rice";
+                case "egg_raw": case "egg_cooked": return "egg_raw";
+                case "baguette": case "banh_mi_partial_bp": case "banh_mi_partial_bb": return "baguette";
+                case "radish_carrot": case "daikon_carrot_raw": return "radish_carrot";
+                case "pickled_veg": case "kimchi_raw": case "kimchi_slaw": case "banh_mi_partial_pb": return "pickled_veg";
+                case "banh_mi_thit": case "bulgogi_banh_mi": return "bulgogi_banh_mi";
+                case "noodles_raw": case "noodles_blanched": case "pho_bo": return "tteokbokki";
+                case "broth_hot": return "gochujang";
+                case "clean_plate": case "dish_plate": case "clean_bowl": case "dish_bowl": return "cooked_rice";
+                case "burnt_waste": return "gochujang";
                 default: return itemId;
             }
         }
@@ -450,8 +484,7 @@ namespace TwoLadles.Player
                 carriedItemSpriteRenderer.gameObject.SetActive(carriedItem != null);
                 if (carriedItem != null)
                 {
-                    string iconName = ResolveItemSpriteName(carriedItem.itemId);
-                    Sprite itemSpr = Resources.Load<Sprite>($"Sprites/Items/{iconName}");
+                    Sprite itemSpr = LoadItemSprite(carriedItem.itemId);
                     if (itemSpr != null)
                     {
                         carriedItemSpriteRenderer.sprite = itemSpr;

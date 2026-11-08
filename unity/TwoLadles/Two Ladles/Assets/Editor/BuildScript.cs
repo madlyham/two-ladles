@@ -25,6 +25,7 @@ public class BuildScript
 
         // Set all png textures in Assets/Resources as Sprite (2D and UI) with Point filter
         SetupSpriteImporters();
+        ApplyGameIcon();
 
         // Create new empty scene
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -34,11 +35,11 @@ public class BuildScript
         camObj.tag = "MainCamera";
         Camera cam = camObj.AddComponent<Camera>();
         cam.orthographic = true;
-        cam.orthographicSize = 9.5f;
+        cam.orthographicSize = 10.6f;
         cam.backgroundColor = new Color(0.12f, 0.12f, 0.14f);
         cam.clearFlags = CameraClearFlags.SolidColor;
-        camObj.transform.position = new Vector3(0.0f, 15.0f, -11.0f);
-        camObj.transform.LookAt(new Vector3(0.0f, 0.0f, 0.6f), Vector3.up);
+        camObj.transform.position = new Vector3(0.0f, 15.0f, -9.0f);
+        camObj.transform.LookAt(new Vector3(0.0f, 0.0f, 2.6f), Vector3.up);
 
         GameObject lightObj = new GameObject("Directional Light");
         Light sun = lightObj.AddComponent<Light>();
@@ -68,6 +69,21 @@ public class BuildScript
             new EditorBuildSettingsScene(samplePath, true)
         };
         AssetDatabase.SaveAssets();
+    }
+
+    public static void ApplyGameIcon()
+    {
+        try
+        {
+            Texture2D iconTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Sprites/two_ladles.png");
+            if (iconTex == null)
+                iconTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Resources/Sprites/UI/two_ladles.png");
+            if (iconTex != null)
+            {
+                PlayerSettings.SetIconsForTargetGroup(BuildTargetGroup.Unknown, new Texture2D[] { iconTex });
+            }
+        }
+        catch (Exception) { }
     }
 
     private static void SetupSpriteImporters()

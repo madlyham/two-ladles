@@ -1,12 +1,13 @@
 using UnityEngine;
 using TwoLadles.Data;
+using TwoLadles.Core;
 
 namespace TwoLadles.Stations
 {
     /// <summary>
-    /// An empty holding counter / prep table station.
-    /// Allows chefs to place any carried ingredient, dish, plate, or bowl down
-    /// to free their hands, and pick it back up or swap items.
+    /// An empty holding counter / self-assembly station.
+    /// Allows chefs to place any carried ingredient or dish down, pick it back up,
+    /// or press [E] / INTERACT while holding a compatible ingredient to automatically assemble!
     /// </summary>
     public class CounterStation : StationBase
     {
@@ -27,6 +28,7 @@ namespace TwoLadles.Stations
             {
                 heldItem = playerItem.Clone();
                 playerItem = null;
+                RefreshStationVisuals();
                 return (true, $"Placed {heldItem.displayName} on counter.");
             }
 
@@ -35,15 +37,25 @@ namespace TwoLadles.Stations
             {
                 playerItem = heldItem.Clone();
                 heldItem = null;
+                RefreshStationVisuals();
                 return (true, $"Picked up {playerItem.displayName} from counter.");
             }
 
-            // Case 3: Both have items -> swap items!
+            // Case 3: Both have items -> Self-Assemble if compatible, otherwise swap!
             if (playerItem != null && heldItem != null)
             {
+                if (GameData.TryCombineItems(heldItem, playerItem, out var combined))
+                {
+                    heldItem = null;
+                    playerItem = combined;
+                    RefreshStationVisuals();
+                    return (true, $"Assembled {combined.displayName}!");
+                }
+
                 var temp = playerItem.Clone();
                 playerItem = heldItem.Clone();
                 heldItem = temp;
+                RefreshStationVisuals();
                 return (true, $"Swapped {heldItem.displayName} with {playerItem.displayName}.");
             }
 

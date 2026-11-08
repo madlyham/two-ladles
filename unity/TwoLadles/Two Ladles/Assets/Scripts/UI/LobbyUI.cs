@@ -63,21 +63,7 @@ namespace TwoLadles.UI
 
         private static Font GetDefaultFont()
         {
-            Font font = null;
-            try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { }
-            if (font == null)
-            {
-                try
-                {
-                    var osFonts = Font.GetOSInstalledFontNames();
-                    if (osFonts != null && osFonts.Length > 0)
-                    {
-                        font = Font.CreateDynamicFontFromOSFont(osFonts[0], 14);
-                    }
-                }
-                catch { }
-            }
-            return font;
+            return KitchenHUD.GetDefaultFont();
         }
 
         private Text CreateLabel(string name, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 anchoredPos, Vector2 sizeDelta, string text, int fontSize, Color color, TextAnchor alignment)
@@ -98,6 +84,10 @@ namespace TwoLadles.UI
             txt.color = color;
             txt.alignment = alignment;
             txt.raycastTarget = false;
+
+            var shadow = go.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.85f);
+            shadow.effectDistance = new Vector2(1f, -1f);
             return txt;
         }
 
@@ -239,7 +229,7 @@ namespace TwoLadles.UI
             // --- SECTION B: LEVEL SELECTION & REPLAY (LEVELS 1-5) ---
             CreateLabel("LevelSelectHeader", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -154f), new Vector2(680f, 18f), "SELECT LEVEL (REPLAY COMPLETED LEVELS ANYTIME TO EARN MORE GOLD)", 11, new Color(1.0f, 0.85f, 0.35f), TextAnchor.MiddleCenter);
 
-            string[] lvlShortNames = new string[] { "Bánh Mì", "Phở Bò", "Tteokbokki", "Bokkeumbap", "Fusion" };
+            string[] lvlShortNames = new string[] { "Tteokbokki", "+ Bột Chiên", "+ K-BBQ Rice", "+ Broken Rice", "3m Banh Mi" };
             for (int i = 0; i < 5; i++)
             {
                 int lvlId = i + 1;
@@ -248,7 +238,7 @@ namespace TwoLadles.UI
                 string defaultTag = defaultUnlocked ? "UNLOCKED" : "LOCKED";
                 Color defaultCol = defaultUnlocked ? new Color(0.88f, 0.55f, 0.15f, 1f) : new Color(0.16f, 0.16f, 0.18f, 0.85f);
                 levelSelectButtons[i] = CreateButton($"LevelBtn_{lvlId}", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(xPos, -198f), new Vector2(128f, 58f),
-                    $"LEVEL {lvlId}\n{lvlShortNames[i]}\n[{defaultTag}]",
+                    $"DAY {lvlId}\n{lvlShortNames[i]}\n[{defaultTag}]",
                     defaultCol, out levelSelectLabels[i], 11);
                 levelSelectBgs[i] = levelSelectButtons[i].GetComponent<Image>();
                 levelSelectButtons[i].onClick.AddListener(() => SelectCampaignLevel(lvlId));
@@ -524,7 +514,7 @@ namespace TwoLadles.UI
             if (careerScoreText != null)
                 careerScoreText.text = $"SCORE: {ProgressionManager.Instance.totalCareerScore}";
 
-            string[] lvlNames = new string[] { "Bánh Mì", "Phở Bò", "Tteokbokki", "Bokkeumbap", "Fusion" };
+            string[] lvlNames = new string[] { "Tteokbokki", "+ Bột Chiên", "+ K-BBQ Rice", "+ Broken Rice", "3m Banh Mi" };
             for (int i = 0; i < 5; i++)
             {
                 int lvlId = i + 1;
@@ -535,7 +525,7 @@ namespace TwoLadles.UI
                 bool isSelected = (!isEndlessSelected && selectedLevelId == lvlId);
 
                 string statusTag = completed ? "★ COMPLETED ★" : (unlocked ? "UNLOCKED" : "LOCKED");
-                levelSelectLabels[i].text = $"LEVEL {lvlId}\n{lvlNames[i]}\n[{statusTag}]";
+                levelSelectLabels[i].text = $"DAY {lvlId}\n{lvlNames[i]}\n[{statusTag}]";
 
                 if (!unlocked)
                 {
@@ -565,7 +555,8 @@ namespace TwoLadles.UI
                 {
                     bool done = ProgressionManager.Instance.IsLevelCompleted(selectedLevelId);
                     string actionVerb = done ? "REPLAY" : "START";
-                    startShiftButtonText.text = $"▶ {actionVerb} LEVEL {selectedLevelId} (3 WAVES)";
+                    string suffix = (selectedLevelId == 5) ? "(3-MIN HIGH SCORE)" : "(3 WAVES)";
+                    startShiftButtonText.text = $"▶ {actionVerb} DAY {selectedLevelId} {suffix}";
                 }
             }
         }

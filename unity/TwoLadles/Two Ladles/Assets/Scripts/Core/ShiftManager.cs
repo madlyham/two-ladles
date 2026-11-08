@@ -194,6 +194,13 @@ namespace TwoLadles.Core
             {
                 shiftTimeRemaining = Mathf.Max(0.0f, shiftTimeRemaining - dt);
 
+                // Day 5 is a 3-Minute (180s) Bulgogi Bánh Mì High-Score Finale!
+                if (currentStageId == 5 && shiftTimeRemaining <= 0.0f)
+                {
+                    EndShift("3-Minute Bulgogi Bánh Mì Rush Complete!", true);
+                    return;
+                }
+
                 if (isWaveTransitioning)
                 {
                     waveTransitionTimer -= dt;
@@ -312,44 +319,35 @@ namespace TwoLadles.Core
             switch (tutorialStep)
             {
                 case 1:
-                    tutorialStepTitle = "STEP 1: MOVE";
-                    tutorialStepInstruction = "[WASD] or Joystick to walk.";
+                    tutorialStepTitle = "STEP 1: MOVE TO FRIDGE";
+                    tutorialStepInstruction = "Use [WASD] or Joystick to walk up to the Fridge.";
                     break;
                 case 2:
-                    tutorialStepTitle = "STEP 2: GET PORK";
-                    tutorialStepInstruction = "Hold [TAB] (or tap Wheel) -> Select 'Pork Belly'.";
+                    tutorialStepTitle = "STEP 2: GET TOBOKI PORTION";
+                    tutorialStepInstruction = "Walk to Fridge -> Press [E] (INTERACT) -> Select 'Toboki Portion'.";
                     break;
                 case 3:
-                    tutorialStepTitle = "STEP 3: SLICE PORK";
-                    tutorialStepInstruction = "Follow arrow to Prep Table: [E] Place, then [F] x4.";
+                    tutorialStepTitle = "STEP 3: GET GOCHUJANG";
+                    tutorialStepInstruction = "Place Toboki in Stove/Counter [E], then grab 'Gochujang' from Shelf [E].";
                     break;
                 case 4:
-                    tutorialStepTitle = "STEP 4: PASS COUNTER";
-                    tutorialStepInstruction = "Follow arrow to center Pass Counter: press [E].";
+                    tutorialStepTitle = "STEP 4: COOK TTEOKBOKKI";
+                    tutorialStepInstruction = "Press [E] with Gochujang at the Stove to combine & cook Tteokbokki!";
                     break;
                 case 5:
-                    tutorialStepTitle = "STEP 5: SWITCH CHEF";
-                    tutorialStepInstruction = "Press [C] or 'Switch Chef' to control Jiwon.";
+                    tutorialStepTitle = "STEP 5: PICK UP AT GREEN BAR";
+                    tutorialStepInstruction = "Wait for the Stove bar to turn GREEN, then press [E] to pick up!";
                     break;
                 case 6:
-                    tutorialStepTitle = "STEP 6: GRILL PORK";
-                    tutorialStepInstruction = "[E] at Pass Counter (+15 Flow), then [E] at Grill.";
-                    break;
                 case 7:
-                    tutorialStepTitle = "STEP 7: GREEN BAR";
-                    tutorialStepInstruction = "When Grill bar turns GREEN, press [E] to pick up.";
-                    break;
                 case 8:
-                    tutorialStepTitle = "STEP 8: ASSEMBLE";
-                    tutorialStepInstruction = "Put Clean Plate + Baguette + Grilled Pork + Pickled Veg on Assembly Table [E].";
-                    break;
                 case 9:
-                    tutorialStepTitle = "STEP 9: SERVE";
-                    tutorialStepInstruction = "Bring Bánh Mì to Serving Counter [E]!";
+                    tutorialStepTitle = "STEP 6: SERVE TTEOKBOKKI!";
+                    tutorialStepInstruction = "Bring Tteokbokki to the Serving Counter and press [E]!";
                     break;
                 case 10:
                     tutorialStepTitle = "★ COMPLETE! ★";
-                    tutorialStepInstruction = "You're ready! Click 'Return to Lobby' to start Level 1.";
+                    tutorialStepInstruction = "You're ready! Click 'Lobby' to start Day 1: Tteokbokki!";
                     break;
             }
 
@@ -398,20 +396,43 @@ namespace TwoLadles.Core
                 duration = spec != null ? spec.shiftDuration : 600.0f;
                 orderSpawnInterval = spec != null ? spec.orderSpawnInterval : 45.0f;
                 dynamicMaxOrders = 1;
-                currentLevelWaves = spec != null && spec.waves != null ? spec.waves : new List<WaveSpec> { new WaveSpec(1, 1, 60f, 600f, 1, new List<string> { "banh_mi_thit" }) };
+                currentLevelWaves = new List<WaveSpec> { new WaveSpec(1, 1, 60f, 600f, 1, new List<string> { "tteokbokki" }) };
                 StartWave(0);
 
-                // Starter Bánh Mì Thịt order
+                // Starter Day 1 Tteokbokki order
                 ticketCounter++;
                 waveOrdersSpawned = 1;
-                var ticket = new OrderTicket($"ticket_{ticketCounter}", "banh_mi_thit", "plate", 600.0f);
+                var ticket = new OrderTicket($"ticket_{ticketCounter}", "tteokbokki", "none", 600.0f);
                 activeOrders.Add(ticket);
                 OnOrderQueueUpdated?.Invoke(activeOrders);
             }
             else if (currentMode == GameMode.CAMPAIGN && GameData.Instance != null && GameData.Instance.campaignLevels.TryGetValue(stageId, out var spec))
             {
-                duration = spec.shiftDuration;
-                currentLevelWaves = spec.waves;
+                List<string> dayRecipes = GameData.Instance.GetDayAllowedRecipes(stageId);
+                if (stageId == 5)
+                {
+                    // Day 5: 3-Minute (180s) Single-Recipe Bulgogi Bánh Mì High-Score Rush!
+                    duration = 180.0f;
+                    currentLevelWaves = new List<WaveSpec>
+                    {
+                        new WaveSpec(1, 99, 10.0f, 75.0f, 3, dayRecipes),
+                        new WaveSpec(2, 99, 8.5f, 70.0f, 4, dayRecipes),
+                        new WaveSpec(3, 99, 7.5f, 65.0f, 4, dayRecipes)
+                    };
+                }
+                else
+                {
+                    duration = spec.shiftDuration;
+                    int baseOrders = 2 + (stageId - 1);
+                    float baseInterval = Mathf.Max(8.5f, 16.0f - (stageId * 1.4f));
+                    float basePatience = Mathf.Max(50.0f, 72.0f - (stageId * 3.0f));
+                    currentLevelWaves = new List<WaveSpec>
+                    {
+                        new WaveSpec(1, baseOrders, baseInterval, basePatience, Mathf.Min(2, 1 + stageId / 2), dayRecipes),
+                        new WaveSpec(2, baseOrders + 1, Mathf.Max(7.0f, baseInterval - 2.0f), Mathf.Max(45.0f, basePatience - 5.0f), Mathf.Min(3, 2 + stageId / 2), dayRecipes),
+                        new WaveSpec(3, baseOrders + 2, Mathf.Max(6.0f, baseInterval - 3.5f), Mathf.Max(40.0f, basePatience - 10.0f), Mathf.Min(4, 2 + (stageId + 1) / 2), dayRecipes)
+                    };
+                }
                 StartWave(0);
             }
             else if (currentMode == GameMode.ENDLESS_RUSH)
@@ -420,7 +441,8 @@ namespace TwoLadles.Core
                 orderSpawnInterval = 14.0f;
                 dynamicMaxOrders = 2;
                 currentWavePatience = 65.0f;
-                currentLevelWaves = new List<WaveSpec> { new WaveSpec(1, 999, 14.0f, 65.0f, 2, new List<string>()) };
+                List<string> allDayRecipes = GameData.Instance != null ? GameData.Instance.GetDayAllowedRecipes(99) : new List<string> { "tteokbokki" };
+                currentLevelWaves = new List<WaveSpec> { new WaveSpec(1, 999, 14.0f, 65.0f, 2, allDayRecipes) };
                 currentWaveIndex = 0;
                 waveOrdersRequired = 999;
                 waveOrdersSpawned = 0;
@@ -458,6 +480,8 @@ namespace TwoLadles.Core
             }
 
             int goldAwarded = 0;
+            bool isNewHighScore = false;
+            int highScore = totalScore;
             if (ProgressionManager.Instance != null)
             {
                 if (currentMode == GameMode.CAMPAIGN && !isTutorial)
@@ -465,10 +489,17 @@ namespace TwoLadles.Core
                     var res = ProgressionManager.Instance.RecordLevelWaveCompletion(
                         currentStageId, reputation, victory, totalScore, currentShiftSessionToken);
                     goldAwarded = res.goldEarned;
+
+                    if (currentStageId == 5)
+                    {
+                        isNewHighScore = ProgressionManager.Instance.RecordEndlessRun(totalScore, ordersServed, 180.0f);
+                        highScore = Mathf.Max(totalScore, ProgressionManager.Instance.endlessBestScore);
+                    }
                 }
                 else if (currentMode == GameMode.ENDLESS_RUSH)
                 {
-                    ProgressionManager.Instance.RecordEndlessRun(totalScore, ordersServed, shiftElapsedSeconds);
+                    isNewHighScore = ProgressionManager.Instance.RecordEndlessRun(totalScore, ordersServed, shiftElapsedSeconds);
+                    highScore = Mathf.Max(totalScore, ProgressionManager.Instance.endlessBestScore);
                     if (ordersServed > 0 && reputation > 0f)
                     {
                         goldAwarded = ProgressionManager.CalculateGoldReward(reputation, true);
@@ -491,6 +522,8 @@ namespace TwoLadles.Core
                 { "total_waves", totalWaves },
                 { "total_score", totalScore },
                 { "finalScore", totalScore },
+                { "high_score", highScore },
+                { "is_new_high_score", isNewHighScore },
                 { "stars", stars },
                 { "orders_served", ordersServed },
                 { "ordersServed", ordersServed },
@@ -569,7 +602,7 @@ namespace TwoLadles.Core
                 var ord = activeOrders[i];
                 if (ord.recipeId == dish.itemId)
                 {
-                    var spec = GameData.Instance != null && GameData.Instance.recipes.TryGetValue(ord.recipeId, out var r) ? r : null;
+                    var spec = GameData.Instance != null ? GameData.Instance.GetRecipeSpec(ord.recipeId) : null;
                     int baseScore = spec != null ? spec.baseScore : 100;
 
                     if (rushRhythmActive)
@@ -586,15 +619,13 @@ namespace TwoLadles.Core
                     waveOrdersCompleted++;
                     activeOrders.RemoveAt(i);
 
-                    if (isTutorial && (tutorialStep == 8 || tutorialStep == 9))
+                    if (isTutorial && tutorialStep < 10)
                     {
                         AdvanceTutorialStep(10);
                     }
 
                     float flowBonus = dish.quality == QualityTier.OPTIMAL ? 20.0f : 12.0f;
                     AddKitchenFlow(flowBonus);
-
-                    dirtyPlatesAtReturn++;
 
                     OnOrderQueueUpdated?.Invoke(activeOrders);
                     OnFeedbackBanner?.Invoke($"+{finalScore} pts", new Color(0.2f, 1.0f, 0.4f));
@@ -627,14 +658,14 @@ namespace TwoLadles.Core
             int maxOrders = dynamicMaxOrders;
             float interval = orderSpawnInterval;
             float patience = currentWavePatience;
-            List<string> allowedRecipes = new List<string> { "banh_mi_thit" };
+            List<string> allowedRecipes = new List<string> { "tteokbokki" };
 
             if (isTutorial)
             {
                 var spec = GameData.Instance != null ? GameData.Instance.tutorialLevel : null;
                 maxOrders = spec != null ? spec.maxConcurrentOrders : 1;
                 interval = spec != null ? spec.orderSpawnInterval : 45.0f;
-                allowedRecipes = spec != null ? spec.allowedRecipes : new List<string> { "banh_mi_thit" };
+                allowedRecipes = new List<string> { "tteokbokki" };
                 patience = 600.0f;
             }
             else if (currentMode == GameMode.CAMPAIGN)
@@ -647,11 +678,9 @@ namespace TwoLadles.Core
                     patience = w.customerPatienceSeconds;
                     allowedRecipes = w.allowedRecipes;
                 }
-                else if (GameData.Instance != null && GameData.Instance.campaignLevels.TryGetValue(currentStageId, out var spec))
+                else if (GameData.Instance != null)
                 {
-                    maxOrders = spec.maxConcurrentOrders;
-                    interval = spec.orderSpawnInterval;
-                    allowedRecipes = spec.allowedRecipes;
+                    allowedRecipes = GameData.Instance.GetDayAllowedRecipes(currentStageId);
                 }
             }
             else if (currentMode == GameMode.ENDLESS_RUSH)
@@ -661,7 +690,7 @@ namespace TwoLadles.Core
                 interval = Mathf.Lerp(14.0f, 6.5f, t);
                 if (GameData.Instance != null)
                 {
-                    allowedRecipes = new List<string>(GameData.Instance.recipes.Keys);
+                    allowedRecipes = GameData.Instance.GetDayAllowedRecipes(99);
                 }
             }
 
@@ -671,8 +700,8 @@ namespace TwoLadles.Core
             if (currentMode == GameMode.CAMPAIGN && !isTutorial && waveOrdersSpawned >= waveOrdersRequired) return;
 
             string selectedRecipe = allowedRecipes[UnityEngine.Random.Range(0, allowedRecipes.Count)];
-            var recipeSpec = GameData.Instance != null && GameData.Instance.recipes.TryGetValue(selectedRecipe, out var rs) ? rs : null;
-            string vessel = recipeSpec != null ? recipeSpec.requiredVessel : "plate";
+            var recipeSpec = GameData.Instance != null ? GameData.Instance.GetRecipeSpec(selectedRecipe) : null;
+            string vessel = recipeSpec != null ? recipeSpec.requiredVessel : "none";
             if (patience <= 0.0f)
                 patience = recipeSpec != null ? recipeSpec.targetPatienceSeconds : 60.0f;
 

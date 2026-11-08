@@ -147,8 +147,7 @@ namespace TwoLadles.Stations
                 if (heldItem != null && !string.IsNullOrEmpty(heldItem.itemId))
                 {
                     _frontItemRenderer.gameObject.SetActive(true);
-                    string sprName = PlayerController.ResolveItemSpriteName(heldItem.itemId);
-                    Sprite spr = Resources.Load<Sprite>($"Sprites/Items/{sprName}");
+                    Sprite spr = PlayerController.LoadItemSprite(heldItem.itemId);
                     if (spr != null)
                     {
                         _frontItemRenderer.sprite = spr;

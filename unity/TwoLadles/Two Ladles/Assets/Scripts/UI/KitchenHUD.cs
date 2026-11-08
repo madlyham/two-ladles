@@ -113,10 +113,24 @@ namespace TwoLadles.UI
             }
         }
 
+        private static Font _cachedPixelFont;
+        private static Sprite _cachedCircleSprite;
+
         public static Font GetDefaultFont()
         {
+            if (_cachedPixelFont != null)
+            {
+                if (_cachedPixelFont.material != null && _cachedPixelFont.material.mainTexture != null)
+                    _cachedPixelFont.material.mainTexture.filterMode = FilterMode.Point;
+                return _cachedPixelFont;
+            }
+
             Font font = null;
-            try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { }
+            try { font = Resources.Load<Font>("Fonts/PixelFont"); } catch { }
+            if (font == null)
+            {
+                try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { }
+            }
             if (font == null)
             {
                 try
@@ -129,7 +143,47 @@ namespace TwoLadles.UI
                 }
                 catch { }
             }
+            if (font != null && font.material != null && font.material.mainTexture != null)
+            {
+                font.material.mainTexture.filterMode = FilterMode.Point;
+            }
+            _cachedPixelFont = font;
             return font;
+        }
+
+        public static Sprite GetCircleSprite()
+        {
+            if (_cachedCircleSprite == null)
+            {
+                int size = 64;
+                Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Point;
+                float center = (size - 1) * 0.5f;
+                float radius = size * 0.47f;
+                Color clear = new Color(0f, 0f, 0f, 0f);
+                Color border = new Color(0.12f, 0.14f, 0.18f, 1.0f);
+                Color rim = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                Color fill = new Color(0.92f, 0.94f, 0.98f, 1.0f);
+
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
+                        if (dist > radius)
+                            tex.SetPixel(x, y, clear);
+                        else if (dist > radius - 2.2f)
+                            tex.SetPixel(x, y, border);
+                        else if (dist > radius - 4.0f)
+                            tex.SetPixel(x, y, rim);
+                        else
+                            tex.SetPixel(x, y, fill);
+                    }
+                }
+                tex.Apply();
+                _cachedCircleSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 64f);
+            }
+            return _cachedCircleSprite;
         }
 
         private Text CreateLabel(string name, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 anchoredPos, Vector2 sizeDelta, string text, int fontSize, Color color, TextAnchor alignment)
@@ -150,6 +204,10 @@ namespace TwoLadles.UI
             txt.color = color;
             txt.alignment = alignment;
             txt.raycastTarget = false;
+
+            var shadow = go.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.85f);
+            shadow.effectDistance = new Vector2(1f, -1f);
             return txt;
         }
 
@@ -175,6 +233,32 @@ namespace TwoLadles.UI
             btn.colors = colors;
 
             outLabel = CreateLabel(name + "_Label", go.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-4f, -2f), labelText, fontSize, Color.white, TextAnchor.MiddleCenter);
+            return btn;
+        }
+
+        private Button CreateCircleActionButton(string name, Transform parent, Vector2 anchoredPos, Vector2 sizeDelta, string labelText, Color bgColor, int fontSize = 11)
+        {
+            GameObject go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(1f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(1f, 0f);
+            rect.anchoredPosition = anchoredPos;
+            rect.sizeDelta = sizeDelta;
+
+            var img = go.AddComponent<Image>();
+            img.sprite = GetCircleSprite();
+            img.color = bgColor;
+
+            var btn = go.AddComponent<Button>();
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = bgColor * 1.15f;
+            colors.pressedColor = bgColor * 0.8f;
+            btn.colors = colors;
+
+            CreateLabel(name + "_Label", go.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(-6f, -6f), labelText, fontSize, Color.white, TextAnchor.MiddleCenter);
             return btn;
         }
 
@@ -319,9 +403,11 @@ namespace TwoLadles.UI
             flowText = CreateLabel("FlowText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(474f, 0f), new Vector2(48f, 28f), "FLOW", 11, new Color(1.0f, 0.82f, 0.25f), TextAnchor.MiddleLeft);
             flowSlider = CreateFlowSlider(topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(518f, 0f), new Vector2(82f, 14f));
 
-            cleanPlatesText = CreateLabel("CleanPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(610f, 0f), new Vector2(72f, 28f), "Clean: 4", 11, new Color(0.75f, 1.0f, 0.75f), TextAnchor.MiddleLeft);
-            dirtyPlatesText = CreateLabel("DirtyPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(674f, 0f), new Vector2(65f, 28f), "Dirty: 0", 11, new Color(1.0f, 0.65f, 0.65f), TextAnchor.MiddleLeft);
-            scoreText = CreateLabel("ScoreText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(738f, 0f), new Vector2(85f, 28f), "0 pts", 12, Color.yellow, TextAnchor.MiddleLeft);
+            cleanPlatesText = CreateLabel("CleanPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(610f, 0f), new Vector2(72f, 28f), "", 11, new Color(0.75f, 1.0f, 0.75f), TextAnchor.MiddleLeft);
+            cleanPlatesText.gameObject.SetActive(false);
+            dirtyPlatesText = CreateLabel("DirtyPlatesText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(674f, 0f), new Vector2(65f, 28f), "", 11, new Color(1.0f, 0.65f, 0.65f), TextAnchor.MiddleLeft);
+            dirtyPlatesText.gameObject.SetActive(false);
+            scoreText = CreateLabel("ScoreText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(616f, 0f), new Vector2(120f, 28f), "0 pts", 13, Color.yellow, TextAnchor.MiddleLeft);
 
             // D) Top-Right Utility Buttons: Recipes [R], Touch UI, Mute, Switch Chef [C], Lobby
             returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 0f), new Vector2(72f, 26f), "Lobby", new Color(0.55f, 0.20f, 0.20f, 0.95f), out _, 11);
@@ -466,19 +552,19 @@ namespace TwoLadles.UI
 
             SetupDraggableJoystick(joyBgObj);
 
-            // B) Mobile Action Buttons (Bottom Right)
+            // B) Mobile Action Buttons (Bottom Right: 3 Colored Circular Buttons for INTERACT, CHOP, and THROW!)
             GameObject actionsRoot = new GameObject("MobileActions", typeof(RectTransform));
             actionsRoot.transform.SetParent(mobileControlsContainer.transform, false);
             var actRect = actionsRoot.GetComponent<RectTransform>();
             actRect.anchorMin = new Vector2(1f, 0f);
             actRect.anchorMax = new Vector2(1f, 0f);
             actRect.pivot = new Vector2(1f, 0f);
-            actRect.anchoredPosition = new Vector2(-16f, 24f);
-            actRect.sizeDelta = new Vector2(150f, 145f);
+            actRect.anchoredPosition = new Vector2(-18f, 18f);
+            actRect.sizeDelta = new Vector2(210f, 190f);
 
-            primaryActionButton = CreateButton("PrimaryActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 94f), new Vector2(142f, 42f), "USE / PASS [E]", new Color(0.18f, 0.52f, 0.65f, 0.88f), out _, 12);
-            secondaryActionButton = CreateButton("SecondaryActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 46f), new Vector2(142f, 42f), "CHOP / WASH [F]", new Color(0.72f, 0.42f, 0.15f, 0.88f), out _, 12);
-            throwActionButton = CreateButton("ThrowActionBtn", actionsRoot.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(0f, 4f), new Vector2(142f, 36f), "THROW [Q]", new Color(0.58f, 0.22f, 0.55f, 0.88f), out _, 11);
+            primaryActionButton = CreateCircleActionButton("PrimaryActionBtn", actionsRoot.transform, new Vector2(-8f, 88f), new Vector2(84f, 84f), "INTERACT\n[E]", new Color(0.16f, 0.68f, 0.52f, 0.95f), 11);
+            secondaryActionButton = CreateCircleActionButton("SecondaryActionBtn", actionsRoot.transform, new Vector2(-104f, 52f), new Vector2(78f, 78f), "CHOP\n[F]", new Color(0.90f, 0.52f, 0.14f, 0.95f), 11);
+            throwActionButton = CreateCircleActionButton("ThrowActionBtn", actionsRoot.transform, new Vector2(-18f, 4f), new Vector2(74f, 74f), "THROW\n[Q]", new Color(0.82f, 0.24f, 0.38f, 0.95f), 11);
 
             // Keep joystick & touch buttons visible by default so both mobile & desktop/touchscreen users can use them immediately!
             mobileControlsContainer.SetActive(true);
@@ -495,8 +581,9 @@ namespace TwoLadles.UI
             cbRect.anchoredPosition = new Vector2(0f, 38f);
             cbRect.sizeDelta = new Vector2(360f, 30f);
 
-            hirePrepButton = CreateButton("HirePrepBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-88f, 0f), new Vector2(168f, 26f), "Prep Helper (20g)", new Color(0.24f, 0.44f, 0.38f, 0.85f), out hirePrepCooldownText, 11);
+            hirePrepButton = CreateButton("HirePrepBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(180f, 26f), "Prep Helper (20g)", new Color(0.24f, 0.44f, 0.38f, 0.85f), out hirePrepCooldownText, 11);
             hireDishwasherButton = CreateButton("HireDishwasherBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(88f, 0f), new Vector2(168f, 26f), "Dishwasher (20g)", new Color(0.22f, 0.38f, 0.52f, 0.85f), out hireDishwasherCooldownText, 11);
+            hireDishwasherButton.gameObject.SetActive(false);
 
             GameObject promptBar = new GameObject("PromptBar", typeof(RectTransform));
             promptBar.transform.SetParent(root, false);
@@ -552,15 +639,15 @@ namespace TwoLadles.UI
             var rbImg = recipeBookModal.AddComponent<Image>();
             rbImg.color = new Color(0.08f, 0.10f, 0.15f, 0.96f);
 
-            CreateLabel("RBTitle", recipeBookModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(560f, 26f), "📖 KITCHEN RECIPE BOOK (PRESS [R] TO CLOSE)", 15, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
+            CreateLabel("RBTitle", recipeBookModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(560f, 26f), "📖 5-DAY RECIPE BOOK — PRESS [E] ON COUNTER/PAN TO SELF-ASSEMBLE!", 14, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
 
-            var recipeRows = new (string title, string vesselIcon, (string icon, string tag)[] steps)[]
+            var recipeRows = new (string title, string dishIcon, (string icon, string tag)[] steps)[]
             {
-                ("1. Bánh Mì Thịt", "dish_plate", new[] { ("baguette_bread", "Baguette"), ("pork_belly_raw", "Pork (Chop➔Grill)"), ("pickled_veg", "Daikon (Chop)") }),
-                ("2. Phở Bò", "dish_bowl", new[] { ("noodles_raw", "Noodles (Blanch)"), ("beef_raw", "Beef (Chop)"), ("broth_pot", "Broth (Last!)") }),
-                ("3. Tteokbokki", "dish_bowl", new[] { ("tteok_portioned", "Rice Cakes (Chop➔Wok)"), ("korean_sauce", "Simmer in Wok"), ("dish_bowl", "Bowl Only!") }),
-                ("4. Bokkeumbap", "dish_bowl", new[] { ("rice_portioned", "Rice (Chop➔Wok)"), ("kimchi_slaw", "Simmer in Wok"), ("kimchi_bokkeumbap", "Plate in Bowl") }),
-                ("5. Bulgogi Bánh Mì", "dish_plate", new[] { ("baguette_bread", "Baguette"), ("beef_bulgogi_raw", "Bulgogi (Chop➔Grill)"), ("kimchi_slaw", "Kimchi (Chop)") })
+                ("Day 1: Tteokbokki", "tteokbokki", new[] { ("tteok_portioned", "Toboki Portion"), ("gochujang", "+ Gochujang"), ("tteokbokki", "Cook Together!") }),
+                ("Day 2: Bột Chiên", "bot_chien", new[] { ("flour", "Cook Flour"), ("egg_raw", "+ Egg & Cook"), ("bot_chien", "Bột Chiên!") }),
+                ("Day 3: K-BBQ Rice", "korean_bbq_rice", new[] { ("unprocessed_raw_meat", "Cut 1x➔Cook"), ("cooked_rice", "Cook Rice"), ("korean_bbq_rice", "Assemble [E]") }),
+                ("Day 4: Broken Rice", "viet_broken_rice", new[] { ("rice_portioned", "Cook Rice"), ("bulgogi", "+ BBQ Beef"), ("egg_raw", "+ Egg [E]") }),
+                ("Day 5: Bulgogi Bánh Mì", "bulgogi_banh_mi", new[] { ("baguette", "Cook Flour+Egg"), ("pickled_veg", "Cut Radish"), ("bulgogi", "Cut 2x➔Cook") })
             };
 
             for (int i = 0; i < recipeRows.Length; i++)
@@ -579,10 +666,10 @@ namespace TwoLadles.UI
                 var rBg = rowGo.AddComponent<Image>();
                 rBg.color = new Color(0.13f, 0.16f, 0.22f, 0.92f);
 
-                CreateLabel("DishTitle", rowGo.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(12f, 0f), new Vector2(135f, 0f), row.title, 12, new Color(1.0f, 0.90f, 0.45f), TextAnchor.MiddleLeft);
+                CreateLabel("DishTitle", rowGo.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(12f, 0f), new Vector2(135f, 0f), row.title, 11, new Color(1.0f, 0.90f, 0.45f), TextAnchor.MiddleLeft);
 
-                // Vessel Icon
-                CreateRecipeStepBadge(rowGo.transform, 152f, row.vesselIcon, row.vesselIcon == "dish_plate" ? "Plate" : "Bowl");
+                // Final Dish Icon
+                CreateRecipeStepBadge(rowGo.transform, 152f, row.dishIcon, "Dish");
 
                 for (int s = 0; s < row.steps.Length; s++)
                 {
@@ -607,7 +694,7 @@ namespace TwoLadles.UI
             iRect.anchoredPosition = new Vector2(xOffset, 0f);
             iRect.sizeDelta = new Vector2(28f, 28f);
             var img = icoGo.AddComponent<Image>();
-            Sprite spr = Resources.Load<Sprite>($"Sprites/Items/{spriteName}");
+            Sprite spr = PlayerController.LoadItemSprite(spriteName);
             if (spr != null) img.sprite = spr;
 
             CreateLabel("StepText", parent, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(xOffset + 32f, 0f), new Vector2(76f, 0f), label, 10, Color.white, TextAnchor.MiddleLeft);
@@ -1065,16 +1152,30 @@ namespace TwoLadles.UI
                 {
                     shiftTimerText.text = "ACADEMY";
                 }
+                else if (ShiftManager.Instance.currentMode == GameMode.CAMPAIGN && ShiftManager.Instance.currentStageId == 5)
+                {
+                    int m = Mathf.FloorToInt(ShiftManager.Instance.shiftTimeRemaining / 60.0f);
+                    int s = Mathf.FloorToInt(ShiftManager.Instance.shiftTimeRemaining % 60.0f);
+                    shiftTimerText.text = $"DAY 5 • {m:D2}:{s:D2}";
+                }
                 else if (ShiftManager.Instance.currentMode == GameMode.CAMPAIGN)
                 {
-                    shiftTimerText.text = $"L{ShiftManager.Instance.currentStageId} • W{waveNum}/{totalWaves}";
+                    shiftTimerText.text = $"DAY {ShiftManager.Instance.currentStageId} • W{waveNum}/{totalWaves}";
                 }
             }
 
             if (waveProgressFill != null)
             {
-                float pct = requiredInWave > 0 ? Mathf.Clamp01((float)completedInWave / requiredInWave) : 0.0f;
-                waveProgressFill.sizeDelta = new Vector2(WAVE_BAR_WIDTH * pct, 0.0f);
+                if (ShiftManager.Instance != null && ShiftManager.Instance.currentMode == GameMode.CAMPAIGN && ShiftManager.Instance.currentStageId == 5)
+                {
+                    float pct = Mathf.Clamp01(ShiftManager.Instance.shiftTimeRemaining / 180.0f);
+                    waveProgressFill.sizeDelta = new Vector2(WAVE_BAR_WIDTH * pct, 0.0f);
+                }
+                else
+                {
+                    float pct = requiredInWave > 0 ? Mathf.Clamp01((float)completedInWave / requiredInWave) : 0.0f;
+                    waveProgressFill.sizeDelta = new Vector2(WAVE_BAR_WIDTH * pct, 0.0f);
+                }
             }
         }
 
@@ -1095,9 +1196,20 @@ namespace TwoLadles.UI
                 {
                     shiftTimerText.text = "ACADEMY";
                 }
+                else if (ShiftManager.Instance.currentMode == GameMode.CAMPAIGN && ShiftManager.Instance.currentStageId == 5)
+                {
+                    int m = Mathf.FloorToInt(ShiftManager.Instance.shiftTimeRemaining / 60.0f);
+                    int s = Mathf.FloorToInt(ShiftManager.Instance.shiftTimeRemaining % 60.0f);
+                    shiftTimerText.text = $"DAY 5 • {m:D2}:{s:D2}";
+                    if (waveProgressFill != null)
+                    {
+                        float pct = Mathf.Clamp01(ShiftManager.Instance.shiftTimeRemaining / 180.0f);
+                        waveProgressFill.sizeDelta = new Vector2(WAVE_BAR_WIDTH * pct, 0.0f);
+                    }
+                }
                 else if (ShiftManager.Instance.currentMode == GameMode.CAMPAIGN)
                 {
-                    shiftTimerText.text = $"L{ShiftManager.Instance.currentStageId} • W{ShiftManager.Instance.currentWaveNumber}/{ShiftManager.Instance.totalWaves}";
+                    shiftTimerText.text = $"DAY {ShiftManager.Instance.currentStageId} • W{ShiftManager.Instance.currentWaveNumber}/{ShiftManager.Instance.totalWaves}";
                 }
                 else
                 {
@@ -1219,9 +1331,10 @@ namespace TwoLadles.UI
                     orderCardObjs[i].SetActive(true);
 
                     string rName = o.recipeId;
-                    if (GameData.Instance != null && GameData.Instance.recipes.TryGetValue(o.recipeId, out var rSpec))
+                    if (GameData.Instance != null)
                     {
-                        rName = rSpec.displayName;
+                        var rSpec = GameData.Instance.GetRecipeSpec(o.recipeId);
+                        if (rSpec != null) rName = rSpec.displayName;
                     }
                     if (orderCardLabels[i] != null)
                     {
@@ -1229,8 +1342,7 @@ namespace TwoLadles.UI
                     }
                     if (orderCardIcons[i] != null)
                     {
-                        string sprName = PlayerController.ResolveItemSpriteName(o.recipeId);
-                        Sprite spr = Resources.Load<Sprite>($"Sprites/Items/{sprName}");
+                        Sprite spr = PlayerController.LoadItemSprite(o.recipeId);
                         if (spr != null) orderCardIcons[i].sprite = spr;
                     }
                     if (orderCardBarFills[i] != null)
@@ -1286,11 +1398,26 @@ namespace TwoLadles.UI
                     if (endShiftDetailsText != null)
                     {
                         int totalGold = ProgressionManager.Instance != null ? ProgressionManager.Instance.gold : gold;
-                        endShiftDetailsText.text =
-                            $"Final Reputation: {Mathf.CeilToInt(rep)} / 100\n" +
-                            $"Waves Completed: {wavesDone} / {totalWaves}  (Orders Served: {served})\n" +
-                            $"Gold Earned: +{gold}g\n" +
-                            $"Total Gold Balance: {totalGold}g";
+                        int stageId = summary.ContainsKey("stage_id") ? Convert.ToInt32(summary["stage_id"]) : 1;
+                        int finalScore = summary.ContainsKey("total_score") ? Convert.ToInt32(summary["total_score"]) : 0;
+                        int highScore = summary.ContainsKey("high_score") ? Convert.ToInt32(summary["high_score"]) : finalScore;
+
+                        if (stageId == 5)
+                        {
+                            endShiftDetailsText.text =
+                                $"3-MINUTE BULGOGI BÁNH MÌ HIGH SCORE: {finalScore} pts\n" +
+                                $"All-Time Best High Score: {highScore} pts  (Served: {served})\n" +
+                                $"Remaining Reputation: {Mathf.CeilToInt(rep)} / 100\n" +
+                                $"Gold Earned: +{gold}g  (Total Balance: {totalGold}g)";
+                        }
+                        else
+                        {
+                            endShiftDetailsText.text =
+                                $"Final Reputation: {Mathf.CeilToInt(rep)} / 100\n" +
+                                $"Waves Completed: {wavesDone} / {totalWaves}  (Orders Served: {served})\n" +
+                                $"Gold Earned: +{gold}g\n" +
+                                $"Total Gold Balance: {totalGold}g";
+                        }
                     }
 
                     if (retryShiftButtonText != null)

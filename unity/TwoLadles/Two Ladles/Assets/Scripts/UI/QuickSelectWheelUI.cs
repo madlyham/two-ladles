@@ -30,24 +30,33 @@ namespace TwoLadles.UI
             }
         }
 
-        private static readonly WheelItem[] AVAILABLE_ITEMS = new WheelItem[]
+        // Fridge holds: Raw Meat, Radish & Carrot, Fresh Egg, Toboki Portion, and Baguette
+        private static readonly WheelItem[] FRIDGE_ITEMS = new WheelItem[]
         {
-            new WheelItem("pork_raw", "Pork Belly", "pork_belly_raw", new Color(0.92f, 0.45f, 0.45f)),
-            new WheelItem("beef_raw", "Beef Shank", "beef_raw", new Color(0.78f, 0.22f, 0.22f)),
-            new WheelItem("tteok_raw", "Rice Cakes", "tteok_portioned", new Color(0.95f, 0.95f, 0.92f)),
-            new WheelItem("noodles_raw", "Rice Noodles", "noodles_raw", new Color(0.92f, 0.90f, 0.82f)),
-            new WheelItem("baguette", "Baguette", "baguette_bread", new Color(0.86f, 0.65f, 0.35f)),
-            new WheelItem("daikon_carrot_raw", "Daikon & Carrot", "pickled_veg", new Color(0.95f, 0.62f, 0.22f)),
-            new WheelItem("kimchi_raw", "Aged Kimchi", "kimchi_slaw", new Color(0.88f, 0.30f, 0.18f)),
-            new WheelItem("eomuk_raw", "Fish Cakes", "fish_cake_raw", new Color(0.85f, 0.75f, 0.55f))
+            new WheelItem("unprocessed_raw_meat", "Raw Meat", "unprocessed_raw_meat", new Color(0.95f, 0.45f, 0.45f)),
+            new WheelItem("radish_carrot", "Radish & Carrot", "radish_carrot", new Color(0.98f, 0.65f, 0.25f)),
+            new WheelItem("egg_raw", "Fresh Egg", "egg_raw", new Color(0.98f, 0.92f, 0.72f)),
+            new WheelItem("tteok_portioned", "Toboki Portion", "tteok_portioned", new Color(0.96f, 0.96f, 0.94f)),
+            new WheelItem("baguette", "Baguette", "baguette", new Color(0.90f, 0.70f, 0.36f))
         };
 
+        // Shelf holds: Gochujang, Flour, Rice Portion, and Toboki Portion (No bowls or plates!)
+        private static readonly WheelItem[] SHELF_ITEMS = new WheelItem[]
+        {
+            new WheelItem("gochujang", "Gochujang", "gochujang", new Color(0.92f, 0.25f, 0.20f)),
+            new WheelItem("flour", "Flour", "flour", new Color(0.96f, 0.94f, 0.88f)),
+            new WheelItem("rice_portioned", "Rice Portion", "rice_portioned", new Color(0.98f, 0.98f, 0.98f)),
+            new WheelItem("tteok_portioned", "Toboki Portion", "tteok_portioned", new Color(0.96f, 0.96f, 0.94f))
+        };
+
+        private WheelItem[] currentCatalog = FRIDGE_ITEMS;
         private GameObject wheelRoot;
+        private Text storageHeaderText;
+        private List<GameObject> sliceObjects = new List<GameObject>();
         private List<Button> sliceButtons = new List<Button>();
         private List<Image> sliceHighlights = new List<Image>();
         private Text centerTitleText;
         private Image centerIconImage;
-        private Button mobileToggleBtn;
 
         public bool IsOpen => wheelRoot != null && wheelRoot.activeSelf;
         private int highlightedIndex = -1;
@@ -72,35 +81,23 @@ namespace TwoLadles.UI
                 return;
             }
 
-            // Desktop Key Trigger: Hold TAB to keep wheel open, release to select!
-            if (Input.GetKeyDown(KeyCode.Tab))
+            if (Input.GetKeyDown(KeyCode.Escape) && IsOpen)
             {
-                OpenWheel();
-            }
-            if (Input.GetKeyUp(KeyCode.Tab))
-            {
-                if (IsOpen)
-                {
-                    if (highlightedIndex >= 0 && highlightedIndex < AVAILABLE_ITEMS.Length)
-                    {
-                        SelectItem(AVAILABLE_ITEMS[highlightedIndex].itemId);
-                    }
-                    CloseWheel();
-                }
+                CloseWheel();
+                return;
             }
 
-            // Keyboard / Mouse direction highlight when wheel is open
-            if (IsOpen)
+            // Mouse direction highlight when wheel is open
+            if (IsOpen && currentCatalog != null && currentCatalog.Length > 0)
             {
                 Vector2 mouseOffset = (Vector2)Input.mousePosition - new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-                if (mouseOffset.magnitude > 40f)
+                if (mouseOffset.magnitude > 36f)
                 {
                     float angle = Mathf.Atan2(mouseOffset.y, mouseOffset.x) * Mathf.Rad2Deg;
                     if (angle < 0f) angle += 360f;
 
-                    // 8 slices: 45 degrees per slice, centered on 0, 45, 90, etc.
-                    float sliceAngle = 360f / AVAILABLE_ITEMS.Length;
-                    int idx = Mathf.RoundToInt(angle / sliceAngle) % AVAILABLE_ITEMS.Length;
+                    float sliceAngle = 360f / currentCatalog.Length;
+                    int idx = Mathf.RoundToInt(angle / sliceAngle) % currentCatalog.Length;
                     HighlightSlice(idx);
                 }
             }
@@ -109,11 +106,18 @@ namespace TwoLadles.UI
         public void ToggleWheel()
         {
             if (IsOpen) CloseWheel();
-            else OpenWheel();
+            else OpenWheelForStorage(true);
         }
 
         public void OpenWheel()
         {
+            OpenWheelForStorage(true);
+        }
+
+        public void OpenWheelForStorage(bool isFridge)
+        {
+            currentCatalog = isFridge ? FRIDGE_ITEMS : SHELF_ITEMS;
+            RebuildSlices(isFridge ? "FRIDGE (MEAT • VEG • EGG • TOBOKI • BAGUETTE)" : "SHELF (GOCHUJANG • FLOUR • RICE • TOBOKI)");
             if (wheelRoot != null)
             {
                 wheelRoot.SetActive(true);
@@ -132,7 +136,7 @@ namespace TwoLadles.UI
 
         public void HighlightSlice(int index)
         {
-            if (index < 0 || index >= AVAILABLE_ITEMS.Length) return;
+            if (currentCatalog == null || index < 0 || index >= currentCatalog.Length) return;
             highlightedIndex = index;
 
             for (int i = 0; i < sliceHighlights.Count; i++)
@@ -140,12 +144,12 @@ namespace TwoLadles.UI
                 if (sliceHighlights[i] != null)
                 {
                     sliceHighlights[i].color = (i == index)
-                        ? new Color(0.95f, 0.75f, 0.2f, 0.85f)
-                        : new Color(0.2f, 0.22f, 0.28f, 0.65f);
+                        ? new Color(0.95f, 0.75f, 0.2f, 0.90f)
+                        : new Color(0.18f, 0.22f, 0.28f, 0.78f);
                 }
             }
 
-            var item = AVAILABLE_ITEMS[index];
+            var item = currentCatalog[index];
             if (centerTitleText != null)
             {
                 centerTitleText.text = item.displayName.ToUpper();
@@ -153,7 +157,7 @@ namespace TwoLadles.UI
             }
             if (centerIconImage != null)
             {
-                Sprite spr = Resources.Load<Sprite>($"Sprites/Items/{item.iconSpriteName}");
+                Sprite spr = PlayerController.LoadItemSprite(item.iconSpriteName);
                 if (spr != null)
                 {
                     centerIconImage.sprite = spr;
@@ -174,14 +178,25 @@ namespace TwoLadles.UI
                 return;
             }
 
-            WheelItem chosen = Array.Find(AVAILABLE_ITEMS, x => x.itemId == itemId);
+            WheelItem chosen = Array.Find(currentCatalog, x => x.itemId == itemId);
             string dName = !string.IsNullOrEmpty(chosen.displayName) ? chosen.displayName : itemId;
-            localChef.carriedItem = new KitchenItem(itemId, dName, "none", QualityTier.STANDARD);
+            string vesselType = "none";
+            if (itemId == "clean_plate") vesselType = "plate";
+            else if (itemId == "clean_bowl") vesselType = "bowl";
+
+            localChef.carriedItem = new KitchenItem(itemId, dName, vesselType, QualityTier.STANDARD);
             localChef.RefreshVisuals();
 
-            if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 2 && itemId == "pork_raw")
+            if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial)
             {
-                ShiftManager.Instance.AdvanceTutorialStep(3);
+                if (ShiftManager.Instance.tutorialStep <= 2 && (itemId == "tteok_portioned" || itemId == "gochujang" || itemId == "pork_raw"))
+                {
+                    ShiftManager.Instance.AdvanceTutorialStep(3);
+                }
+                else if (ShiftManager.Instance.tutorialStep <= 4 && (itemId == "gochujang" || itemId == "tteok_portioned"))
+                {
+                    ShiftManager.Instance.AdvanceTutorialStep(4);
+                }
             }
 
             KitchenController.Instance.TriggerStatusToast($"Picked {dName}!", new Color(0.35f, 1.0f, 0.6f));
@@ -189,41 +204,9 @@ namespace TwoLadles.UI
 
         private void BuildWheelUI()
         {
-            var canvas = GetComponentInParent<Canvas>();
             Transform root = transform;
 
-            // 1. Mobile Floating Quick-Select Button (Bottom Left, right of D-pad)
-            GameObject mobBtnObj = new GameObject("MobileWheelButton");
-            mobBtnObj.transform.SetParent(root, false);
-            var mbRect = mobBtnObj.AddComponent<RectTransform>();
-            mbRect.anchorMin = new Vector2(0f, 0f);
-            mbRect.anchorMax = new Vector2(0f, 0f);
-            mbRect.pivot = new Vector2(0.5f, 0.5f);
-            mbRect.anchoredPosition = new Vector2(178f, 94f);
-            mbRect.sizeDelta = new Vector2(74f, 74f);
-
-            var mbImg = mobBtnObj.AddComponent<Image>();
-            mbImg.color = new Color(0.14f, 0.16f, 0.22f, 0.95f);
-            mobileToggleBtn = mobBtnObj.AddComponent<Button>();
-            mobileToggleBtn.targetGraphic = mbImg;
-            mobileToggleBtn.onClick.AddListener(ToggleWheel);
-
-            // Button label
-            GameObject mbTextObj = new GameObject("Text");
-            mbTextObj.transform.SetParent(mobBtnObj.transform, false);
-            var mtRect = mbTextObj.AddComponent<RectTransform>();
-            mtRect.anchorMin = Vector2.zero;
-            mtRect.anchorMax = Vector2.one;
-            mtRect.sizeDelta = Vector2.zero;
-            var mtText = mbTextObj.AddComponent<Text>();
-            mtText.font = KitchenHUD.GetDefaultFont();
-            mtText.text = "INGREDIENT\nWHEEL\n[TAB]";
-            mtText.fontSize = 11;
-            mtText.fontStyle = FontStyle.Bold;
-            mtText.alignment = TextAnchor.MiddleCenter;
-            mtText.color = new Color(0.95f, 0.82f, 0.40f);
-
-            // 2. Circular Radial Modal Wheel Container
+            // Circular Radial Modal Wheel Container (Opened when interacting with Fridge or Shelf!)
             wheelRoot = new GameObject("RadialWheelContainer");
             wheelRoot.transform.SetParent(root, false);
             var wrRect = wheelRoot.AddComponent<RectTransform>();
@@ -231,7 +214,7 @@ namespace TwoLadles.UI
             wrRect.anchorMax = new Vector2(0.5f, 0.5f);
             wrRect.pivot = new Vector2(0.5f, 0.5f);
             wrRect.anchoredPosition = Vector2.zero;
-            wrRect.sizeDelta = new Vector2(400f, 400f);
+            wrRect.sizeDelta = new Vector2(420f, 420f);
 
             // Dark radial backdrop circle
             GameObject bgCircle = new GameObject("BackdropCircle");
@@ -241,9 +224,26 @@ namespace TwoLadles.UI
             bgRect.anchorMax = Vector2.one;
             bgRect.sizeDelta = Vector2.zero;
             var bgImg = bgCircle.AddComponent<Image>();
-            bgImg.color = new Color(0.06f, 0.07f, 0.10f, 0.88f);
+            bgImg.sprite = KitchenHUD.GetCircleSprite();
+            bgImg.color = new Color(0.06f, 0.08f, 0.12f, 0.92f);
 
-            // 3. Center Hub (Icon & Title of selected item)
+            // Storage Header Label at Top of Wheel
+            GameObject hdrObj = new GameObject("StorageHeader");
+            hdrObj.transform.SetParent(wheelRoot.transform, false);
+            var hdrRect = hdrObj.AddComponent<RectTransform>();
+            hdrRect.anchorMin = new Vector2(0.5f, 1f);
+            hdrRect.anchorMax = new Vector2(0.5f, 1f);
+            hdrRect.pivot = new Vector2(0.5f, 0.5f);
+            hdrRect.anchoredPosition = new Vector2(0f, 22f);
+            hdrRect.sizeDelta = new Vector2(420f, 28f);
+            storageHeaderText = hdrObj.AddComponent<Text>();
+            storageHeaderText.font = KitchenHUD.GetDefaultFont();
+            storageHeaderText.text = "FRIDGE STORAGE";
+            storageHeaderText.fontSize = 14;
+            storageHeaderText.alignment = TextAnchor.MiddleCenter;
+            storageHeaderText.color = new Color(1.0f, 0.88f, 0.25f);
+
+            // Center Hub (Icon & Title of selected item + Close on click)
             GameObject hubObj = new GameObject("CenterHub");
             hubObj.transform.SetParent(wheelRoot.transform, false);
             var hRect = hubObj.AddComponent<RectTransform>();
@@ -251,9 +251,13 @@ namespace TwoLadles.UI
             hRect.anchorMax = new Vector2(0.5f, 0.5f);
             hRect.pivot = new Vector2(0.5f, 0.5f);
             hRect.anchoredPosition = Vector2.zero;
-            hRect.sizeDelta = new Vector2(104f, 104f);
+            hRect.sizeDelta = new Vector2(114f, 114f);
             var hImg = hubObj.AddComponent<Image>();
-            hImg.color = new Color(0.12f, 0.14f, 0.18f, 0.98f);
+            hImg.sprite = KitchenHUD.GetCircleSprite();
+            hImg.color = new Color(0.12f, 0.15f, 0.20f, 0.98f);
+            var hBtn = hubObj.AddComponent<Button>();
+            hBtn.targetGraphic = hImg;
+            hBtn.onClick.AddListener(CloseWheel);
 
             // Center Icon
             GameObject ciObj = new GameObject("CenterIcon");
@@ -262,7 +266,7 @@ namespace TwoLadles.UI
             ciRect.anchorMin = new Vector2(0.5f, 0.5f);
             ciRect.anchorMax = new Vector2(0.5f, 0.5f);
             ciRect.pivot = new Vector2(0.5f, 0.5f);
-            ciRect.anchoredPosition = new Vector2(0f, 10f);
+            ciRect.anchoredPosition = new Vector2(0f, 12f);
             ciRect.sizeDelta = new Vector2(48f, 48f);
             centerIconImage = ciObj.AddComponent<Image>();
 
@@ -271,7 +275,7 @@ namespace TwoLadles.UI
             clObj.transform.SetParent(hubObj.transform, false);
             var clRect = clObj.AddComponent<RectTransform>();
             clRect.anchorMin = new Vector2(0f, 0f);
-            clRect.anchorMax = new Vector2(1f, 0.35f);
+            clRect.anchorMax = new Vector2(1f, 0.38f);
             clRect.pivot = new Vector2(0.5f, 0f);
             clRect.anchoredPosition = Vector2.zero;
             clRect.sizeDelta = Vector2.zero;
@@ -279,40 +283,59 @@ namespace TwoLadles.UI
             centerTitleText.font = KitchenHUD.GetDefaultFont();
             centerTitleText.text = "SELECT";
             centerTitleText.fontSize = 11;
-            centerTitleText.fontStyle = FontStyle.Bold;
             centerTitleText.alignment = TextAnchor.MiddleCenter;
             centerTitleText.color = Color.white;
 
-            // 4. Slices arranged radially
-            float radius = 138f;
-            float stepAngle = (2f * Mathf.PI) / AVAILABLE_ITEMS.Length;
+            RebuildSlices("FRIDGE STORAGE");
+            wheelRoot.SetActive(false);
+        }
 
-            for (int i = 0; i < AVAILABLE_ITEMS.Length; i++)
+        private void RebuildSlices(string headerTitle)
+        {
+            if (storageHeaderText != null)
+                storageHeaderText.text = headerTitle;
+
+            foreach (var go in sliceObjects)
             {
-                int index = i;
-                var item = AVAILABLE_ITEMS[i];
-                float angle = i * stepAngle; // Starting from 0° (right) counter-clockwise
+                if (go != null) Destroy(go);
+            }
+            sliceObjects.Clear();
+            sliceButtons.Clear();
+            sliceHighlights.Clear();
+
+            if (wheelRoot == null || currentCatalog == null) return;
+
+            float radius = 142f;
+            float stepAngle = (2f * Mathf.PI) / currentCatalog.Length;
+
+            for (int i = 0; i < currentCatalog.Length; i++)
+            {
+                var item = currentCatalog[i];
+                float angle = i * stepAngle;
                 float posX = Mathf.Cos(angle) * radius;
                 float posY = Mathf.Sin(angle) * radius;
 
                 GameObject sliceObj = new GameObject($"Slice_{item.itemId}");
                 sliceObj.transform.SetParent(wheelRoot.transform, false);
+                sliceObjects.Add(sliceObj);
                 var sRect = sliceObj.AddComponent<RectTransform>();
                 sRect.anchorMin = new Vector2(0.5f, 0.5f);
                 sRect.anchorMax = new Vector2(0.5f, 0.5f);
                 sRect.pivot = new Vector2(0.5f, 0.5f);
                 sRect.anchoredPosition = new Vector2(posX, posY);
-                sRect.sizeDelta = new Vector2(66f, 66f);
+                sRect.sizeDelta = new Vector2(74f, 74f);
 
                 var sImg = sliceObj.AddComponent<Image>();
-                sImg.color = new Color(0.2f, 0.22f, 0.28f, 0.65f);
+                sImg.sprite = KitchenHUD.GetCircleSprite();
+                sImg.color = new Color(0.18f, 0.22f, 0.28f, 0.78f);
                 sliceHighlights.Add(sImg);
 
                 var sBtn = sliceObj.AddComponent<Button>();
                 sBtn.targetGraphic = sImg;
+                string capturedId = item.itemId;
                 sBtn.onClick.AddListener(() =>
                 {
-                    SelectItem(item.itemId);
+                    SelectItem(capturedId);
                     CloseWheel();
                 });
                 sliceButtons.Add(sBtn);
@@ -324,10 +347,10 @@ namespace TwoLadles.UI
                 iRect.anchorMin = new Vector2(0.5f, 0.5f);
                 iRect.anchorMax = new Vector2(0.5f, 0.5f);
                 iRect.pivot = new Vector2(0.5f, 0.5f);
-                iRect.anchoredPosition = new Vector2(0f, 6f);
-                iRect.sizeDelta = new Vector2(34f, 34f);
+                iRect.anchoredPosition = new Vector2(0f, 8f);
+                iRect.sizeDelta = new Vector2(36f, 36f);
                 var iImg = icoObj.AddComponent<Image>();
-                Sprite itemSpr = Resources.Load<Sprite>($"Sprites/Items/{item.iconSpriteName}");
+                Sprite itemSpr = PlayerController.LoadItemSprite(item.iconSpriteName);
                 if (itemSpr != null) iImg.sprite = itemSpr;
 
                 // Label inside slice
@@ -335,20 +358,17 @@ namespace TwoLadles.UI
                 lblObj.transform.SetParent(sliceObj.transform, false);
                 var lRect = lblObj.AddComponent<RectTransform>();
                 lRect.anchorMin = new Vector2(0f, 0f);
-                lRect.anchorMax = new Vector2(1f, 0.35f);
+                lRect.anchorMax = new Vector2(1f, 0.36f);
                 lRect.pivot = new Vector2(0.5f, 0f);
                 lRect.anchoredPosition = Vector2.zero;
                 lRect.sizeDelta = Vector2.zero;
                 var lText = lblObj.AddComponent<Text>();
-                lText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                lText.text = item.displayName.Split(' ')[0]; // Short 1-word title
+                lText.font = KitchenHUD.GetDefaultFont();
+                lText.text = item.displayName.Split(' ')[0].ToUpper();
                 lText.fontSize = 10;
-                lText.fontStyle = FontStyle.Bold;
                 lText.alignment = TextAnchor.MiddleCenter;
                 lText.color = item.itemColor;
             }
-
-            wheelRoot.SetActive(false);
         }
     }
 }

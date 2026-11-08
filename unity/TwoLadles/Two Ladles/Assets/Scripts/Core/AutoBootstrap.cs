@@ -29,6 +29,11 @@ namespace TwoLadles.Core
                     mgr.AddComponent<ProgressionManager>();
                     mgr.AddComponent<ShiftManager>();
                     mgr.AddComponent<NetworkManager>();
+                    mgr.AddComponent<AudioManager>();
+                }
+                else if (AudioManager.Instance == null)
+                {
+                    GameData.Instance.gameObject.AddComponent<AudioManager>();
                 }
 
                 // 2. Create KitchenController
@@ -56,14 +61,16 @@ namespace TwoLadles.Core
                     }
 
                     // Kitchen HUD
-                    GameObject hudObj = new GameObject("KitchenHUD");
+                    GameObject hudObj = new GameObject("KitchenHUD", typeof(RectTransform));
                     hudObj.transform.SetParent(canvasObj.transform, false);
-                    hudObj.AddComponent<KitchenHUD>();
+                    var hud = hudObj.AddComponent<KitchenHUD>();
+                    hud.AutoBuildUI();
 
                     // Lobby UI (Active on launch so players can select chefs, difficulty, and host/join)
-                    GameObject lobbyObj = new GameObject("LobbyUI");
+                    GameObject lobbyObj = new GameObject("LobbyUI", typeof(RectTransform));
                     lobbyObj.transform.SetParent(canvasObj.transform, false);
-                    lobbyObj.AddComponent<LobbyUI>();
+                    var lobby = lobbyObj.AddComponent<LobbyUI>();
+                    lobby.AutoBuildUI();
                     lobbyObj.SetActive(true);
                 }
             }

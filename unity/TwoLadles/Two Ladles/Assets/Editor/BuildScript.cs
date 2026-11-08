@@ -227,14 +227,22 @@ public class BuildScript
             Canvas canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
             canvas.worldCamera = cam;
+            canvas.sortingOrder = 2000;
 
             var scaler = canvasObj.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1280, 720);
 
-            GameObject hudObj = new GameObject("KitchenHUD");
+            GameObject hudObj = new GameObject("KitchenHUD", typeof(RectTransform));
             hudObj.transform.SetParent(canvasObj.transform, false);
-            hudObj.AddComponent<KitchenHUD>();
+            var hud = hudObj.AddComponent<KitchenHUD>();
+            hud.AutoBuildUI();
+
+            GameObject lobbyObj = new GameObject("LobbyUI", typeof(RectTransform));
+            lobbyObj.transform.SetParent(canvasObj.transform, false);
+            var lobby = lobbyObj.AddComponent<LobbyUI>();
+            lobby.AutoBuildUI();
+            Canvas.ForceUpdateCanvases();
 
             int width = 1280;
             int height = 720;

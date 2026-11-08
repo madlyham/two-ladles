@@ -161,25 +161,27 @@ namespace TwoLadles.UI
             return input;
         }
 
-        private void AutoBuildUI()
+        public void AutoBuildUI()
         {
-            var root = transform;
+            if (hostButton != null) return;
 
             // Transparent Root (allows 100% full view of 3D kitchen)
             var rootRect = GetComponent<RectTransform>();
             if (rootRect == null) rootRect = gameObject.AddComponent<RectTransform>();
+            var root = rootRect.transform;
             rootRect.anchorMin = Vector2.zero;
             rootRect.anchorMax = Vector2.one;
             rootRect.sizeDelta = Vector2.zero;
+            rootRect.anchoredPosition = Vector2.zero;
 
             var bgImg = gameObject.GetComponent<Image>();
             if (bgImg != null) Destroy(bgImg);
 
-            // 1. Floating Menu Toggle Button (Pinned to Top-Right)
-            toggleMenuButton = CreateButton("ToggleMenuBtn", root, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-16f, -12f), new Vector2(140f, 32f), "Hide Menu [TAB]", new Color(0.2f, 0.25f, 0.35f, 0.9f), out toggleMenuButtonText);
+            // 1. Floating Menu Toggle Button (Pinned to Top-Right below TopBar)
+            toggleMenuButton = CreateButton("ToggleMenuBtn", root, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-16f, -44f), new Vector2(140f, 32f), "Hide Menu [TAB]", new Color(0.2f, 0.25f, 0.35f, 0.9f), out toggleMenuButtonText);
             toggleMenuButton.onClick.AddListener(ToggleMenuVisibility);
 
-            // 2. Compact Floating Modal Card (Pinned to Top-Center)
+            // 2. Compact Floating Modal Card (Pinned to Top-Center below TopBar)
             GameObject modal = new GameObject("LobbyModalPanel");
             modal.transform.SetParent(root, false);
             modalPanel = modal;
@@ -188,7 +190,7 @@ namespace TwoLadles.UI
             mRect.anchorMin = new Vector2(0.5f, 1f);
             mRect.anchorMax = new Vector2(0.5f, 1f);
             mRect.pivot = new Vector2(0.5f, 1f);
-            mRect.anchoredPosition = new Vector2(0f, -10f);
+            mRect.anchoredPosition = new Vector2(0f, -44f);
             mRect.sizeDelta = new Vector2(640f, 305f);
 
             var mImg = modal.AddComponent<Image>();

@@ -176,11 +176,13 @@ namespace TwoLadles.UI
             return slider;
         }
 
-        private void AutoBuildUI()
+        public void AutoBuildUI()
         {
-            var root = transform;
+            if (shiftTimerText != null) return;
+
             var rootRect = GetComponent<RectTransform>();
             if (rootRect == null) rootRect = gameObject.AddComponent<RectTransform>();
+            var root = rootRect.transform;
             rootRect.anchorMin = Vector2.zero;
             rootRect.anchorMax = Vector2.one;
             rootRect.pivot = new Vector2(0.5f, 0.5f);

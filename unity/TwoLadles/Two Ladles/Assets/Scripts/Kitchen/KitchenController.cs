@@ -128,6 +128,19 @@ namespace TwoLadles.Kitchen
 
         public void TriggerStatusToast(string message, Color color)
         {
+            if (AudioManager.Instance != null)
+            {
+                if (color.r > 0.8f && color.g < 0.5f)
+                    AudioManager.Instance.PlayError();
+                else if (message != null && (message.Contains("Served") || message.Contains("Flow") || message.Contains("Academy")))
+                    AudioManager.Instance.PlayBell();
+                else if (message != null && (message.Contains("Chop") || message.Contains("Strike") || message.Contains("Prep")))
+                    AudioManager.Instance.PlayChop();
+                else if (message != null && (message.Contains("Cook") || message.Contains("Grill") || message.Contains("Simmer") || message.Contains("Blanch")))
+                    AudioManager.Instance.PlaySizzle();
+                else
+                    AudioManager.Instance.PlayPickup();
+            }
             OnStatusToast?.Invoke(message, color);
         }
 
@@ -228,6 +241,8 @@ namespace TwoLadles.Kitchen
         {
             GameObject floorRoot = new GameObject("FloorTileGrid");
             floorRoot.transform.SetParent(transform);
+            floorRoot.transform.position = new Vector3(0.0f, -0.05f, 0.0f);
+            floorRoot.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
 
             // Deterministic seeded pseudo-random distribution for authentic worn/broken tiles
             System.Random rng = new System.Random(1337);
@@ -235,17 +250,18 @@ namespace TwoLadles.Kitchen
             Sprite cleanSprite = GetStationSprite("floor_tile_clean");
             Sprite brokenSprite = GetStationSprite("floor_tile_broken");
 
-            // Dimensions: X from -8.5 to +8.5 (step 1.0m, 18 tiles)
-            // Z from -5.0 to +5.0 (step 1.0m, 11 tiles)
+            // All floor tiles share the exact same Z-axis plane (local Z = 0.0f)
+            // X from -8.5 to +8.5 (step 1.0m, 18 columns)
+            // Y from -4.5 to +3.5 (step 1.0m, 9 rows meeting the base of the North wall)
             for (float x = -8.5f; x <= 8.5f; x += 1.0f)
             {
-                for (float z = -5.0f; z <= 5.0f; z += 1.0f)
+                for (float y = -4.5f; y <= 3.5f; y += 1.0f)
                 {
-                    GameObject tileObj = new GameObject($"Tile_{x:F1}_{z:F1}");
-                    tileObj.transform.SetParent(floorRoot.transform);
-                    tileObj.transform.position = new Vector3(x, -0.05f, z);
-                    tileObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
-                    tileObj.transform.localScale = Vector3.one * 1.04f; // 1.04m eliminates seams
+                    GameObject tileObj = new GameObject($"Tile_{x:F1}_{y:F1}");
+                    tileObj.transform.SetParent(floorRoot.transform, false);
+                    tileObj.transform.localPosition = new Vector3(x, y, 0.0f);
+                    tileObj.transform.localRotation = Quaternion.identity;
+                    tileObj.transform.localScale = Vector3.one * 1.01f;
 
                     var sr = tileObj.AddComponent<SpriteRenderer>();
                     bool isBroken = rng.NextDouble() < 0.16;
@@ -285,31 +301,35 @@ namespace TwoLadles.Kitchen
             CreateStaticWall("CenterDivider_South", new Vector3(0.0f, 0.75f, -2.1f), new Vector3(0.45f, 1.5f, 1.9f));
             CreateStaticWall("CenterDivider_Bottom", new Vector3(0.0f, 0.75f, -4.75f), new Vector3(0.45f, 1.5f, 1.3f));
 
-            // 2. Visual Back North Wall (Stacked Tiled Wall Sections reaching high up)
+            // 2. Visual Back North Wall (Deleted lowest 0.6f tier; reversed front/back order so front tier covers upper baseboards)
             GameObject wallRoot = new GameObject("VisualBackWall");
             wallRoot.transform.SetParent(transform);
             Sprite wallSprite = GetStationSprite("wall_south");
 
             if (wallSprite != null)
             {
-                // Multi-tier wall reaching up high above the door lintel to enclose kitchen
-                float[] wallYLevels = new float[] { 0.6f, 1.8f, 3.0f, 4.2f };
-                foreach (float y in wallYLevels)
+                float[] wallYLevels = new float[] { 1.8f, 3.0f, 4.2f };
+                for (int i = 0; i < wallYLevels.Length; i++)
                 {
+                    float y = wallYLevels[i];
+                    // Reverse order: front/lower tier (i=0, y=1.8) has higher sortingOrder (-14)
+                    // than back/upper tiers (-15, -16), hiding repeated baseboards on upper tiers.
+                    int tierSortingOrder = -14 - i;
+
                     for (float x = -8.5f; x <= 8.5f; x += 1.0f)
                     {
-                        // Door opening is 2.8m wide, 2.2m tall: only skip tiles within door frame
+                        // Door opening is 2.8m wide, 2.2m tall: skip tiles inside door frame
                         if (y < 2.2f && Mathf.Abs(x) < 1.4f) continue;
 
                         GameObject wObj = new GameObject($"WallTile_{x:F1}_{y:F1}");
                         wObj.transform.SetParent(wallRoot.transform);
                         wObj.transform.position = new Vector3(x, y, 5.2f);
                         wObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
-                        wObj.transform.localScale = Vector3.one * 1.55f;
+                        wObj.transform.localScale = new Vector3(1.02f, 1.55f, 1.0f);
 
                         var sr = wObj.AddComponent<SpriteRenderer>();
                         sr.sprite = wallSprite;
-                        sr.sortingOrder = -20;
+                        sr.sortingOrder = tierSortingOrder;
                         sr.color = (x < 0f) ? new Color(0.88f, 0.92f, 0.90f) : new Color(0.92f, 0.88f, 0.85f);
                     }
                 }

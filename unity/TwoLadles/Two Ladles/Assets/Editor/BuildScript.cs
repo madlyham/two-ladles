@@ -165,6 +165,8 @@ public class BuildScript
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel34;
+        PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
+        PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
 
         BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions();
         buildPlayerOptions.scenes = new string[] { SCENE_PATH };
@@ -188,63 +190,90 @@ public class BuildScript
 
     public static void CaptureKitchenPreview()
     {
-        Debug.Log("[BuildScript] Capturing Unity Kitchen Preview...");
-        GenerateMainScene();
+        try
+        {
+            Debug.Log("[BuildScript] Capturing Unity Kitchen Preview...");
+            GenerateMainScene();
 
-        Scene scene = EditorSceneManager.OpenScene(SCENE_PATH);
+            Scene scene = EditorSceneManager.OpenScene(SCENE_PATH);
 
-        // Build kitchen in scene
-        GameObject kcObj = new GameObject("KitchenController");
-        KitchenController kc = kcObj.AddComponent<KitchenController>();
-        kc.autoBuildKitchenOnStart = false;
-        kc.BuildEnvironment();
-        kc.BuildPerimeterWalls();
-        kc.BuildStations();
-        kc.SpawnPlayers();
+            // Build kitchen in scene
+            GameObject kcObj = new GameObject("KitchenController");
+            KitchenController kc = kcObj.AddComponent<KitchenController>();
+            kc.autoBuildKitchenOnStart = false;
+            kc.BuildEnvironment();
+            kc.BuildPerimeterWalls();
+            kc.BuildStations();
+            kc.SpawnPlayers();
 
-        // Create Canvas & HUD
-        GameObject canvasObj = new GameObject("Canvas");
-        Canvas canvas = canvasObj.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            Camera cam = Camera.main;
+            if (cam == null)
+                cam = GameObject.FindObjectOfType<Camera>();
+            if (cam == null)
+            {
+                GameObject camObj = new GameObject("Main Camera");
+                camObj.tag = "MainCamera";
+                cam = camObj.AddComponent<Camera>();
+                cam.orthographic = true;
+                cam.orthographicSize = 9.5f;
+                cam.backgroundColor = new Color(0.12f, 0.12f, 0.14f);
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                camObj.transform.position = new Vector3(0.0f, 15.0f, -11.0f);
+                camObj.transform.LookAt(new Vector3(0.0f, 0.0f, 0.6f), Vector3.up);
+            }
 
-        Camera cam = Camera.main;
-        if (cam == null)
-            cam = GameObject.FindObjectOfType<Camera>();
-        canvas.worldCamera = cam;
+            // Create Canvas & HUD
+            GameObject canvasObj = new GameObject("Canvas");
+            Canvas canvas = canvasObj.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = cam;
 
-        var scaler = canvasObj.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1280, 720);
+            var scaler = canvasObj.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1280, 720);
 
-        GameObject hudObj = new GameObject("KitchenHUD");
-        hudObj.transform.SetParent(canvasObj.transform, false);
-        hudObj.AddComponent<KitchenHUD>();
+            GameObject hudObj = new GameObject("KitchenHUD");
+            hudObj.transform.SetParent(canvasObj.transform, false);
+            hudObj.AddComponent<KitchenHUD>();
 
-        int width = 1280;
-        int height = 720;
-        RenderTexture rt = new RenderTexture(width, height, 24);
-        cam.targetTexture = rt;
-        cam.Render();
+            int width = 1280;
+            int height = 720;
+            RenderTexture rt = new RenderTexture(width, height, 24);
+            cam.targetTexture = rt;
+            cam.Render();
 
-        RenderTexture.active = rt;
-        Texture2D tex = new Texture2D(width, height, TextureFormat.RGB24, false);
-        tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-        tex.Apply();
+            RenderTexture.active = rt;
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGB24, false);
+            tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+            tex.Apply();
 
-        cam.targetTexture = null;
-        RenderTexture.active = null;
-        UnityEngine.Object.DestroyImmediate(rt);
+            cam.targetTexture = null;
+            RenderTexture.active = null;
+            UnityEngine.Object.DestroyImmediate(rt);
 
-        byte[] bytes = tex.EncodeToPNG();
-        UnityEngine.Object.DestroyImmediate(tex);
+            byte[] bytes = tex.EncodeToPNG();
+            UnityEngine.Object.DestroyImmediate(tex);
 
-        string previewDir = "Builds/preview";
-        if (!Directory.Exists(previewDir))
-            Directory.CreateDirectory(previewDir);
-        string previewFile = $"{previewDir}/unity_kitchen_view.png";
-        File.WriteAllBytes(previewFile, bytes);
-        Debug.Log($"[BuildScript] Unity preview successfully rendered and saved to {previewFile} ({bytes.Length} bytes)");
-        EditorApplication.Exit(0);
+            string previewDir = "Builds/preview";
+            if (!Directory.Exists(previewDir))
+                Directory.CreateDirectory(previewDir);
+            string previewFile = $"{previewDir}/unity_kitchen_view.png";
+            File.WriteAllBytes(previewFile, bytes);
+            Debug.Log($"[BuildScript] Unity preview successfully rendered and saved to {previewFile} ({bytes.Length} bytes)");
+
+            string webPreview = Path.GetFullPath(Path.Combine(Application.dataPath, "../../../../web/assets/kitchen_preview.png"));
+            if (File.Exists(webPreview) || Directory.Exists(Path.GetDirectoryName(webPreview)))
+            {
+                File.WriteAllBytes(webPreview, bytes);
+                Debug.Log($"[BuildScript] Web preview also updated at: {webPreview}");
+            }
+            EditorApplication.Exit(0);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[BuildScript] CaptureKitchenPreview Exception: {ex}");
+            EditorApplication.Exit(1);
+        }
     }
 
     public static void RunTestSuite()

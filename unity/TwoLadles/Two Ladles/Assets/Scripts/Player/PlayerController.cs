@@ -34,7 +34,7 @@ namespace TwoLadles.Player
         public CharacterController characterController;
 
         [Header("Carried Item Hover & Tilt Animation")]
-        public Vector3 carriedItemBaseOffset = new Vector3(0.0f, 1.45f, 0.0f);
+        public Vector3 carriedItemBaseOffset = new Vector3(0.0f, 1.85f, 0.0f);
         public float carriedHoverBobSpeed = 4.5f;
         public float carriedHoverBobHeight = 0.08f;
         public float carriedHoverTiltSpeed = 3.5f;
@@ -415,7 +415,7 @@ namespace TwoLadles.Player
                     characterSpriteRenderer.sprite = spr;
                     if (spr.bounds.size.y > 0.01f)
                     {
-                        float scale = 1.45f / spr.bounds.size.y;
+                        float scale = 1.95f / spr.bounds.size.y;
                         characterSpriteRenderer.transform.localScale = Vector3.one * scale;
                     }
                 }

@@ -17,6 +17,65 @@ namespace TwoLadles.Stations
         public bool hasMissedCadence = false;
         public int perfectCadenceCount = 0;
 
+        private SpriteRenderer _itemVisualSr;
+        private TextMesh _progressText;
+
+        private void EnsureVisualComponents()
+        {
+            if (_itemVisualSr == null)
+            {
+                var vObj = new GameObject("PrepItemVisual");
+                vObj.transform.SetParent(transform, false);
+                vObj.transform.localPosition = new Vector3(0.0f, 0.45f, 0.10f);
+                vObj.transform.localRotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
+                _itemVisualSr = vObj.AddComponent<SpriteRenderer>();
+                _itemVisualSr.sortingOrder = 550;
+                vObj.transform.localScale = Vector3.one * 0.75f;
+            }
+
+            if (_progressText == null)
+            {
+                var tObj = new GameObject("PrepProgressText");
+                tObj.transform.SetParent(transform, false);
+                tObj.transform.localPosition = new Vector3(0.0f, 1.05f, 0.10f);
+                tObj.transform.localRotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
+                _progressText = tObj.AddComponent<TextMesh>();
+                _progressText.characterSize = 0.12f;
+                _progressText.fontSize = 24;
+                _progressText.anchor = TextAnchor.MiddleCenter;
+                _progressText.alignment = TextAlignment.Center;
+                _progressText.color = new Color(0.95f, 0.85f, 0.4f);
+            }
+        }
+
+        public void UpdateVisuals()
+        {
+            EnsureVisualComponents();
+            if (heldItem == null)
+            {
+                _itemVisualSr.gameObject.SetActive(false);
+                _progressText.gameObject.SetActive(false);
+            }
+            else
+            {
+                _itemVisualSr.gameObject.SetActive(true);
+                string iconName = Player.PlayerController.ResolveItemSpriteName(heldItem.itemId);
+                _itemVisualSr.sprite = Resources.Load<Sprite>($"Sprites/Items/{iconName}");
+
+                _progressText.gameObject.SetActive(true);
+                if (strikesCompleted >= REQUIRED_STRIKES)
+                {
+                    _progressText.text = "READY!";
+                    _progressText.color = new Color(0.35f, 1.0f, 0.6f);
+                }
+                else
+                {
+                    _progressText.text = $"PREP [{strikesCompleted}/{REQUIRED_STRIKES}]";
+                    _progressText.color = new Color(0.95f, 0.85f, 0.4f);
+                }
+            }
+        }
+
         public bool PlaceRawItem(KitchenItem item)
         {
             if (heldItem != null) return false;
@@ -25,6 +84,7 @@ namespace TwoLadles.Stations
             lastStrikeTime = 0.0f;
             hasMissedCadence = false;
             perfectCadenceCount = 0;
+            UpdateVisuals();
             return true;
         }
 
@@ -111,6 +171,7 @@ namespace TwoLadles.Stations
                 heldItem.quality = quality;
             }
 
+            UpdateVisuals();
             int scoreBonus = (grade == CadenceGrade.PERFECT ? 10 : 0) + (specializationId == "prep_master" ? 15 : 0);
             return (true, "", grade, quality, finished, scoreBonus);
         }
@@ -127,6 +188,7 @@ namespace TwoLadles.Stations
                     lastStrikeTime = 0.0f;
                     hasMissedCadence = false;
                     perfectCadenceCount = 0;
+                    UpdateVisuals();
                     return (true, "Placed item on prep counter.");
                 }
                 return (false, "Nothing to place.");
@@ -137,6 +199,7 @@ namespace TwoLadles.Stations
                 {
                     playerItem = heldItem;
                     heldItem = null;
+                    UpdateVisuals();
                     return (true, "Picked up item from prep counter.");
                 }
                 return (false, "Hands full.");

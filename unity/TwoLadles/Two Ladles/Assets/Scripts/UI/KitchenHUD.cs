@@ -271,6 +271,14 @@ namespace TwoLadles.UI
             feedbackBannerText = CreateLabel("FeedbackBanner", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -48f), new Vector2(500f, 32f), "", 16, Color.yellow, TextAnchor.MiddleCenter);
             feedbackBannerText.gameObject.SetActive(false);
 
+            // Quick-Select Radial Ingredient Wheel
+            if (GetComponentInChildren<QuickSelectWheelUI>() == null)
+            {
+                GameObject wheelObj = new GameObject("QuickSelectWheelUI");
+                wheelObj.transform.SetParent(root, false);
+                wheelObj.AddComponent<QuickSelectWheelUI>();
+            }
+
             // 8. End Shift Modal
             endShiftModal = new GameObject("EndShiftModal");
             endShiftModal.transform.SetParent(root, false);

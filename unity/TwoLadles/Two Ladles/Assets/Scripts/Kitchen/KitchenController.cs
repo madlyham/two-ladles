@@ -196,19 +196,90 @@ namespace TwoLadles.Kitchen
                 lightObj.transform.rotation = Quaternion.Euler(51.0f, 28.0f, 0.0f);
             }
 
-            // 3. Flat Kitchen Floor Layer (Pushed backward +Z and lower -Y for camera depth clearance, larger chunky tiles)
-            CreateFloorMesh("FloorBackdrop", new Vector3(0.0f, -0.45f, 0.85f), new Vector2(21.0f, 16.5f), new Color(0.12f, 0.13f, 0.16f), 0.5f);
-            CreateFloorMesh("FloorWest", new Vector3(-4.6f, -0.38f, 0.85f), new Vector2(9.4f, 16.0f), new Color(0.24f, 0.28f, 0.27f), 0.55f);
-            CreateFloorMesh("FloorEast", new Vector3(4.6f, -0.38f, 0.85f), new Vector2(9.4f, 16.0f), new Color(0.30f, 0.24f, 0.22f), 0.55f);
-            CreateFloorMesh("CenterDividerLine", new Vector3(0.0f, -0.34f, 0.85f), new Vector2(0.35f, 16.0f), new Color(0.85f, 0.72f, 0.35f), 0.55f);
+            // 3. Procedural Kitchen Floor Grid (Normal and Broken Tiles)
+            BuildFloorTileGrid();
+        }
+
+        private void BuildFloorTileGrid()
+        {
+            GameObject floorRoot = new GameObject("FloorTileGrid");
+            floorRoot.transform.SetParent(transform);
+
+            // Deterministic seeded pseudo-random distribution for authentic worn/broken tiles
+            System.Random rng = new System.Random(1337);
+
+            Sprite cleanSprite = GetStationSprite("floor_tile_clean");
+            Sprite brokenSprite = GetStationSprite("floor_tile_broken");
+
+            // Dimensions: X from -8.5 to +8.5 (step 1.0m, 18 tiles)
+            // Z from -5.0 to +5.0 (step 1.0m, 11 tiles)
+            for (float x = -8.5f; x <= 8.5f; x += 1.0f)
+            {
+                for (float z = -5.0f; z <= 5.0f; z += 1.0f)
+                {
+                    GameObject tileObj = new GameObject($"Tile_{x:F1}_{z:F1}");
+                    tileObj.transform.SetParent(floorRoot.transform);
+                    tileObj.transform.position = new Vector3(x, -0.05f, z);
+                    tileObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
+                    tileObj.transform.localScale = Vector3.one * 1.04f; // 1.04m eliminates seams
+
+                    var sr = tileObj.AddComponent<SpriteRenderer>();
+                    bool isBroken = rng.NextDouble() < 0.16;
+                    sr.sprite = (isBroken && brokenSprite != null) ? brokenSprite : cleanSprite;
+                    sr.sortingOrder = -50;
+
+                    // Authentic subtle kitchen zone tinting
+                    if (Mathf.Abs(x) <= 0.35f)
+                    {
+                        // Golden center boundary divider line
+                        sr.color = new Color(0.92f, 0.82f, 0.45f);
+                    }
+                    else if (x < 0f)
+                    {
+                        // Linh's West zone: cool teal-grey tile
+                        sr.color = isBroken ? new Color(0.85f, 0.88f, 0.86f) : new Color(0.92f, 0.96f, 0.94f);
+                    }
+                    else
+                    {
+                        // Jiwon's East zone: warm terracotta-tinted tile
+                        sr.color = isBroken ? new Color(0.90f, 0.84f, 0.80f) : new Color(0.96f, 0.92f, 0.88f);
+                    }
+                }
+            }
         }
 
         public void BuildPerimeterWalls()
         {
+            // 1. Physical Boundaries (Invisible BoxColliders)
             CreateStaticWall("Wall_North", new Vector3(0.0f, 1.5f, 5.8f), new Vector3(19.2f, 3.0f, 0.8f));
             CreateStaticWall("Wall_South", new Vector3(0.0f, 1.5f, -5.8f), new Vector3(19.2f, 3.0f, 0.8f));
             CreateStaticWall("Wall_West", new Vector3(-9.4f, 1.5f, 0.0f), new Vector3(0.8f, 3.0f, 12.0f));
             CreateStaticWall("Wall_East", new Vector3(9.4f, 1.5f, 0.0f), new Vector3(0.8f, 3.0f, 12.0f));
+
+            // 2. Visual Back North Wall (Tiled Wall Sections with baseboard)
+            GameObject wallRoot = new GameObject("VisualBackWall");
+            wallRoot.transform.SetParent(transform);
+            Sprite wallSprite = GetStationSprite("wall_south");
+
+            if (wallSprite != null)
+            {
+                for (float x = -8.5f; x <= 8.5f; x += 1.0f)
+                {
+                    // Leave 2.8m center opening for the double entrance doors!
+                    if (Mathf.Abs(x) < 1.4f) continue;
+
+                    GameObject wObj = new GameObject($"WallTile_{x:F1}");
+                    wObj.transform.SetParent(wallRoot.transform);
+                    wObj.transform.position = new Vector3(x, 1.0f, 5.2f);
+                    wObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
+                    wObj.transform.localScale = Vector3.one * 1.55f;
+
+                    var sr = wObj.AddComponent<SpriteRenderer>();
+                    sr.sprite = wallSprite;
+                    sr.sortingOrder = -20;
+                    sr.color = (x < 0f) ? new Color(0.88f, 0.92f, 0.90f) : new Color(0.92f, 0.88f, 0.85f);
+                }
+            }
         }
 
         private GameObject CreateStaticWall(string wallName, Vector3 pos, Vector3 size)
@@ -230,7 +301,6 @@ namespace TwoLadles.Kitchen
             obj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
             obj.transform.localScale = new Vector3(size.x, size.y, 1.0f);
 
-            // Remove collider from floor so player character controller uses ground plane y=0
             var c = obj.GetComponent<Collider>();
             if (c != null) Destroy(c);
 
@@ -240,8 +310,6 @@ namespace TwoLadles.Kitchen
                 Shader s = Shader.Find("Sprites/Default");
                 Material mat = s != null ? new Material(s) : mr.material;
                 mat.color = col;
-
-                // Load pixel-art tile texture for authentic restaurant kitchen flooring (larger chunky tiles)
                 Texture2D floorTex = Resources.Load<Texture2D>("Sprites/Kitchen/floor_tile_clean");
                 if (floorTex != null)
                 {
@@ -274,7 +342,7 @@ namespace TwoLadles.Kitchen
 
             // --- WEST ZONE (LINH'S SIDE): Preps, Holding, Stockpot, Blancher, Assembly, Serving, Crates ---
             var prepWest = CreateStation<PrepStation>(
-                "prep_west", "LINH PREP (West)", "linh_west",
+                "prep_west", "RESPONSIVE PREP (West)", "linh_west",
                 new Vector3(-3.2f, 0.0f, 2.6f), new Vector3(2.2f, 0.9f, 1.3f),
                 new Color(0.72f, 0.75f, 0.78f), "prep_table_pot", "prep_counter_icon"
             );
@@ -311,18 +379,19 @@ namespace TwoLadles.Kitchen
                 new Color(0.75f, 0.78f, 0.82f), "table_double_horizontal", "baguette_bread"
             );
 
-            // West Supply Storage (Fridges & Shelves)
-            CreateCrateStation("crate_pork", "FRIDGE: Raw Pork Belly", "pork_raw", new Vector3(-7.6f, 0.0f, -1.2f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", "pork_belly_raw");
-            CreateCrateStation("crate_bulgogi", "FRIDGE: Raw Bulgogi", "bulgogi_raw", new Vector3(-7.6f, 0.0f, -2.6f), new Color(0.85f, 0.88f, 0.92f), "fridge_south_open", "beef_bulgogi_raw");
-            CreateCrateStation("crate_tteok", "SHELF: Rice Cakes", "tteok_raw", new Vector3(-7.6f, 0.0f, -4.0f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "tteok_portioned");
-            CreateCrateStation("crate_flour", "SHELF: Flour Sack", "flour", new Vector3(-7.6f, 0.0f, 0.2f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "flour");
-            CreateCrateStation("crate_beef", "FRIDGE: Raw Beef", "beef_raw", new Vector3(-5.4f, 0.0f, 4.4f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", "beef_raw");
-            CreateCrateStation("crate_noodles", "SHELF: Dry Rice Noodles", "noodles_raw", new Vector3(-3.4f, 0.0f, 4.4f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "noodles_raw");
-            CreateCrateStation("crate_baguette", "SHELF: Baguettes", "baguette", new Vector3(-1.4f, 0.0f, 4.4f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "baguette_bread");
+            // West Storage: North-West Corner Cooler & Exactly 1 West Shelf (Pantry)
+            var fridgeWest = CreateCrateStation("fridge_west", "WEST COOLER (Meat / Cold)", "pork_raw", new Vector3(-7.6f, 0.0f, 4.2f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", "pork_belly_raw");
+            var shelfWest = CreateCrateStation("shelf_west", "WEST PANTRY (Bread / Dry)", "baguette", new Vector3(-7.8f, 0.0f, -2.0f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "baguette_bread");
+            stations["crate_pork"] = fridgeWest;
+            stations["crate_beef"] = fridgeWest;
+            stations["crate_bulgogi"] = fridgeWest;
+            stations["crate_baguette"] = shelfWest;
+            stations["crate_noodles"] = shelfWest;
+            stations["crate_flour"] = shelfWest;
 
             // --- EAST ZONE (JIWON'S SIDE): Preps, Holding, Grill, Simmer Wok, Assembly, Washing, Crates ---
             var prepEast = CreateStation<PrepStation>(
-                "prep_east", "JIWON PREP (East)", "jiwon_east",
+                "prep_east", "RESPONSIVE PREP (East)", "jiwon_east",
                 new Vector3(3.2f, 0.0f, 2.6f), new Vector3(2.2f, 0.9f, 1.3f),
                 new Color(0.72f, 0.75f, 0.78f), "prep_table_dry", "prep_counter_icon"
             );
@@ -359,11 +428,14 @@ namespace TwoLadles.Kitchen
                 new Color(0.40f, 0.70f, 0.85f), "sink_double_south", "dish_soap"
             );
 
-            // East Supply Storage (Fridges & Shelves)
-            CreateCrateStation("crate_daikon", "FRIDGE: Daikon & Carrot", "daikon_carrot_raw", new Vector3(1.6f, 0.0f, 4.4f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", "pickled_veg");
-            CreateCrateStation("crate_kimchi", "FRIDGE: Aged Kimchi", "kimchi_raw", new Vector3(3.8f, 0.0f, 4.4f), new Color(0.85f, 0.88f, 0.92f), "fridge_south_open", "kimchi_slaw");
-            CreateCrateStation("crate_eomuk", "SHELF: Fish Cakes", "eomuk_raw", new Vector3(6.0f, 0.0f, 4.4f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "fish_cake_raw");
-            CreateCrateStation("crate_gochujang", "SHELF: Gochujang Sauce", "gochujang_sauce", new Vector3(7.6f, 0.0f, -1.4f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "korean_sauce");
+            // East Storage: North-East Corner Cooler & Exactly 1 East Shelf (Grains / Sauces)
+            var fridgeEast = CreateCrateStation("fridge_east", "EAST COOLER (Veg / Cold)", "kimchi_raw", new Vector3(7.6f, 0.0f, 4.2f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", "kimchi_slaw");
+            var shelfEast = CreateCrateStation("shelf_east", "EAST PANTRY (Grains / Sauces)", "tteok_raw", new Vector3(7.8f, 0.0f, -2.0f), new Color(0.70f, 0.65f, 0.58f), "shelf_horizontal", "tteok_portioned");
+            stations["crate_kimchi"] = fridgeEast;
+            stations["crate_daikon"] = fridgeEast;
+            stations["crate_tteok"] = shelfEast;
+            stations["crate_eomuk"] = shelfEast;
+            stations["crate_gochujang"] = shelfEast;
 
             // Build Authentic Decorative Kitchen Props
             BuildDecorations();
@@ -541,7 +613,7 @@ namespace TwoLadles.Kitchen
             sr.sprite = Resources.Load<Sprite>($"Sprites/Characters/{charId}_tier{tier}");
             if (sr.sprite != null && sr.sprite.bounds.size.y > 0.01f)
             {
-                float scale = 1.45f / sr.sprite.bounds.size.y;
+                float scale = 1.95f / sr.sprite.bounds.size.y;
                 sprChild.transform.localScale = Vector3.one * scale;
             }
             else
@@ -553,7 +625,7 @@ namespace TwoLadles.Kitchen
             // Carried Item SpriteRenderer (hovering directly above chef's head with tilt & bobbing)
             GameObject itemChild = new GameObject("CarriedItemSprite");
             itemChild.transform.SetParent(chefObj.transform);
-            itemChild.transform.localPosition = new Vector3(0.0f, 1.45f, 0.0f);
+            itemChild.transform.localPosition = new Vector3(0.0f, 1.85f, 0.0f);
             itemChild.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
             var itemSr = itemChild.AddComponent<SpriteRenderer>();
             itemChild.transform.localScale = Vector3.one * 0.55f;

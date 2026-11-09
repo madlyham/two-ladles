@@ -92,7 +92,7 @@ namespace TwoLadles.Core
 
             ingredients["baguette"] = new IngredientSpec("baguette", "Crisp Vietnamese Baguette", "linh_west", "linh_west", "baguette", "baguette", "baguette", "", new Color(0.86f, 0.65f, 0.35f));
             ingredients["flour"] = new IngredientSpec("flour", "All-Purpose Flour", "linh_west", "linh_west", "flour", "flour", "cooked_flour", "stove", new Color(0.96f, 0.94f, 0.88f));
-            ingredients["cooked_flour"] = new IngredientSpec("cooked_flour", "Cooked Flour Cake", "linh_west", "linh_west", "flour", "cooked_flour", "bot_chien", "stove", new Color(0.92f, 0.78f, 0.45f));
+            ingredients["cooked_flour"] = new IngredientSpec("cooked_flour", "Cooked Flour Cake", "linh_west", "linh_west", "flour", "cooked_flour", "", "stove", new Color(0.92f, 0.78f, 0.45f));
             ingredients["rice_raw"] = new IngredientSpec("rice_raw", "Raw Short-Grain Rice", "linh_west", "jiwon_east", "rice_raw", "rice_portioned", "cooked_rice", "simmer_wok", new Color(0.96f, 0.96f, 0.94f));
             ingredients["rice_portioned"] = new IngredientSpec("rice_portioned", "Rice Portion", "linh_west", "jiwon_east", "rice_raw", "rice_portioned", "cooked_rice", "simmer_wok", new Color(0.98f, 0.98f, 0.98f));
             ingredients["cooked_rice"] = new IngredientSpec("cooked_rice", "Cooked Steamed Rice", "linh_west", "shared", "rice_portioned", "cooked_rice", "cooked_rice", "simmer_wok", new Color(0.98f, 0.98f, 0.96f));

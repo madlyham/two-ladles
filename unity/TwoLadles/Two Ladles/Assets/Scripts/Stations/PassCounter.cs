@@ -166,9 +166,10 @@ namespace TwoLadles.Stations
             }
             else
             {
+                // First pass: retrieve an item placed by partner chef (immediate handoff)
                 for (int i = 0; i < NUM_SLOTS; i++)
                 {
-                    if (slots[i].item != null)
+                    if (slots[i].item != null && slots[i].placedByPeer != peerId)
                     {
                         var res = RetrieveItem(i, peerId, now);
                         playerItem = res.item;
@@ -180,6 +181,24 @@ namespace TwoLadles.Stations
 
                         string msg = res.handoffAwarded ? "Handoff! +15 Flow!" : "Retrieved.";
                         return (true, msg);
+                    }
+                }
+
+                // Second pass: if only items placed by self exist, only retrieve after 5.0 seconds (prevents ping-pong loop)
+                for (int i = 0; i < NUM_SLOTS; i++)
+                {
+                    if (slots[i].item != null && slots[i].placedByPeer == peerId)
+                    {
+                        if ((now - slots[i].placedAtTime) >= 5.0f)
+                        {
+                            var res = RetrieveItem(i, peerId, now);
+                            playerItem = res.item;
+                            return (true, "Retrieved.");
+                        }
+                        else
+                        {
+                            return (false, "Item waiting for partner chef.");
+                        }
                     }
                 }
                 return (false, "Empty.");

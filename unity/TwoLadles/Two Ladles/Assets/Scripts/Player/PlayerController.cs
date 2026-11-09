@@ -126,14 +126,27 @@ namespace TwoLadles.Player
             }
         }
 
-        public (bool ok, string reason) TryInteractPrimary()
+        public (bool ok, string reason) TryInteractPrimary(StationBase specificStation = null)
         {
             if (KitchenController.Instance == null) return (false, "Kitchen unavailable.");
 
-            StationBase nearest = KitchenController.Instance.FindNearestStation(transform.position);
-            if (nearest == null) return (false, "No station within reach.");
+            StationBase target = specificStation;
+            if (target != null)
+            {
+                float dist = Vector3.Distance(transform.position, target.transform.position);
+                if (dist > StationBase.MAX_INTERACT_DISTANCE)
+                {
+                    return (false, "Target station out of reach.");
+                }
+            }
+            else
+            {
+                target = KitchenController.Instance.FindNearestStation(transform.position);
+            }
 
-            var res = nearest.InteractPrimary(ref carriedItem, peerId, characterId);
+            if (target == null) return (false, "No station within reach.");
+
+            var res = target.InteractPrimary(ref carriedItem, peerId, characterId);
             RefreshVisuals();
 
             if (NetworkManager.Instance != null && !NetworkManager.Instance.IsHost())
@@ -150,14 +163,27 @@ namespace TwoLadles.Player
             return res;
         }
 
-        public (bool ok, string reason) TryInteractSecondary()
+        public (bool ok, string reason) TryInteractSecondary(StationBase specificStation = null)
         {
             if (KitchenController.Instance == null) return (false, "Kitchen unavailable.");
 
-            StationBase nearest = KitchenController.Instance.FindNearestStation(transform.position);
-            if (nearest == null) return (false, "No station within reach.");
+            StationBase target = specificStation;
+            if (target != null)
+            {
+                float dist = Vector3.Distance(transform.position, target.transform.position);
+                if (dist > StationBase.MAX_INTERACT_DISTANCE)
+                {
+                    return (false, "Target station out of reach.");
+                }
+            }
+            else
+            {
+                target = KitchenController.Instance.FindNearestStation(transform.position);
+            }
 
-            var res = nearest.InteractSecondary(ref carriedItem, peerId, characterId);
+            if (target == null) return (false, "No station within reach.");
+
+            var res = target.InteractSecondary(ref carriedItem, peerId, characterId);
             RefreshVisuals();
 
             if (NetworkManager.Instance != null && !NetworkManager.Instance.IsHost())

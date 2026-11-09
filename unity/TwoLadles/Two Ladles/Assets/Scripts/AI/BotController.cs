@@ -43,6 +43,12 @@ namespace TwoLadles.AI
         [Header("Components")]
         public PlayerController playerController;
 
+        [Header("Interaction Timing & Anti-Ping-Pong")]
+        public float interactCooldown = 0.0f;
+        public const float INTERACTION_DELAY = 1.0f;
+        public const float PLACED_ITEM_COOLDOWN = 5.0f;
+        public Dictionary<StationBase, float> recentlyPlacedCooldowns = new Dictionary<StationBase, float>();
+
         // Cadence & Decision Timing
         private float decisionInterval = 0.20f;
         private float chopCadenceInterval = 0.40f;
@@ -115,6 +121,26 @@ namespace TwoLadles.AI
             {
                 stuckTimer = 0.0f;
                 lastRecordedPosition = transform.position;
+            }
+
+            // Decrement interaction delay and anti-ping-pong placement timers
+            if (interactCooldown > 0.0f)
+            {
+                interactCooldown -= dt;
+            }
+
+            if (recentlyPlacedCooldowns.Count > 0)
+            {
+                var keys = new List<StationBase>(recentlyPlacedCooldowns.Keys);
+                for (int i = 0; i < keys.Count; i++)
+                {
+                    var k = keys[i];
+                    recentlyPlacedCooldowns[k] -= dt;
+                    if (recentlyPlacedCooldowns[k] <= 0.0f)
+                    {
+                        recentlyPlacedCooldowns.Remove(k);
+                    }
+                }
             }
 
             // Periodic Utility Decision Cycle
@@ -211,7 +237,7 @@ namespace TwoLadles.AI
                 if (pendingHandoff != null)
                 {
                     StationBase passCounter = GetStation("pass_counter");
-                    if (passCounter != null)
+                    if (passCounter != null && !recentlyPlacedCooldowns.ContainsKey(passCounter))
                     {
                         SetTarget(passCounter, $"Retrieve {pendingHandoff.itemId} from Pass Counter");
                         return;
@@ -220,7 +246,7 @@ namespace TwoLadles.AI
 
                 // Check physical pass counter slots if comms missed
                 PassCounter pass = GetStation("pass_counter") as PassCounter;
-                if (pass != null)
+                if (pass != null && !recentlyPlacedCooldowns.ContainsKey(pass))
                 {
                     for (int i = 0; i < pass.slots.Length; i++)
                     {
@@ -319,6 +345,19 @@ namespace TwoLadles.AI
                 {
                     if (playerController.carriedItem == null)
                     {
+                        PassCounter pass = GetStation("pass_counter") as PassCounter;
+                        if (pass != null && !recentlyPlacedCooldowns.ContainsKey(pass))
+                        {
+                            for (int i = 0; i < pass.slots.Length; i++)
+                            {
+                                if (pass.slots[i] != null && pass.slots[i].item != null && pass.slots[i].placedByPeer != peerId)
+                                {
+                                    SetTarget(pass, "Retrieve Rice Cakes from Pass Counter");
+                                    return;
+                                }
+                            }
+                        }
+
                         desiredItemId = "tteok_portioned";
                         SetTarget(GetStation("fridge_east"), "Get Rice Cakes from Fridge");
                     }
@@ -924,12 +963,21 @@ namespace TwoLadles.AI
                 playerController.facingDirection = new Vector2(toStation.x, toStation.z).normalized;
             }
 
-            // 4. Frame-Accurate Station Interactions
+            // 4. Frame-Accurate Station Interactions (Guarded by 1.0s Debounce Delay)
+            if (interactCooldown > 0.0f)
+            {
+                return;
+            }
+
             if (targetStation is PrepStation prep)
             {
                 if (prep.heldItem == null && playerController.carriedItem != null)
                 {
-                    playerController.TryInteractPrimary();
+                    var res = playerController.TryInteractPrimary(targetStation);
+                    if (res.ok)
+                    {
+                        interactCooldown = INTERACTION_DELAY;
+                    }
                 }
                 else if (prep.heldItem != null)
                 {
@@ -939,7 +987,7 @@ namespace TwoLadles.AI
                         if (chopTimer >= chopCadenceInterval)
                         {
                             chopTimer = 0.0f;
-                            playerController.TryInteractSecondary();
+                            playerController.TryInteractSecondary(targetStation);
                         }
                     }
                     else
@@ -951,12 +999,16 @@ namespace TwoLadles.AI
                             if (chopTimer >= chopCadenceInterval)
                             {
                                 chopTimer = 0.0f;
-                                playerController.TryInteractSecondary();
+                                playerController.TryInteractSecondary(targetStation);
                             }
                         }
                         else
                         {
-                            playerController.TryInteractPrimary();
+                            var res = playerController.TryInteractPrimary(targetStation);
+                            if (res.ok)
+                            {
+                                interactCooldown = INTERACTION_DELAY;
+                            }
                         }
                     }
                 }
@@ -965,15 +1017,31 @@ namespace TwoLadles.AI
             {
                 if (cook.currentState == CookingState.OPTIMAL || cook.currentState == CookingState.OVERCOOKED)
                 {
-                    playerController.TryInteractPrimary();
+                    if (playerController.carriedItem == null)
+                    {
+                        var res = playerController.TryInteractPrimary(targetStation);
+                        if (res.ok)
+                        {
+                            interactCooldown = INTERACTION_DELAY;
+                        }
+                    }
                 }
                 else if (cook.heldItem == null && playerController.carriedItem != null)
                 {
-                    playerController.TryInteractPrimary();
+                    var res = playerController.TryInteractPrimary(targetStation);
+                    if (res.ok)
+                    {
+                        recentlyPlacedCooldowns[targetStation] = PLACED_ITEM_COOLDOWN;
+                        interactCooldown = INTERACTION_DELAY;
+                    }
                 }
                 else if (cook.heldItem != null && playerController.carriedItem != null)
                 {
-                    playerController.TryInteractPrimary();
+                    var res = playerController.TryInteractPrimary(targetStation);
+                    if (res.ok)
+                    {
+                        interactCooldown = INTERACTION_DELAY;
+                    }
                 }
             }
             else if (targetStation is PassCounter pass)
@@ -981,9 +1049,11 @@ namespace TwoLadles.AI
                 if (playerController.carriedItem != null)
                 {
                     string passedItemId = playerController.carriedItem.itemId;
-                    var res = playerController.TryInteractPrimary();
+                    var res = playerController.TryInteractPrimary(targetStation);
                     if (res.ok)
                     {
+                        recentlyPlacedCooldowns[targetStation] = PLACED_ITEM_COOLDOWN;
+                        interactCooldown = INTERACTION_DELAY;
                         for (int s = 0; s < pass.slots.Length; s++)
                         {
                             if (pass.slots[s] != null && pass.slots[s].item != null && pass.slots[s].placedByPeer == peerId)
@@ -996,12 +1066,53 @@ namespace TwoLadles.AI
                 }
                 else
                 {
+                    // Only retrieve if there is a pending handoff for this bot or an item from partner chef
                     var handoff = BotCommunicationHub.GetPendingHandoffFor(peerId);
-                    int slotToClaim = handoff != null ? handoff.slotIndex : -1;
-                    var res = playerController.TryInteractPrimary();
-                    if (res.ok && slotToClaim >= 0)
+                    bool hasPartnerItem = false;
+                    for (int s = 0; s < pass.slots.Length; s++)
                     {
-                        BotCommunicationHub.ClaimHandoff(slotToClaim, peerId);
+                        if (pass.slots[s] != null && pass.slots[s].item != null && pass.slots[s].placedByPeer != peerId)
+                        {
+                            hasPartnerItem = true;
+                            break;
+                        }
+                    }
+
+                    if (handoff != null || hasPartnerItem)
+                    {
+                        int slotToClaim = handoff != null ? handoff.slotIndex : -1;
+                        var res = playerController.TryInteractPrimary(targetStation);
+                        if (res.ok)
+                        {
+                            interactCooldown = INTERACTION_DELAY;
+                            if (slotToClaim >= 0)
+                            {
+                                BotCommunicationHub.ClaimHandoff(slotToClaim, peerId);
+                            }
+                        }
+                    }
+                }
+            }
+            else if (targetStation is CounterStation counter)
+            {
+                if (playerController.carriedItem != null)
+                {
+                    var res = playerController.TryInteractPrimary(targetStation);
+                    if (res.ok)
+                    {
+                        recentlyPlacedCooldowns[targetStation] = PLACED_ITEM_COOLDOWN;
+                        interactCooldown = INTERACTION_DELAY;
+                    }
+                }
+                else
+                {
+                    if (!recentlyPlacedCooldowns.ContainsKey(targetStation))
+                    {
+                        var res = playerController.TryInteractPrimary(targetStation);
+                        if (res.ok)
+                        {
+                            interactCooldown = INTERACTION_DELAY;
+                        }
                     }
                 }
             }
@@ -1012,11 +1123,16 @@ namespace TwoLadles.AI
                     crate.DispenseItemDirect(ref playerController.carriedItem, desiredItemId);
                     playerController.RefreshVisuals();
                     desiredItemId = null;
+                    interactCooldown = INTERACTION_DELAY;
                 }
             }
             else
             {
-                playerController.TryInteractPrimary();
+                var res = playerController.TryInteractPrimary(targetStation);
+                if (res.ok)
+                {
+                    interactCooldown = INTERACTION_DELAY;
+                }
             }
         }
 

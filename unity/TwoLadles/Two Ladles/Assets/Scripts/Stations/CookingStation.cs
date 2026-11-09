@@ -169,6 +169,11 @@ namespace TwoLadles.Stations
             {
                 if (playerItem == null)
                 {
+                    if (currentState == CookingState.COOKING || currentState == CookingState.RAW)
+                    {
+                        return (false, "Still cooking...");
+                    }
+
                     playerItem = RetrieveCookedItem();
 
                     if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && playerItem != null)

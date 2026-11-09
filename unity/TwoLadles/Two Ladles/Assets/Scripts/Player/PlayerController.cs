@@ -124,6 +124,20 @@ namespace TwoLadles.Player
                     KitchenController.Instance.SwitchLocalChef();
                 }
             }
+
+            // Jiwon Part-Timer Crew Skill: H key
+            if (Input.GetKeyDown(KeyCode.H))
+            {
+                if (characterId == "jiwon" && KitchenController.Instance != null)
+                {
+                    var res = KitchenController.Instance.RequestHireWorker(peerId, "prep_assistant");
+                    if (!res.ok)
+                    {
+                        // If prep assistant already hired or on CD, try second slot (dishwasher / kitchen assistant)
+                        KitchenController.Instance.RequestHireWorker(peerId, "dishwasher");
+                    }
+                }
+            }
         }
 
         public (bool ok, string reason) TryInteractPrimary(StationBase specificStation = null)

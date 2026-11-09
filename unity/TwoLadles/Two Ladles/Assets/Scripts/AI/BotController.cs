@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using TwoLadles.Data;
@@ -34,6 +34,8 @@ namespace TwoLadles.AI
         public string activeRecipeId = "tteokbokki";
         public float goalTimer = 0.0f;
         public float stuckTimer = 0.0f;
+        private int stuckRepeatCount = 0;
+        private string lastStuckGoal = null;
 
         [Header("Navigation & TAS Waypoints")]
         public List<Vector3> currentPath = new List<Vector3>();
@@ -45,6 +47,39 @@ namespace TwoLadles.AI
 
         [Header("Interaction Timing & Anti-Ping-Pong")]
         public float interactCooldown = 0.0f;
+        // After a real serving rejection, skip the serve goal briefly so the dish gets parked instead of looping.
+        private float serveRetryBlock = 0.0f;
+
+        // TAS cook timing: act ~0.5s after a cooker turns OPTIMAL instead of waiting toward burn.
+        private const float OPTIMAL_ACT_DELAY = 0.5f;
+        private readonly Dictionary<CookingStation, float> optimalSince = new Dictionary<CookingStation, float>();
+
+        private void TrackOptimalTimers()
+        {
+            if (KitchenController.Instance == null) return;
+            foreach (var st in KitchenController.Instance.stations.Values)
+            {
+                if (!(st is CookingStation cook)) continue;
+                if (cook.heldItem != null && cook.currentState == CookingState.OPTIMAL)
+                {
+                    if (!optimalSince.ContainsKey(cook)) optimalSince[cook] = Time.time;
+                }
+                else
+                {
+                    optimalSince.Remove(cook);
+                }
+            }
+        }
+
+        /// <summary>True once the cooker has been OPTIMAL for OPTIMAL_ACT_DELAY seconds, or is already OVERCOOKED.</summary>
+        private bool IsCookReadyToAct(CookingStation cook)
+        {
+            if (cook == null || cook.heldItem == null) return false;
+            if (cook.currentState == CookingState.OVERCOOKED) return true;
+            return cook.currentState == CookingState.OPTIMAL &&
+                   optimalSince.TryGetValue(cook, out float since) &&
+                   Time.time - since >= OPTIMAL_ACT_DELAY;
+        }
         public const float INTERACTION_DELAY = 1.0f;
         public const float PLACED_ITEM_COOLDOWN = 5.0f;
         public Dictionary<StationBase, float> recentlyPlacedCooldowns = new Dictionary<StationBase, float>();
@@ -113,11 +148,14 @@ namespace TwoLadles.AI
             decisionTimer += dt;
             goalTimer += dt;
             if (workerHireCooldown > 0.0f) workerHireCooldown -= dt;
+            if (serveRetryBlock > 0.0f) serveRetryBlock -= dt;
+            TrackOptimalTimers();
 
             // Anti-Stuck Watchdog: Catches bot standing still or unable to reach/interact
             // Check stationary duration (excluding intentional standby or cooking monitoring)
             bool isIntentionalWait = !string.IsNullOrEmpty(currentGoalName) && 
-                (currentGoalName.StartsWith("Standby") || currentGoalName.StartsWith("Monitor") || currentGoalName.StartsWith("Wait"));
+                (currentGoalName.StartsWith("Standby") || currentGoalName.StartsWith("Monitor") || currentGoalName.StartsWith("Wait") ||
+                 currentGoalName.StartsWith("Hold Dish"));
 
             if (!isIntentionalWait && Vector3.Distance(transform.position, lastRecordedPosition) < 0.08f)
             {
@@ -125,10 +163,24 @@ namespace TwoLadles.AI
                 if (stuckTimer > 3.0f)
                 {
                     BotLogger.LogStuck(characterId, $"Stationary for {stuckTimer:F1}s at {(targetStation != null ? targetStation.stationId : "none")} (Goal: '{currentGoalName}')", transform.position);
+                    // Escalation: same goal stuck repeatedly -> drop carried item or clear goal
+                    if (currentGoalName == lastStuckGoal) stuckRepeatCount++;
+                    else { stuckRepeatCount = 1; lastStuckGoal = currentGoalName; }
                     targetStation = null;
                     currentPath.Clear();
                     currentWaypointIndex = 0;
-                    EvaluateAndSelectGoal();
+                    if (stuckRepeatCount >= 2 && playerController.carriedItem != null)
+                    {
+                        stuckRepeatCount = 0;
+                        lastStuckGoal = null;
+                        currentGoalName = "";
+                        SetTarget(FindDropStation() ?? GetStation("trash_bin"), "Unstick: Drop Item");
+                    }
+                    else
+                    {
+                        if (stuckRepeatCount >= 2) currentGoalName = "";
+                        EvaluateAndSelectGoal();
+                    }
                     stuckTimer = 0.0f;
                 }
             }
@@ -225,6 +277,13 @@ namespace TwoLadles.AI
             CookingStation urgentPan = FindUrgentPan();
             if (urgentPan != null)
             {
+                // Carrying the egg for this exact flour pan? Add it now instead of dumping the egg.
+                if (playerController.carriedItem != null && playerController.carriedItem.itemId == "egg_raw" &&
+                    (urgentPan.heldItem.itemId == "flour" || urgentPan.heldItem.itemId == "cooked_flour"))
+                {
+                    SetTarget(urgentPan, "Add Egg to Cooked Flour");
+                    return;
+                }
                 if (playerController.carriedItem != null)
                 {
                     StationBase dropStation = FindDropStation();
@@ -233,7 +292,13 @@ namespace TwoLadles.AI
                         SetTarget(dropStation, "Drop Item for Pan Rescue");
                         return;
                     }
-                    // Cannot rescue pan directly while hands are full and no drop station is available.
+                    // Own-side counters all full — drop in trash so hands free for rescue
+                    StationBase trash = GetStation("trash_bin");
+                    if (trash != null)
+                    {
+                        SetTarget(trash, "Trash Item to Free Hands for Pan Rescue");
+                        return;
+                    }
                 }
                 else
                 {
@@ -249,7 +314,7 @@ namespace TwoLadles.AI
 
                 if (characterId == "linh" || transform.position.x < -1.0f)
                 {
-                    if (isOrdered)
+                    if (isOrdered && serveRetryBlock <= 0.0f)
                     {
                         StationBase serveWindow = GetStation("serving_station");
                         if (serveWindow != null)
@@ -281,10 +346,23 @@ namespace TwoLadles.AI
                     // Jiwon on East side
                     if (isOrdered)
                     {
-                        StationBase passCounter = GetStation("pass_counter");
-                        if (passCounter != null)
+                        PassCounter passC = GetStation("pass_counter") as PassCounter;
+                        if (passC != null && passC.HasEmptySlot())
                         {
-                            SetTarget(passCounter, "Pass Completed Dish to Linh");
+                            SetTarget(passC, "Pass Completed Dish to Linh");
+                            return;
+                        }
+                        // Pass counter full — park dish on a holding counter until slot opens
+                        StationBase holdSpot = FindDropStation();
+                        if (holdSpot != null)
+                        {
+                            SetTarget(holdSpot, "Hold Dish Until Pass Counter Clears");
+                            return;
+                        }
+                        StationBase trashFallback = GetStation("trash_bin");
+                        if (trashFallback != null)
+                        {
+                            SetTarget(trashFallback, "Discard Blocked Dish in Trash");
                             return;
                         }
                     }
@@ -402,12 +480,34 @@ namespace TwoLadles.AI
 
             PlanOrderTask(activeRecipeId);
 
+            // Safety net: pan rescue finished (item now in hands) but recipe plan did not re-target -> park item.
+            if (playerController.carriedItem != null && !string.IsNullOrEmpty(currentGoalName) &&
+                currentGoalName.StartsWith("Rescue Pan"))
+            {
+                SetTarget(FindDropStation() ?? GetStation("trash_bin"), "Drop Unneeded Item");
+            }
+
             // Broadcast Intent to partner chef
             BotCommunicationHub.BroadcastIntent(peerId, characterId, currentGoalName, targetStation != null ? targetStation.stationId : null, activeRecipeId);
         }
 
         private void SetTarget(StationBase station, string goalName)
         {
+            if (station != null && station.stationId != "pass_counter" && station.stationId != "trash_bin" && station.stationId != "serving_station")
+            {
+                // Hard zone boundary: Linh stays west (x <= 0), Jiwon stays east (x >= 0)
+                if (peerId == 1 && station.transform.position.x > 0f)
+                {
+                    BotLogger.Log(characterId, $"Attempted to target opposite-zone station [{station.stationId}] at ({station.transform.position.x:F1})! Blocked by zone boundary.");
+                    return;
+                }
+                if (peerId == 2 && station.transform.position.x < 0f)
+                {
+                    BotLogger.Log(characterId, $"Attempted to target opposite-zone station [{station.stationId}] at ({station.transform.position.x:F1})! Blocked by zone boundary.");
+                    return;
+                }
+            }
+
             if (targetStation != station || currentGoalName != goalName)
             {
                 targetStation = station;
@@ -585,8 +685,8 @@ namespace TwoLadles.AI
                             return;
                         }
 
-                        // Case B: Raw Tteokbokki actively cooking in wok
-                        if (wok.heldItem.itemId == "tteokbokki_raw")
+                        // Case B: Raw Tteokbokki still actively cooking in wok (not yet OPTIMAL/OVERCOOKED)
+                        if (wok.heldItem.itemId == "tteokbokki_raw" && wok.currentState != CookingState.OPTIMAL && wok.currentState != CookingState.OVERCOOKED)
                         {
                             // If a table has rice cakes waiting for sauce, assemble on table while wok simmers!
                             CounterStation tableWaitingSauce = FindItemOnCounters("tteok_portioned") ?? FindItemOnCounters("tteok_raw") ?? FindItemOnCounters("tteokbokki_simmered") ?? FindItemOnCounters("tteok_cooked");
@@ -703,6 +803,41 @@ namespace TwoLadles.AI
         }
 
         // --- DAY 2: BỘT CHIÊN ---
+        // Drop carried item on a free table; trash it if every table is full (never leave bot target-less).
+        private void DropOrTrash(string goal)
+        {
+            StationBase drop = FindDropStation();
+            if (drop != null) SetTarget(drop, goal);
+            else SetTarget(GetStation("trash_bin"), "Trash Item (Tables Full)");
+        }
+
+        // Bột chiên with empty pan: handles cooked flour cake / egg on own-side tables (combine on counter).
+        private void PlanBotChienEmptyPan(CookingStation pan, string shelfId, string fridgeId)
+        {
+            var carried = playerController.carriedItem;
+            CounterStation tableBatter = FindItemOnCounters("bot_chien_batter");
+            CounterStation tableFlourCake = FindItemOnCounters("cooked_flour");
+            if (carried == null)
+            {
+                if (tableBatter != null) { SetTarget(tableBatter, "Pick Up Batter to Cook"); return; }
+                if (tableFlourCake != null) { desiredItemId = "egg_raw"; SetTarget(GetStation(fridgeId), "Get Egg for Flour Cake on Table"); return; }
+                desiredItemId = "flour";
+                SetTarget(GetStation(shelfId), "Get Rice Flour from Shelf");
+                return;
+            }
+            switch (carried.itemId)
+            {
+                case "flour": SetTarget(pan, "Place Flour on Stove"); return;
+                case "bot_chien_batter": SetTarget(pan, "Place Batter on Stove"); return;
+                case "egg_raw":
+                    if (tableFlourCake != null) { SetTarget(tableFlourCake, "Add Egg to Flour Cake on Table"); return; }
+                    DropOrTrash("Place Egg on Table");
+                    return;
+                case "cooked_flour": DropOrTrash("Place Flour Cake on Table"); return;
+                default: DropOrTrash("Place Item on Table"); return;
+            }
+        }
+
         private void PlanBotChien()
         {
             if (characterId == "linh")
@@ -713,32 +848,7 @@ namespace TwoLadles.AI
 
                 if (stove.heldItem == null)
                 {
-                    // Check if table has ready-mixed batter to cook
-                    CounterStation tableBatter = FindItemOnCounters("bot_chien_batter");
-                    if (tableBatter != null && playerController.carriedItem == null)
-                    {
-                        SetTarget(tableBatter, "Pick Up Batter to Cook in Stove");
-                        return;
-                    }
-
-                    if (playerController.carriedItem == null)
-                    {
-                        desiredItemId = "flour";
-                        SetTarget(GetStation("shelf_west"), "Get Rice Flour from Shelf");
-                    }
-                    else if (playerController.carriedItem.itemId == "flour")
-                    {
-                        SetTarget(stove, "Place Flour on Stove");
-                    }
-                    else if (playerController.carriedItem.itemId == "bot_chien_batter")
-                    {
-                        SetTarget(stove, "Place Batter on Stove");
-                    }
-                    else
-                    {
-                        StationBase dropStation = FindDropStation();
-                        if (dropStation != null) SetTarget(dropStation, "Place Item on Table");
-                    }
+                    PlanBotChienEmptyPan(stove, "shelf_west", "fridge_west");
                     return;
                 }
 
@@ -755,13 +865,14 @@ namespace TwoLadles.AI
 
                     if (playerController.carriedItem.itemId == "egg_raw")
                     {
-                        if (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED)
+                        bool flourReady = stove.heldItem.itemId == "cooked_flour" || stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED;
+                        if (flourReady)
                         {
                             SetTarget(stove, "Add Egg to Cooked Flour");
                         }
                         else
                         {
-                            SetTarget(stove, "Wait for Flour Cake to Cook with Egg in Hand");
+                            SetTarget(stove, "Wait for Flour Cake Ready");
                         }
                         return;
                     }
@@ -781,8 +892,11 @@ namespace TwoLadles.AI
                     {
                         SetTarget(stove, "Monitor Bột Chiên Frying");
                     }
-                    return;
+                    if (playerController.carriedItem == null) return;
                 }
+
+                // Fallback: carrying something no branch above uses -> put it down so hands are free.
+                if (playerController.carriedItem != null) DropOrTrash("Place Unused Item on Table");
             }
             else
             {
@@ -792,32 +906,7 @@ namespace TwoLadles.AI
 
                 if (wok.heldItem == null)
                 {
-                    // Check if table has batter to cook
-                    CounterStation tableBatter = FindItemOnCounters("bot_chien_batter");
-                    if (tableBatter != null && playerController.carriedItem == null)
-                    {
-                        SetTarget(tableBatter, "Pick Up Batter to Cook in Wok");
-                        return;
-                    }
-
-                    if (playerController.carriedItem == null)
-                    {
-                        desiredItemId = "flour";
-                        SetTarget(GetStation("shelf_east"), "Get Flour for Second Batch");
-                    }
-                    else if (playerController.carriedItem.itemId == "flour")
-                    {
-                        SetTarget(wok, "Place Flour in Wok");
-                    }
-                    else if (playerController.carriedItem.itemId == "bot_chien_batter")
-                    {
-                        SetTarget(wok, "Place Batter in Wok");
-                    }
-                    else
-                    {
-                        StationBase dropStation = FindDropStation();
-                        if (dropStation != null) SetTarget(dropStation, "Place Item on Table");
-                    }
+                    PlanBotChienEmptyPan(wok, "shelf_east", "fridge_east");
                     return;
                 }
 
@@ -833,13 +922,14 @@ namespace TwoLadles.AI
 
                     if (playerController.carriedItem.itemId == "egg_raw")
                     {
-                        if (wok.currentState == CookingState.OPTIMAL || wok.currentState == CookingState.OVERCOOKED)
+                        bool flourReady = wok.heldItem.itemId == "cooked_flour" || wok.currentState == CookingState.OPTIMAL || wok.currentState == CookingState.OVERCOOKED;
+                        if (flourReady)
                         {
                             SetTarget(wok, "Add Egg to Wok");
                         }
                         else
                         {
-                            SetTarget(wok, "Wait for Flour Cake to Cook with Egg in Hand");
+                            SetTarget(wok, "Wait for Flour Cake Ready");
                         }
                         return;
                     }
@@ -858,8 +948,10 @@ namespace TwoLadles.AI
                     {
                         SetTarget(wok, "Monitor Bột Chiên Frying");
                     }
-                    return;
+                    if (playerController.carriedItem == null) return;
                 }
+
+                if (playerController.carriedItem != null) DropOrTrash("Place Unused Item on Table");
             }
         }
 
@@ -902,6 +994,8 @@ namespace TwoLadles.AI
                     }
                     if (grill != null && grill.heldItem == null)
                     {
+                        var bbqOnTable = FindItemOnCounters("korean_bbq_raw");
+                        if (bbqOnTable != null) { SetTarget(bbqOnTable, "Pick Up Sliced BBQ Meat from Table"); return; }
                         desiredItemId = "unprocessed_raw_meat";
                         SetTarget(GetStation("fridge_east"), "Get Raw Meat from Fridge");
                         return;
@@ -1067,7 +1161,7 @@ namespace TwoLadles.AI
             {
                 // Linh: Bakes Baguette & Preps Pickled Veg -> Assembles with Jiwon's Bulgogi
                 PrepStation prep = GetStation("prep_west") as PrepStation;
-                CookingStation stove = GetStation("stockpot") as CookingStation;
+                CookingStation stove = GetStation("noodle_blancher") as CookingStation;
                 CounterStation counter = GetStation("counter_west") as CounterStation;
 
                 if (playerController.carriedItem == null)
@@ -1189,6 +1283,8 @@ namespace TwoLadles.AI
                     }
                     if (grill != null && grill.heldItem == null)
                     {
+                        var bulgOnTable = FindItemOnCounters("bulgogi_portioned") ?? FindItemOnCounters("korean_bbq_raw");
+                        if (bulgOnTable != null) { SetTarget(bulgOnTable, "Pick Up Bulgogi Meat from Table"); return; }
                         desiredItemId = "unprocessed_raw_meat";
                         SetTarget(GetStation("fridge_east"), "Get Meat for Bulgogi");
                         return;
@@ -1349,10 +1445,31 @@ namespace TwoLadles.AI
             }
             else if (targetStation is CookingStation cook)
             {
-                if (cook.currentState == CookingState.OPTIMAL || cook.currentState == CookingState.OVERCOOKED)
+                bool panDone = cook.currentState == CookingState.OPTIMAL || cook.currentState == CookingState.OVERCOOKED;
+                bool carryingAdd = cook.heldItem != null && playerController.carriedItem != null && !currentGoalName.Contains("Wait") &&
+                                   (currentGoalName.StartsWith("Add") || currentGoalName.StartsWith("Place") || currentGoalName.Contains("Assemble"));
+
+                // Pan finished + hands full: bot came to ADD something (e.g. egg onto cooked flour) — wait 0.5s into OPTIMAL, then add.
+                if (panDone && carryingAdd)
+                {
+                    if (!IsCookReadyToAct(cook)) return;
+                    var res = playerController.TryInteractPrimary(targetStation);
+                    BotLogger.LogAction(characterId, $"Add '{playerController.carriedItem?.itemId}' to Finished Cooker", targetStation.stationId, res.ok, res.reason);
+                    interactCooldown = INTERACTION_DELAY;
+                    if (res.ok)
+                    {
+                        targetStation = null;
+                        currentPath.Clear();
+                        currentWaypointIndex = 0;
+                        EvaluateAndSelectGoal();
+                        return;
+                    }
+                }
+                else if (panDone)
                 {
                     if (playerController.carriedItem == null)
                     {
+                        if (!IsCookReadyToAct(cook)) return; // hit OPTIMAL, wait 0.5s then grab
                         var res = playerController.TryInteractPrimary(targetStation);
                         BotLogger.LogAction(characterId, $"Pick up Cooked '{cook.heldItem?.itemId}'", targetStation.stationId, res.ok, res.reason);
                         interactCooldown = INTERACTION_DELAY;
@@ -1370,7 +1487,7 @@ namespace TwoLadles.AI
                         interactCooldown = INTERACTION_DELAY;
                     }
                 }
-                else if (cook.heldItem == null && playerController.carriedItem != null && (currentGoalName.Contains("Place") || currentGoalName.Contains("Cook") || currentGoalName.Contains("Add")))
+                else if (cook.heldItem == null && playerController.carriedItem != null && (currentGoalName.Contains("Place") || currentGoalName.Contains("Cook") || currentGoalName.Contains("Add") || currentGoalName.StartsWith("Grill")))
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
                     BotLogger.LogAction(characterId, $"Place '{playerController.carriedItem?.itemId}' into Cooker", targetStation.stationId, res.ok, res.reason);
@@ -1385,7 +1502,7 @@ namespace TwoLadles.AI
                         return;
                     }
                 }
-                else if (cook.heldItem != null && playerController.carriedItem != null && (currentGoalName.Contains("Add") || currentGoalName.Contains("Cook") || currentGoalName.Contains("Assemble")))
+                else if (cook.heldItem != null && playerController.carriedItem != null && !currentGoalName.Contains("Wait") && (currentGoalName.StartsWith("Add") || currentGoalName.StartsWith("Place") || currentGoalName.Contains("Assemble")))
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
                     BotLogger.LogAction(characterId, $"Add '{playerController.carriedItem?.itemId}' to Cooker", targetStation.stationId, res.ok, res.reason);
@@ -1521,6 +1638,19 @@ namespace TwoLadles.AI
             }
             else
             {
+                // Out of reach (e.g. station not where the nav graph expects): re-path instead of
+                // treating it as a rejection, which caused an endless serve/store ping-pong loop.
+                Vector3 reachVec = targetStation.transform.position - transform.position;
+                reachVec.y = 0.0f;
+                if (reachVec.magnitude > StationBase.MAX_INTERACT_DISTANCE)
+                {
+                    BotLogger.Log(characterId, $"[{targetStation.stationId}] out of reach ({reachVec.magnitude:F1}m, station at {targetStation.transform.position.x:F1},{targetStation.transform.position.z:F1}). Re-pathing.");
+                    interactCooldown = INTERACTION_DELAY;
+                    if (targetStation is ServingStation) serveRetryBlock = 3.0f;
+                    UpdatePathToTarget();
+                    return;
+                }
+
                 var res = playerController.TryInteractPrimary(targetStation);
                 string heldInfo = playerController.carriedItem != null ? $"'{playerController.carriedItem.itemId}'" : "empty hands";
                 BotLogger.LogAction(characterId, $"Interact [{targetStation.stationId}] (Holding: {heldInfo})", targetStation.stationId, res.ok, res.reason);
@@ -1537,6 +1667,7 @@ namespace TwoLadles.AI
                 else if (targetStation is ServingStation && playerController.carriedItem != null)
                 {
                     // Immediate unblock recovery: if serving was rejected, unblock by placing on table or trashing
+                    serveRetryBlock = 3.0f;
                     StationBase drop = FindDropStation();
                     if (drop != null)
                     {
@@ -1573,24 +1704,12 @@ namespace TwoLadles.AI
 
         private StationBase FindDropStation()
         {
-            // 1. Check local holding counter on chef's side
+            // 1. Check local holding counter on chef's own side
             StationBase localCounter = FindNearestHoldingCounter();
             if (localCounter != null) return localCounter;
 
-            // 2. Check Pass Counter for an available slot
-            PassCounter pass = GetStation("pass_counter") as PassCounter;
-            if (pass != null)
-            {
-                for (int s = 0; s < pass.slots.Length; s++)
-                {
-                    if (pass.slots[s] == null || pass.slots[s].item == null)
-                    {
-                        return pass;
-                    }
-                }
-            }
-
-            // 3. Fallback: Any empty counter anywhere in the kitchen
+            // 2. Fallback: nearest empty counter strictly on bot's own side of the divider
+            // NEVER send a bot across the center wall — collision geometry blocks that path.
             if (KitchenController.Instance != null)
             {
                 float minD = 999f;
@@ -1599,6 +1718,10 @@ namespace TwoLadles.AI
                 {
                     if (st is CounterStation c && c.heldItem == null)
                     {
+                        // Hard zone filter: Linh stays west (x <= 0), Jiwon stays east (x >= 0)
+                        if (peerId == 1 && st.transform.position.x > 0f) continue;
+                        if (peerId == 2 && st.transform.position.x < 0f) continue;
+
                         float d = Vector3.Distance(st.transform.position, transform.position);
                         if (d < minD)
                         {
@@ -1610,7 +1733,9 @@ namespace TwoLadles.AI
                 if (fallback != null) return fallback;
             }
 
-            return null;
+            // 3. Last Resort Deadlock Breaker: If all own-side counters are 100% occupied,
+            // return trash bin so bot can free hands instead of freezing forever!
+            return GetStation("trash_bin");
         }
 
         private StationBase FindNearestHoldingCounter()
@@ -1697,8 +1822,7 @@ namespace TwoLadles.AI
 
         private bool IsCompletedDish(string itemId)
         {
-            if (string.IsNullOrEmpty(itemId)) return false;
-            return itemId == "tteokbokki" || itemId == "bot_chien" || itemId == "korean_bbq_rice" || itemId == "viet_broken_rice" || itemId == "bulgogi_banh_mi";
+            return GameData.IsCompletedDish(itemId);
         }
 
         private bool IsDishCurrentlyOrdered(string itemId)

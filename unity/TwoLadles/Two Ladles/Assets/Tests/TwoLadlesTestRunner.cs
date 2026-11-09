@@ -49,7 +49,20 @@ namespace TwoLadles.Tests
                 var go = new GameObject("TwoBotQAManager");
                 qa = go.AddComponent<TwoLadles.AI.TwoBotQAManager>();
             }
-            qa.StartAutoplayRun(1, 5, UnityEngine.Random.Range(10, 9999), 2.0f);
+            qa.StartAutoplayRun(EditorPrefs.GetInt("TwoLadles_QADay", 1), 5, UnityEngine.Random.Range(10, 9999), 2.0f);
+        }
+
+        // Pick which day the Two-Bot QA (TAS) run starts from.
+        [MenuItem("Two Ladles/QA Test From Day/Day 1")] public static void QAFromDay1() { RunQAFromDay(1); }
+        [MenuItem("Two Ladles/QA Test From Day/Day 2")] public static void QAFromDay2() { RunQAFromDay(2); }
+        [MenuItem("Two Ladles/QA Test From Day/Day 3")] public static void QAFromDay3() { RunQAFromDay(3); }
+        [MenuItem("Two Ladles/QA Test From Day/Day 4")] public static void QAFromDay4() { RunQAFromDay(4); }
+        [MenuItem("Two Ladles/QA Test From Day/Day 5")] public static void QAFromDay5() { RunQAFromDay(5); }
+
+        private static void RunQAFromDay(int day)
+        {
+            EditorPrefs.SetInt("TwoLadles_QADay", day);
+            RunTwoBotQATest();
         }
     }
 }

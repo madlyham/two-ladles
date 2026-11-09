@@ -51,13 +51,15 @@ namespace TwoLadles.AI
             AddNode("W_Fridge_App", new Vector3(-6.2f, 0f, 4.6f), "NW_Outer", "NW_Inner");
 
             // Inner West Column (X = -2.2f)
-            AddNode("NW_Inner", new Vector3(-2.2f, 0f, 4.6f), "W_Fridge_App", "C_North", "W_Prep_App");
-            AddNode("W_Prep_App", new Vector3(-2.2f, 0f, 3.6f), "NW_Inner", "W_Counter1_App");
+            AddNode("NW_Inner", new Vector3(-2.2f, 0f, 4.6f), "W_Fridge_App", "W_Prep_App", "W_Serving_App");
+            AddNode("W_Serving_App", new Vector3(-1.4f, 0f, 4.2f), "NW_Inner", "W_Prep_App");
+            AddNode("W_Prep_App", new Vector3(-2.2f, 0f, 3.6f), "NW_Inner", "W_Serving_App", "W_Counter1_App");
             AddNode("W_Counter1_App", new Vector3(-2.2f, 0f, 0.8f), "W_Prep_App", "W_Mid_North_Cross", "W_Pass_App", "W_Counter2_App");
             AddNode("W_Pass_App", new Vector3(-1.4f, 0f, 0.5f), "W_Counter1_App", "W_Counter2_App");
             AddNode("W_Counter2_App", new Vector3(-2.2f, 0f, -2.0f), "W_Counter1_App", "W_Pass_App", "SW_Inner");
-            AddNode("SW_Inner", new Vector3(-2.2f, 0f, -3.4f), "W_Counter2_App", "W_Mid_South_Cross", "W_Serving_App", "C_South");
-            AddNode("W_Serving_App", new Vector3(-2.2f, 0f, -5.0f), "SW_Inner");
+            AddNode("SW_Inner", new Vector3(-2.2f, 0f, -3.4f), "W_Counter2_App", "W_Mid_South_Cross", "W_Counter3_App", "W_Trash_App");
+            AddNode("W_Counter3_App", new Vector3(-2.2f, 0f, -5.0f), "SW_Inner", "W_Trash_App");
+            AddNode("W_Trash_App", new Vector3(-1.4f, 0f, -5.5f), "SW_Inner", "W_Counter3_App");
 
             // West Clear Crosswalks (Zero BoxCollider Intersections)
             // Mid-North Crosswalk (Z = 2.2f, wide gap between prep_west and counter_west)
@@ -65,19 +67,19 @@ namespace TwoLadles.AI
             // Mid-South Crosswalk (Z = -3.4f, wide gap between counter_west_2 and serving_station)
             AddNode("W_Mid_South_Cross", new Vector3(-5.5f, 0f, -3.4f), "W_Mid_South_Outer", "SW_Inner");
 
-            // 2. CENTER PASSAGE & DIVIDER
-            AddNode("C_North", new Vector3(0.0f, 0f, 4.6f), "NW_Inner", "NE_Inner");
-            AddNode("C_South", new Vector3(0.0f, 0f, -4.8f), "SW_Inner", "SE_Inner", "Trash_App");
-            AddNode("Trash_App", new Vector3(0.0f, 0f, -5.2f), "C_South");
+            // 2. CENTER DIVIDER (Chefs are 100% strictly isolated to their own half)
+            // No C_North or C_South: physical stainless-steel counter column and static colliders block all cross-movement.
 
             // 3. EAST ZONE (Jiwon's Walkways & Stations)
             // Inner East Column (X = +2.2f)
-            AddNode("NE_Inner", new Vector3(2.2f, 0f, 4.6f), "C_North", "E_Fridge_App", "E_Counter1_App");
-            AddNode("E_Counter1_App", new Vector3(2.2f, 0f, 1.8f), "NE_Inner", "E_Mid_North_Cross", "E_Pass_App", "E_Prep_App");
+            AddNode("NE_Inner", new Vector3(2.2f, 0f, 4.6f), "E_Fridge_App", "E_Counter1_App", "E_Serving_App");
+            AddNode("E_Serving_App", new Vector3(1.4f, 0f, 4.2f), "NE_Inner", "E_Counter1_App");
+            AddNode("E_Counter1_App", new Vector3(2.2f, 0f, 1.8f), "NE_Inner", "E_Serving_App", "E_Mid_North_Cross", "E_Pass_App", "E_Prep_App");
             AddNode("E_Pass_App", new Vector3(1.4f, 0f, 0.5f), "E_Counter1_App", "E_Mid_North_Cross", "E_Prep_App");
             AddNode("E_Prep_App", new Vector3(2.2f, 0f, -1.6f), "E_Counter1_App", "E_Pass_App", "SE_Inner");
-            AddNode("SE_Inner", new Vector3(2.2f, 0f, -3.4f), "E_Prep_App", "E_Mid_South_Cross", "E_Counter2_App", "C_South");
-            AddNode("E_Counter2_App", new Vector3(2.2f, 0f, -5.0f), "SE_Inner");
+            AddNode("SE_Inner", new Vector3(2.2f, 0f, -3.4f), "E_Prep_App", "E_Mid_South_Cross", "E_Counter2_App", "E_Trash_App");
+            AddNode("E_Counter2_App", new Vector3(2.2f, 0f, -5.0f), "SE_Inner", "E_Trash_App");
+            AddNode("E_Trash_App", new Vector3(1.4f, 0f, -5.5f), "SE_Inner", "E_Counter2_App");
 
             // North Wall Fridge East Approach (Z = 4.6f)
             AddNode("E_Fridge_App", new Vector3(6.2f, 0f, 4.6f), "NE_Inner", "NE_Outer");
@@ -133,7 +135,7 @@ namespace TwoLadles.AI
             }
             if (sId == "trash_bin")
             {
-                return nodes["Trash_App"].position;
+                return (peerId == 1) ? nodes["W_Trash_App"].position : nodes["E_Trash_App"].position;
             }
             if (sId == "stockpot") return nodes["W_Stove1"].position;
             if (sId == "noodle_blancher") return nodes["W_Stove2"].position;
@@ -142,7 +144,11 @@ namespace TwoLadles.AI
             if (sId == "prep_west") return nodes["W_Prep_App"].position;
             if (sId == "counter_west") return nodes["W_Counter1_App"].position;
             if (sId == "counter_west_2" || sId == "assembly_west") return nodes["W_Counter2_App"].position;
-            if (sId == "serving_station") return nodes["W_Serving_App"].position;
+            if (sId == "counter_west_3") return nodes["W_Counter3_App"].position;
+            if (sId == "serving_station")
+            {
+                return (peerId == 1) ? nodes["W_Serving_App"].position : nodes["E_Serving_App"].position;
+            }
 
             if (sId == "grill_pan") return nodes["E_Grill"].position;
             if (sId == "simmer_wok") return nodes["E_Wok"].position;

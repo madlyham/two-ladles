@@ -93,6 +93,19 @@ namespace TwoLadles.Core
             }
         }
 
+        private void OnApplicationQuit()
+        {
+            SaveProgression();
+        }
+
+        private void OnApplicationPause(bool pause)
+        {
+            if (pause)
+            {
+                SaveProgression();
+            }
+        }
+
         public void InitDefaults()
         {
             saveFilePath = Path.Combine(Application.persistentDataPath, "progression.json");
@@ -145,6 +158,34 @@ namespace TwoLadles.Core
                 purchased = false,
                 effectType = "cook_speed",
                 value = 1.25f
+            };
+
+            catalogUpgrades["specialist_tier_2"] = new UpgradeItem
+            {
+                id = "specialist_tier_2",
+                category = "Chef Mastery",
+                displayName = "Chef Specialist Tier 2",
+                cost = 250,
+                description = "Linh: Mechanical Third Arm (+8% speed). Jiwon: Part-Timer Crew (1 helper, 1.5s/chop).",
+                level = 0,
+                maxLevel = 1,
+                purchased = false,
+                effectType = "specialist_tier_2",
+                value = 2.0f
+            };
+
+            catalogUpgrades["specialist_tier_3"] = new UpgradeItem
+            {
+                id = "specialist_tier_3",
+                category = "Chef Mastery",
+                displayName = "Chef Specialist Tier 3",
+                cost = 500,
+                description = "Linh: Glowing Precision Arm (+15% speed). Jiwon: Expanded Crew (2 helpers, 1.0s/chop).",
+                level = 0,
+                maxLevel = 1,
+                purchased = false,
+                effectType = "specialist_tier_3",
+                value = 3.0f
             };
 
             catalogUpgrades["high_pressure_sink"] = new UpgradeItem
@@ -346,6 +387,20 @@ namespace TwoLadles.Core
             if (up.purchased || up.level >= up.maxLevel)
                 return (false, "Already owned.");
 
+            // Stage unlock gate for specialist tiers
+            if (upgradeId == "specialist_tier_2")
+            {
+                if (highestUnlockedStage < 3)
+                    return (false, "Locked: Clears Day 2 first (Unlocks at start of Day 3).");
+            }
+            else if (upgradeId == "specialist_tier_3")
+            {
+                if (linhTier < 2 && !IsUpgradeOwned("specialist_tier_2"))
+                    return (false, "Requires Chef Specialist Tier 2 first.");
+                if (highestUnlockedStage < 5)
+                    return (false, "Locked: Reach Final Stage (Unlocks upon passing Day 4 / Start of Day 5).");
+            }
+
             if (coins < up.cost)
                 return (false, $"Not enough gold ({coins}/{up.cost}).");
 
@@ -353,11 +408,40 @@ namespace TwoLadles.Core
             up.level++;
             up.purchased = (up.level >= up.maxLevel);
 
+            if (upgradeId == "specialist_tier_2")
+            {
+                linhTier = Math.Max(linhTier, 2);
+                jiwonTier = Math.Max(jiwonTier, 2);
+                UpdateLiveChefsTiers();
+            }
+            else if (upgradeId == "specialist_tier_3")
+            {
+                linhTier = Math.Max(linhTier, 3);
+                jiwonTier = Math.Max(jiwonTier, 3);
+                UpdateLiveChefsTiers();
+            }
+
             SaveProgression();
             OnUpgradePurchased?.Invoke(upgradeId);
             OnProgressionUpdated?.Invoke();
 
             return (true, "");
+        }
+
+        public void UpdateLiveChefsTiers()
+        {
+            var kitchen = TwoLadles.Kitchen.KitchenController.Instance;
+            if (kitchen != null)
+            {
+                foreach (var p in kitchen.playersByPeer.Values)
+                {
+                    if (p != null)
+                    {
+                        p.characterTier = (p.characterId == "linh") ? linhTier : jiwonTier;
+                        p.RefreshVisuals();
+                    }
+                }
+            }
         }
 
         public bool IsUpgradeOwned(string upgradeId)
@@ -423,6 +507,17 @@ namespace TwoLadles.Core
 
                 string json = JsonUtility.ToJson(data, true);
                 File.WriteAllText(saveFilePath, json);
+
+                // Cache backup via SaveSystem
+                TwoLadles.IO.SaveSystem.Save(new TwoLadles.IO.SaveData
+                {
+                    gold = coins,
+                    campaignStage = highestUnlockedStage,
+                    linhTier = linhTier,
+                    jiwonTier = jiwonTier,
+                    purchasedUpgrades = new List<string>(data.purchasedUpgrades)
+                });
+
                 return true;
             }
             catch (Exception ex)
@@ -434,7 +529,31 @@ namespace TwoLadles.Core
 
         public bool LoadProgression()
         {
-            if (!File.Exists(saveFilePath)) return false;
+            if (!File.Exists(saveFilePath))
+            {
+                var backup = TwoLadles.IO.SaveSystem.Load();
+                if (backup != null && (backup.gold > 0 || backup.campaignStage > 1 || (backup.purchasedUpgrades != null && backup.purchasedUpgrades.Count > 0)))
+                {
+                    coins = backup.gold;
+                    highestUnlockedStage = backup.campaignStage;
+                    linhTier = backup.linhTier;
+                    jiwonTier = backup.jiwonTier;
+                    if (backup.purchasedUpgrades != null)
+                    {
+                        foreach (var uid in backup.purchasedUpgrades)
+                        {
+                            if (catalogUpgrades.ContainsKey(uid))
+                            {
+                                catalogUpgrades[uid].purchased = true;
+                                catalogUpgrades[uid].level = catalogUpgrades[uid].maxLevel;
+                            }
+                        }
+                    }
+                    OnProgressionUpdated?.Invoke();
+                    return true;
+                }
+                return false;
+            }
 
             try
             {

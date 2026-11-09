@@ -289,11 +289,22 @@ namespace TwoLadles.AI
         {
             if (KitchenController.Instance != null)
             {
-                KitchenController.Instance.TriggerStatusToast($"Day {currentDayRunning} Cleared! Resetting Kitchen for Day {nextDay}...", new Color(0.2f, 0.9f, 0.4f));
-                KitchenController.Instance.ClearKitchenDaily();
+                KitchenController.Instance.TriggerStatusToast($"Day {currentDayRunning} Cleared! Menu open for 5s... Starting Day {nextDay} next!", new Color(0.2f, 0.9f, 0.4f));
             }
 
-            yield return new WaitForSeconds(2.0f);
+            // Results menu stays open for 5 seconds as requested
+            yield return new WaitForSeconds(5.0f);
+
+            // Cleanly clear and dismiss the end shift menu before starting next level
+            if (KitchenHUD.Instance != null && KitchenHUD.Instance.endShiftModal != null)
+            {
+                KitchenHUD.Instance.endShiftModal.SetActive(false);
+            }
+
+            if (KitchenController.Instance != null)
+            {
+                KitchenController.Instance.ClearKitchenDaily();
+            }
 
             currentDayRunning = nextDay;
             LaunchDay(currentDayRunning);

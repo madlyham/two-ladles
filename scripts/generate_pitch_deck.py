@@ -4,8 +4,30 @@ from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
+from PIL import Image
+
+
+def add_fit(slide, path, left, top, box_w, box_h):
+    """Add a picture scaled to fit inside the box (keeps aspect ratio, centered)."""
+    with Image.open(path) as im:
+        iw, ih = im.size
+    scale = min(box_w / iw, box_h / ih)
+    w, h = int(iw * scale), int(ih * scale)
+    return slide.shapes.add_picture(path, int(left + (box_w - w) / 2), int(top + (box_h - h) / 2), width=w, height=h)
+
 
 def create_deck(output_path="docs/two_ladles_concept.pptx"):
+    # Ensure bot gameplay frames are generated and fresh
+    try:
+        import sys
+        scripts_dir = os.path.dirname(os.path.abspath(__file__))
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        import generate_bot_gameplay_frames as gbgf
+        gbgf.main()
+    except Exception as ex:
+        print(f"Warning: could not generate bot frames: {ex}")
+
     prs = Presentation()
     # 16:9 Widescreen layout
     prs.slide_width = Inches(13.333)
@@ -45,30 +67,30 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         p_title.font.bold = True
         p_title.font.color.rgb = C_WHITE
 
-    def add_card(slide, left, top, width, height, title, items, accent_color=None):
+    def add_card(slide, left, top, width, height, title, items, accent_color=None, title_size=16, body_size=13):
         card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
         card.fill.solid()
         card.fill.fore_color.rgb = C_CARD
         card.line.color.rgb = accent_color if accent_color else RGBColor(55, 65, 80)
         card.line.width = Pt(1.5)
 
-        tb = slide.shapes.add_textbox(left + Inches(0.2), top + Inches(0.2), width - Inches(0.4), height - Inches(0.4))
+        tb = slide.shapes.add_textbox(left + Inches(0.18), top + Inches(0.18), width - Inches(0.36), height - Inches(0.36))
         tf = tb.text_frame
         tf.word_wrap = True
 
         p0 = tf.paragraphs[0]
         p0.text = title
-        p0.font.size = Pt(16)
+        p0.font.size = Pt(title_size)
         p0.font.bold = True
         p0.font.color.rgb = accent_color if accent_color else C_GOLD
-        p0.space_after = Pt(10)
+        p0.space_after = Pt(6)
 
         for it in items:
             p = tf.add_paragraph()
             p.text = f"• {it}"
-            p.font.size = Pt(13)
+            p.font.size = Pt(body_size)
             p.font.color.rgb = C_WHITE
-            p.space_after = Pt(6)
+            p.space_after = Pt(4)
 
     # ==========================================
     # SLIDE 1: TITLE SLIDE
@@ -109,12 +131,16 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
     p4.font.color.rgb = C_MUTED
 
     # Title slide character showcase
-    char_linh = "unity/TwoLadles/Assets/Sprites/Characters/linh_tier2.png"
-    char_jiwon = "unity/TwoLadles/Assets/Sprites/Characters/jiwon_tier2.png"
+    char_linh = "docs/deck_art/linh_tier2.jpg"
+    if not os.path.exists(char_linh):
+        char_linh = "unity/TwoLadles/Two Ladles/Assets/Resources/Sprites/Characters/linh_tier2.png"
+    char_jiwon = "docs/deck_art/jiwon_tier2.jpg"
+    if not os.path.exists(char_jiwon):
+        char_jiwon = "unity/TwoLadles/Two Ladles/Assets/Resources/Sprites/Characters/jiwon_tier2.png"
     if os.path.exists(char_linh):
-        s1.shapes.add_picture(char_linh, Inches(8.6), Inches(1.6), height=Inches(4.8))
+        add_fit(s1, char_linh, Inches(8.6), Inches(1.6), Inches(2.1), Inches(4.8))
     if os.path.exists(char_jiwon):
-        s1.shapes.add_picture(char_jiwon, Inches(10.7), Inches(1.6), height=Inches(4.8))
+        add_fit(s1, char_jiwon, Inches(10.8), Inches(1.6), Inches(2.1), Inches(4.8))
 
     # ==========================================
     # SLIDE 2: EXECUTIVE SUMMARY & CORE PHILOSOPHY
@@ -128,7 +154,7 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         [
             "\"Easy to play badly. Difficult to play efficiently. Extremely satisfying to master.\"",
             "True 2-Player Local Co-Op: Two human chefs working together over local Wi-Fi / LAN.",
-            "Zero AI Teammates / Hot-Seat: Teamwork and communication are mandatory mechanics, not optional add-ons.",
+            "No AI Teammates in Play: both chefs are human; our two QA bots are internal testing tools only.",
             "Cross-Kitchen Reliance: Linh and Jiwon are dependent on each other to fulfill orders.",
             "Tactile & Satisfying: Rhythm chops, heat timing, and rapid pass counter handoffs."
         ],
@@ -140,7 +166,7 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         [
             "Developed in Unity C# targeting Landscape Android & Desktop PC playtesting.",
             "Celebrates Vietnam–Korea Cultural Friendship through authentic cuisine & collaboration.",
-            "Clean IP Ownership: Fully handcrafted codebase, custom systems, and original recipes.",
+            "Original Gameplay: custom code and systems built for this entry; traditional dishes credited as traditional.",
             "Dynamic Shift Tension: High-pressure service shifts, Kitchen Flow meter, and Rush Rhythm bursts.",
             "Broad Appeal: Casual pick-up-and-play mobile touch controls + competitive co-op mastery."
         ],
@@ -159,28 +185,28 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         [
             "Nationality: Vietnamese | Former Career: Software Engineer.",
             "Background: Left tech burnout and sprint pressure to return home and reopen her family's food stall in rural Vietnam.",
-            "Playstyle: Process optimization, ingredient cadence mastery, and noodle blanching / broth timing.",
-            "Home Base: West Zone (Proteins, Starches, Phở Stockpot, Blancher, Assembly & Serving Window).",
-            "Signature Ability: Execution Specialist — unlocks speed multipliers (1.0x -> 0.92x -> 0.85x) with robotic arm evolution."
+            "Playstyle: Process optimization, chopping cadence, and stove timing (flour, rice, toboki, eggs).",
+            "Home Base: West Zone (Fridge, Shelf, 2 Stoves, 3 Self-Assembly Holding Tables).",
+            "Signature Ability: Execution Specialist — one extra 'third arm' speeds her work (+8% at Tier 2, +15% at Tier 3)."
         ],
         C_TEAL
     )
     if os.path.exists(char_linh):
-        s3.shapes.add_picture(char_linh, Inches(5.2), Inches(2.0), height=Inches(4.6))
+        add_fit(s3, char_linh, Inches(5.15), Inches(2.0), Inches(1.6), Inches(4.6))
 
     add_card(s3, Inches(6.8), Inches(1.8), Inches(4.3), Inches(5.0),
         "Jiwon — The Operations Leader",
         [
             "Nationality: Korean | Former Career: Corporate Business Executive.",
             "Background: Left corporate boardroom exhaustion for a sabbatical in Vietnam; partnered with Linh to build a food venture.",
-            "Playstyle: Service pacing, delegation, grill/wok heat management, and dish inventory.",
-            "Home Base: East Zone (Vegetables, Slaw, Fish Cakes, Grill/Sear Pan, Gochujang Wok, Washing Sink).",
-            "Signature Ability: \"Call in the Crew\" — spends coins to hire temporary helpers (Prep Assistant, Dishwasher)."
+            "Playstyle: Service pacing, delegation, and grill/wok heat management.",
+            "Home Base: East Zone (Fridge, Shelf, Grill, Wok, 2 Self-Assembly Holding Tables).",
+            "Signature Ability: \"Call in the Crew\" — spends coins to hire part-time prep helpers who chop ingredients."
         ],
         C_TERRA
     )
     if os.path.exists(char_jiwon):
-        s3.shapes.add_picture(char_jiwon, Inches(11.2), Inches(2.0), height=Inches(4.6))
+        add_fit(s3, char_jiwon, Inches(11.15), Inches(2.0), Inches(2.0), Inches(4.6))
 
     # ==========================================
     # SLIDE 4: CROSS-PREP KITCHEN INTERDEPENDENCE
@@ -192,10 +218,10 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
     add_card(s4, Inches(0.8), Inches(1.8), Inches(3.7), Inches(5.0),
         "West Zone (Linh)",
         [
-            "Raw Meat & Starch Crates (Pork Belly, Bulgogi, Rice Cakes, Beef, Noodles, Baguettes).",
-            "West Preparation Counter (discrete 4-strike cadence).",
-            "Dedicated Phở Stockpot & Noodle Blancher.",
-            "Assembly West & Serving Counter."
+            "Fridge (Meat / Radish / Egg / Toboki) & Shelf (Gochujang / Flour / Rice).",
+            "Prep Table: chop with [F] in a discrete 4-strike cadence.",
+            "2 Stoves: cook flour, rice, toboki & eggs.",
+            "3 Self-Assembly Holding Tables: combine finished parts with [E]."
         ],
         C_TEAL
     )
@@ -206,7 +232,7 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
             "3-Slot Shared Handoff Station connecting West and East.",
             "Coordinated Handoff Bonus: +15 Kitchen Flow when partner retrieves item within 4 seconds.",
             "Anti-Exploit Protection: self-retrieval gives 0 Flow; max 1 bonus per order.",
-            "Vessel Rack & Return Tray."
+            "Shared Trash Can for burnt or wrong items."
         ],
         C_GOLD
     )
@@ -214,59 +240,53 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
     add_card(s4, Inches(8.8), Inches(1.8), Inches(3.7), Inches(5.0),
         "East Zone (Jiwon)",
         [
-            "Vegetable, Sauce & Fish Cake Crates (Daikon, Carrot, Kimchi, Gochujang, Eomuk).",
-            "East Preparation Counter.",
-            "Cast-Iron Grill/Sear Pan & Gochujang Simmer Wok.",
-            "Washing Sink & 4-Plate Shared Pool."
+            "Fridge (Raw Meat / Radish / Egg / Toboki) & Shelf (Gochujang / Flour / Rice).",
+            "Prep Table: cuts raw meat once (Korean BBQ meat) or twice (bulgogi).",
+            "Grill (BBQ beef, bulgogi) & Wok (Tteokbokki, rice, egg).",
+            "2 Self-Assembly Holding Tables."
         ],
         C_TERRA
     )
 
     # ==========================================
-    # SLIDE 5: AUTHENTIC STARTER MENU
+    # SLIDE 5: 5-DAY MENU
     # ==========================================
     s5 = prs.slides.add_slide(blank_layout)
     set_slide_background(s5, C_DARK)
-    add_header(s5, "Culinary Authenticity", "4 Authentic Traditional & Original Fusion Recipes")
+    add_header(s5, "The Menu", "5-Day Menu: Traditional Dishes & a Fusion Finale")
 
-    add_card(s5, Inches(0.8), Inches(1.8), Inches(5.6), Inches(2.4),
-        "1. Phở Bò (Traditional Vietnamese)",
-        [
-            "Strict authentic sequence: Rice noodles blanched separately from beef.",
-            "Assembly rule: Broth poured last over blanched noodles and sliced beef in a Bowl.",
-            "Base Score: 120 pts | Patience: 65s."
-        ],
-        C_TEAL
-    )
+    menu_cards = [
+        ("Day 1 — Tteokbokki", "Traditional Korean", [
+            "Rice cakes (toboki) + gochujang, cooked together.",
+            "115 pts | Patience 60s."
+        ], C_TERRA),
+        ("Day 2 — Bột Chiên", "Traditional Vietnamese", [
+            "Saigon fried rice-flour cake: cook flour, add egg, cook again.",
+            "125 pts | Patience 65s."
+        ], C_TEAL),
+        ("Day 3 — Korean BBQ on Rice", "Traditional Korean", [
+            "Cut raw meat -> grill BBQ beef -> combine with cooked rice.",
+            "140 pts | Patience 65s."
+        ], C_TERRA),
+        ("Day 4 — Cơm Tấm", "Traditional Vietnamese", [
+            "Broken rice with grilled beef & egg, combined in any order.",
+            "155 pts | Patience 70s."
+        ], C_TEAL),
+        ("Day 5 — Bulgogi Bánh Mì", "Two Ladles fusion twist", [
+            "Baguette + pickled radish/carrot + bulgogi.",
+            "3-minute high-score finale | 180 pts | Patience 75s."
+        ], C_GOLD),
+    ]
+    for i, (mtitle, mtag, mitems, mcol) in enumerate(menu_cards):
+        mx = Inches(0.8 + i * 2.35)
+        add_card(s5, mx, Inches(1.8), Inches(2.2), Inches(4.2), mtitle, [mtag] + mitems, mcol, title_size=14, body_size=11.5)
 
-    add_card(s5, Inches(6.8), Inches(1.8), Inches(5.6), Inches(2.4),
-        "2. Bánh Mì Thịt (Traditional Vietnamese)",
-        [
-            "Linh portions pork -> passes to Jiwon to grill.",
-            "Jiwon preps pickled daikon/carrot -> passes to Linh to assemble on Baguette.",
-            "Base Score: 110 pts | Patience: 60s."
-        ],
-        C_TEAL
-    )
-
-    add_card(s5, Inches(0.8), Inches(4.5), Inches(5.6), Inches(2.4),
-        "3. Tteokbokki (Traditional Korean)",
-        [
-            "Linh portions rice cakes -> passes to Jiwon.",
-            "Jiwon preps fish cakes & simmers both in Gochujang Wok -> plates in a Bowl.",
-            "Base Score: 115 pts | Patience: 60s."
-        ],
-        C_TERRA
-    )
-
-    add_card(s5, Inches(6.8), Inches(4.5), Inches(5.6), Inches(2.4),
-        "4. Bulgogi Bánh Mì (Original Fusion Specialty)",
-        [
-            "Original Vietnam–Korea Fusion: Marinated bulgogi beef seared by Jiwon + seasoned kimchi slaw assembled on Linh's crisp Vietnamese baguette.",
-            "High Coordination: Base Score 150 pts | Patience: 70s."
-        ],
-        C_GOLD
-    )
+    tb_m = s5.shapes.add_textbox(Inches(0.8), Inches(6.2), Inches(11.7), Inches(0.8))
+    tb_m.text_frame.word_wrap = True
+    p_m = tb_m.text_frame.paragraphs[0]
+    p_m.text = "Menus build up day by day (Day 2 = Tteokbokki + Bột Chiên, Day 4 = all four). Days 1–4 are traditional dishes; only Day 5 is our fusion take."
+    p_m.font.size = Pt(12)
+    p_m.font.color.rgb = C_MUTED
 
     # ==========================================
     # SLIDE 6: FIVE DISTINCT STATION MECHANICS
@@ -289,8 +309,8 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
     add_card(s6, Inches(4.8), Inches(1.8), Inches(3.7), Inches(5.0),
         "Assembly & Handoff",
         [
-            "Assembly Counter: Vessel-first recipe combination (Plate or Bowl required before food).",
-            "Rejects invalid pairings with clear sound/visual feedback without destroying items.",
+            "Self-Assembly: no plates or bowls — combine finished parts at any holding table with [E], in any order.",
+            "Rejects invalid combinations with clear sound/visual feedback without destroying items.",
             "Pass Counter: Central 3-slot relay counter.",
             "4-Second Handoff Window: Rapid cross-kitchen coordination rewarded with team Flow."
         ],
@@ -298,24 +318,86 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
     )
 
     add_card(s6, Inches(8.8), Inches(1.8), Inches(3.7), Inches(5.0),
-        "Serving & Washing",
+        "Serving & Throwing",
         [
-            "Serving Window: Matches completed dish against active ticket queue.",
+            "Serving: finished dish is matched against the active ticket queue.",
             "Patience Tip Bonus: Fast service yields higher restaurant tips.",
-            "Finite Vessel Economy: Kitchen begins with pool of 4 clean vessels.",
-            "Washing Station: 4-stroke scrub cycle cleans dirty plate and returns it to shared clean stack."
+            "Throw (Q / right-click): toss an item to your partner, a free holding table, the pass counter or the trash.",
+            "Ingredient Flow: fridge/shelf -> chop -> cook -> combine -> serve. No dishwashing."
         ],
         C_TERRA
     )
 
     # ==========================================
-    # SLIDE 7: KITCHEN FLOW & RUSH RHYTHM
+    # SLIDE 7: LIVE 2-BOT AUTONOMOUS GAMEPLAY SEQUENCE (FRAMES)
     # ==========================================
     s7 = prs.slides.add_slide(blank_layout)
     set_slide_background(s7, C_DARK)
-    add_header(s7, "Momentum Engine", "Kitchen Flow (0–100) & High-Scoring Rush Rhythm")
+    add_header(s7, "QA Bot Gameplay (Illustrative)", "How the 2-Bot Test Run Plays a Shift: 4-Stage Co-Op Loop")
 
-    add_card(s7, Inches(0.8), Inches(1.8), Inches(5.6), Inches(5.0),
+    frames_meta = [
+        ("docs/bot_gameplay_frame1.png", "1. Cadence Prep", [
+            "Jiwon [Bot 2]: cuts raw meat twice into bulgogi at the East prep table.",
+            "Linh [Bot 1]: cuts radish/carrot for pickled veg.",
+            "PERFECT strike timing awards rhythm cadence bonus."
+        ], C_TEAL),
+        ("docs/bot_gameplay_frame2.png", "2. Pass Counter Relay", [
+            "Central 3-slot relay counter connects Linh & Jiwon.",
+            "One chef places an item -> the partner picks it up within 4s.",
+            "+15 Kitchen Flow awarded (Anti-Exploit protected)."
+        ], C_GOLD),
+        ("docs/bot_gameplay_frame3.png", "3. Parallel Cooking", [
+            "Jiwon sears bulgogi on the East Grill.",
+            "Linh cooks flour + egg dough into a baguette on a West Stove.",
+            "5-state heat machine: OPTIMAL window gives +20% score."
+        ], C_TERRA),
+        ("docs/bot_gameplay_frame4.png", "4. Assemble & Serve", [
+            "Parts combined at a holding table with [E], any order.",
+            "100 Kitchen Flow activates 15s RUSH RHYTHM (1.5x score).",
+            "Bot QA run: 5/5 days, 34/34 orders (seed 42)."
+        ], C_GOLD)
+    ]
+
+    for i, (fpath, ftitle, fbullets, fcolor) in enumerate(frames_meta):
+        fx = Inches(0.8 + i * 2.95)
+        if os.path.exists(fpath):
+            s7.shapes.add_picture(fpath, fx, Inches(1.65), width=Inches(2.75))
+        add_card(s7, fx, Inches(3.6), Inches(2.75), Inches(3.4), ftitle, fbullets, fcolor, title_size=13, body_size=10.5)
+
+    # ==========================================
+    # SLIDE 8: IN-GAME ENVIRONMENT & VISUAL TOPOLOGY
+    # ==========================================
+    s8 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s8, C_DARK)
+    add_header(s8, "In-Game Environment", "Complete 2.5D Kitchen Environment & Dining Patio View")
+
+    full_kitchen_img = "unity/TwoLadles/Two Ladles/Builds/preview/unity_kitchen_gameplay_view.png"
+    if os.path.exists(full_kitchen_img):
+        s8.shapes.add_picture(full_kitchen_img, Inches(0.8), Inches(1.65), width=Inches(7.8))
+
+    add_card(s8, Inches(8.8), Inches(1.65), Inches(3.7), Inches(5.2),
+        "Live Visual Topology",
+        [
+            "Flat 2D Floor: the kitchen floor sits flat behind the chefs, removing the old perspective tilt.",
+            "Dynamic 2.5D Depth Sorting: Automatic z-index calculates (500 - Z*50) so chefs naturally render in front/behind counters.",
+            "Asymmetric West/East Layout: Linh runs the stoves (flour, rice, toboki, egg); Jiwon runs prep, grill and wok.",
+            "3-Slot Pass Counter: Central stainless steel relay counter with trash disposal bin.",
+            "Exterior Dining Patio: Customer tables with placemats and real-time waiting diners.",
+            "2-Bot QA Autoplay: latest run cleared 5/5 days, 34/34 orders served (seed 42, 2026-11-09)."
+        ],
+        C_GOLD,
+        title_size=15,
+        body_size=11.5
+    )
+
+    # ==========================================
+    # SLIDE 9: KITCHEN FLOW & RUSH RHYTHM
+    # ==========================================
+    s9 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s9, C_DARK)
+    add_header(s9, "Momentum Engine", "Kitchen Flow (0–100) & High-Scoring Rush Rhythm")
+
+    add_card(s9, Inches(0.8), Inches(1.8), Inches(5.6), Inches(5.0),
         "Kitchen Flow Dynamics",
         [
             "Flow Meter (0 to 100): Represents kitchen rhythm, speed, and harmony.",
@@ -329,7 +411,7 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         C_TEAL
     )
 
-    add_card(s7, Inches(6.8), Inches(1.8), Inches(5.6), Inches(5.0),
+    add_card(s9, Inches(6.8), Inches(1.8), Inches(5.6), Inches(5.0),
         "Rush Rhythm Mode",
         [
             "Activation: Reaching 100 Kitchen Flow immediately activates Rush Rhythm.",
@@ -342,96 +424,99 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
     )
 
     # ==========================================
-    # SLIDE 8: CHARACTER SIGNATURE ABILITIES
+    # SLIDE 10: CHARACTER SIGNATURE ABILITIES
     # ==========================================
-    s8 = prs.slides.add_slide(blank_layout)
-    set_slide_background(s8, C_DARK)
-    add_header(s8, "Character Abilities", "Distinct Thematic Progression Across 3 Evolution Tiers")
+    s10 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s10, C_DARK)
+    add_header(s10, "Character Abilities", "Distinct Thematic Progression Across 3 Evolution Tiers")
 
-    add_card(s8, Inches(0.8), Inches(1.8), Inches(5.6), Inches(2.7),
+    add_card(s10, Inches(0.8), Inches(1.8), Inches(5.6), Inches(2.7),
         "Linh — Execution Specialist",
         [
-            "Tier 1 (Ordinary Chef): 1.0x task cadence, no mechanical arm.",
-            "Tier 2 (Workshop Engineer): Rustic mechanical arm, 0.92x prep interval.",
-            "Tier 3 (Precision Engineer): Sleek dual robotic arms, 0.85x prep interval.",
-            "Design Balance: Visual evolution reflecting software automation background."
+            "Tier 1 (Ordinary Chef): chef uniform, normal speed, no extra arm.",
+            "Tier 2 (Workshop Engineer): ONE rustic brass third arm, ~8% faster.",
+            "Tier 3 (Precision Engineer): ONE sleek white & blue third arm, ~15% faster.",
+            "Unlocks: Tier 2 after Day 3, Tier 3 after Day 5."
         ],
         C_TEAL
     )
-    # 3 Linh progression stages
-    p_l1 = "unity/TwoLadles/Assets/Sprites/Characters/linh_tier1.png"
-    p_l2 = "unity/TwoLadles/Assets/Sprites/Characters/linh_tier2.png"
-    p_l3 = "unity/TwoLadles/Assets/Sprites/Characters/linh_tier3.png"
+    # 3 Linh progression stages (consistent deck illustrations)
+    p_l1 = "docs/deck_art/linh_tier1.jpg"
+    p_l2 = "docs/deck_art/linh_tier2.jpg"
+    p_l3 = "docs/deck_art/linh_tier3.jpg"
     if os.path.exists(p_l1):
-        s8.shapes.add_picture(p_l1, Inches(1.1), Inches(4.7), height=Inches(2.1))
+        add_fit(s10, p_l1, Inches(1.0), Inches(4.7), Inches(1.6), Inches(2.1))
     if os.path.exists(p_l2):
-        s8.shapes.add_picture(p_l2, Inches(2.7), Inches(4.7), height=Inches(2.1))
+        add_fit(s10, p_l2, Inches(2.8), Inches(4.7), Inches(1.6), Inches(2.1))
     if os.path.exists(p_l3):
-        s8.shapes.add_picture(p_l3, Inches(4.4), Inches(4.7), height=Inches(2.1))
+        add_fit(s10, p_l3, Inches(4.6), Inches(4.7), Inches(1.6), Inches(2.1))
 
-    add_card(s8, Inches(6.8), Inches(1.8), Inches(5.6), Inches(2.7),
+    add_card(s10, Inches(6.8), Inches(1.8), Inches(5.6), Inches(2.7),
         "Jiwon — \"Call in the Crew\"",
         [
-            "Signature Ability: Spends restaurant currency to hire temporary helpers.",
-            "Tier 1 (Burnout Exec): 0 helper slots | Tier 2 (Manager): 1 helper slot.",
-            "Tier 3 (Executive Director): 2 simultaneous helper slots unlocked.",
+            "Signature Ability: Spends restaurant coins to hire part-time prep helpers.",
+            "Tier 1 (Burnt-out Exec): casual clothes + kitchen apron, 0 helpers.",
+            "Tier 2 (Manager): rolled-sleeve shirt, 1 helper | Tier 3 (Business Operator): suit & tie, 2 helpers.",
             "Balancing: 20 coins hire cost, 20s contract, 45s agency cooldown."
         ],
         C_TERRA
     )
-    # 3 Jiwon progression stages
-    p_j1 = "unity/TwoLadles/Assets/Sprites/Characters/jiwon_tier1.png"
-    p_j2 = "unity/TwoLadles/Assets/Sprites/Characters/jiwon_tier2.png"
-    p_j3 = "unity/TwoLadles/Assets/Sprites/Characters/jiwon_tier3.png"
+    # 3 Jiwon progression stages (prefer consistent deck illustrations when available)
+    def _pick(deck_name, sprite_name):
+        dp = f"docs/deck_art/{deck_name}.jpg"
+        return dp if os.path.exists(dp) else f"unity/TwoLadles/Two Ladles/Assets/Resources/Sprites/Characters/{sprite_name}.png"
+    p_j1 = _pick("jiwon_tier1", "jiwon_tier1")
+    p_j2 = _pick("jiwon_tier2", "jiwon_tier2")
+    p_j3 = _pick("jiwon_tier3", "jiwon_tier3")
     if os.path.exists(p_j1):
-        s8.shapes.add_picture(p_j1, Inches(7.2), Inches(4.7), height=Inches(2.1))
+        add_fit(s10, p_j1, Inches(7.0), Inches(4.7), Inches(1.6), Inches(2.1))
     if os.path.exists(p_j2):
-        s8.shapes.add_picture(p_j2, Inches(8.9), Inches(4.7), height=Inches(2.1))
+        add_fit(s10, p_j2, Inches(8.8), Inches(4.7), Inches(1.6), Inches(2.1))
     if os.path.exists(p_j3):
-        s8.shapes.add_picture(p_j3, Inches(10.6), Inches(4.7), height=Inches(2.1))
+        add_fit(s10, p_j3, Inches(10.6), Inches(4.7), Inches(1.6), Inches(2.1))
 
     # ==========================================
-    # SLIDE 9: CAMPAIGN & ENDLESS MODE
+    # SLIDE 11: CAMPAIGN & ENDLESS MODE
     # ==========================================
-    s9 = prs.slides.add_slide(blank_layout)
-    set_slide_background(s9, C_DARK)
-    add_header(s9, "Game Modes", "5 Handcrafted Campaign Levels & Endless Rush Mode")
+    s11 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s11, C_DARK)
+    add_header(s11, "Game Modes", "5-Day Campaign & Endless Rush Mode")
 
-    add_card(s9, Inches(0.8), Inches(1.8), Inches(5.6), Inches(5.0),
-        "5-Level Campaign Progression",
+    add_card(s11, Inches(0.8), Inches(1.8), Inches(5.6), Inches(5.0),
+        "5-Day Campaign Progression",
         [
-            "Level 1: First Customer (Rural Food Stand) — Phở & Bánh Mì basics (2 orders, 16s pacing).",
-            "Level 2: Lunch Rush (Village Market) — introduces dirty plate washing under pressure (3 orders, 13s pacing).",
-            "Level 3: Night Market — Korean Tteokbokki added. Completing unlocks Character Tier 2!",
-            "Level 4: Fusion Special — Bulgogi Bánh Mì fusion dish added (4 orders, 10s pacing).",
-            "Level 5: Grand Opening (Modern Fusion Restaurant) — all 4 dishes; unlocks Character Tier 3!"
+            "Day 1: Tteokbokki only — learn chop, cook and serve.",
+            "Day 2: adds Bột Chiên (cook flour, add egg, cook again).",
+            "Day 3: adds Korean BBQ on Rice. Clearing it unlocks Character Tier 2!",
+            "Day 4: adds Vietnamese Cơm Tấm — all four dishes on the menu.",
+            "Day 5: Bulgogi Bánh Mì 3-minute high-score finale. Clearing it unlocks Character Tier 3!"
         ],
         C_TEAL
     )
 
-    add_card(s9, Inches(6.8), Inches(1.8), Inches(5.6), Inches(5.0),
+    add_card(s11, Inches(6.8), Inches(1.8), Inches(5.6), Inches(5.0),
         "Endless Rush Mode",
         [
             "Continuous Escalation: Unlimited shift duration toggled in lobby.",
             "Dynamic Difficulty: Order spawn interval accelerates from 14s to 6.5s; order concurrency expands from 2 to 4.",
             "Failure Condition: 3 missed customer tickets ends shift.",
             "Personal Best Tracking: Persistent career high score, orders served, and survival duration.",
-            "Kitchen Upgrades: Sharp Santoku Knives (+15% prep window), Double-Walled Stockpot (+50% optimal window)."
+            "Kitchen Upgrades: Sharp Santoku Knives, Chef Speed Boots, Turbo Wok Burners."
         ],
         C_GOLD
     )
 
     # ==========================================
-    # SLIDE 10: TECHNICAL ARCHITECTURE & UNITY MIGRATION
+    # SLIDE 12: TECHNICAL ARCHITECTURE & UNITY MIGRATION
     # ==========================================
-    s10 = prs.slides.add_slide(blank_layout)
-    set_slide_background(s10, C_DARK)
-    add_header(s10, "Technology & Architecture", "Modern Unity C# Stack Targeting Android & PC")
+    s12 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s12, C_DARK)
+    add_header(s12, "Technology & Architecture", "Modern Unity C# Stack Targeting Android & PC")
 
-    add_card(s10, Inches(0.8), Inches(1.8), Inches(5.6), Inches(5.0),
+    add_card(s12, Inches(0.8), Inches(1.8), Inches(5.6), Inches(5.0),
         "Unity Engine Architecture",
         [
-            "Engine: Unity 2022.3 LTS / Unity 6 C#.",
+            "Engine: Unity 2022.3.62f3 LTS, statically typed C#. Pixel-art sprites on a flat 2D floor with a 2.5D orthographic camera.",
             "Cross-Platform: Landscape Android (1280x720 base viewport) + Windows/Linux PC.",
             "Authoritative Host Topology: Peer 1 governs order timers, cooking transitions, pass counter handoffs, flow, and scoring.",
             "Dual Input Schemes: Responsive Android touch D-pad & action buttons + PC WASD/Arrow & Space/E/F keyboard controls.",
@@ -440,72 +525,81 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         C_TEAL
     )
 
-    add_card(s10, Inches(6.8), Inches(1.8), Inches(5.6), Inches(5.0),
+    add_card(s12, Inches(6.8), Inches(1.8), Inches(5.6), Inches(5.0),
         "LAN Multiplayer & Netcode",
         [
             "Multiplayer Transport: Local UDP port 24567.",
             "High-Level Networking: Unity Netcode for GameObjects (NGO) / Unity Transport (UTP).",
             "Character Exclusivity: Mutual exclusion enforced in lobby (Linh vs Jiwon).",
             "Readiness Reset: Changing character or perks resets Ready state to prevent race conditions.",
-            "114 Automated Unit Tests: Exhaustive test suite verifying recipes, rhythm, flow, anti-exploit, and abilities."
+            "Unit tests (14 suites): last recorded run 123/123 assertions passed (2026-11-08). Suite has since grown; re-run pending.",
+            "Full-gameplay QA (separate): 2-bot autoplay cleared 5/5 days, 34/34 orders (seed 42, 2026-11-09)."
         ],
         C_TERRA
     )
 
     # ==========================================
-    # SLIDE 11: PRODUCTION ROADMAP
+    # SLIDE 13: PRODUCTION ROADMAP
     # ==========================================
-    s11 = prs.slides.add_slide(blank_layout)
-    set_slide_background(s11, C_DARK)
-    add_header(s11, "Production Roadmap", "Current Status & Next Development Milestones")
+    s13 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s13, C_DARK)
+    add_header(s13, "Production Roadmap", "Current Status & Next Development Milestones")
 
-    add_card(s11, Inches(0.8), Inches(1.8), Inches(3.7), Inches(5.0),
+    add_card(s13, Inches(0.8), Inches(1.8), Inches(3.7), Inches(5.0),
         "Milestones 0–3 (Verified)",
         [
-            "✔ 4 Authentic Recipes & Cross-Prep Interdependence.",
-            "✔ 5 Station Mechanics.",
+            "✔ 5-Day Menu & Cross-Prep Interdependence.",
+            "✔ Self-Assembly Holding Tables & Throwing.",
             "✔ Pass Counter 4s Handoff & Anti-Exploit (+15 Flow).",
             "✔ Rush Rhythm (15s, 1.5x score).",
-            "✔ Finite 4-Plate Washing Cycle.",
             "✔ Linh Tiers 1-3 & Jiwon Crew Hiring.",
-            "✔ 5 Campaign Levels & Endless Mode.",
-            "✔ 114 Automated Tests Passing."
+            "✔ 5-Day Campaign & Endless Mode.",
+            "✔ Unit tests: 123/123 on last run (11-08); re-run pending.",
+            "✔ 2-Bot Autoplay QA: 5/5 days, 34/34 orders."
         ],
-        C_TEAL
+        C_TEAL,
+        title_size=15,
+        body_size=11.5
     )
 
-    add_card(s11, Inches(4.8), Inches(1.8), Inches(3.7), Inches(5.0),
+    add_card(s13, Inches(4.8), Inches(1.8), Inches(3.7), Inches(5.0),
         "Milestone 4 (Visual & Audio)",
         [
-            "• Custom 2D character & food sprites integration.",
-            "• Stylized 2.5D visual kitchen rendering.",
-            "• Sizzle, blanching, chopping & scrubbing particle effects.",
+            "✔ 2D pixel-art chef & food sprites integrated (beef, noodles, flour added).",
+            "✔ Flat 2D kitchen floor, depth-sorted chefs, 15° walk sway.",
+            "✔ Lobby, cleaned-up HUD & station prompts.",
+            "• Sizzle, chopping & cooking particle effects.",
             "• Vietnamese Dan Bau & Korean Gayageum fusion soundtrack.",
             "• Interactive touch tutorial overlay."
         ],
-        C_GOLD
+        C_GOLD,
+        title_size=15,
+        body_size=11.5
     )
 
-    add_card(s11, Inches(8.8), Inches(1.8), Inches(3.7), Inches(5.0),
+    add_card(s13, Inches(8.8), Inches(1.8), Inches(3.7), Inches(5.0),
         "Milestone 5 (Competition)",
         [
             "• Android APK build package for judges.",
-            "• Windows Standalone PC executable.",
+            "✔ Windows Standalone PC build (builds via BuildScript; rebuild pending).",
+            "✔ Two-Bot Autoplay QA Test Runner & Metrics.",
             "• Gameplay demo video capture.",
             "• Wi-Fi packet jitter stress testing.",
             "• Final submission to Korea Game Week 2026."
         ],
-        C_TERRA
+        C_TERRA,
+        title_size=15,
+        body_size=11.5
     )
 
     # ==========================================
-    # SLIDE 12: SUBMISSION INFORMATION
+    # SLIDE 14: SUBMISSION INFORMATION
     # ==========================================
-    s12 = prs.slides.add_slide(blank_layout)
-    set_slide_background(s12, C_DARK)
-    add_header(s12, "Submission Details", "Korea Game Week 2026 Entry Information")
+    s14 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s14, C_DARK)
+    add_header(s14, "Submission Details", "Korea Game Week 2026 Entry Information")
 
-    add_card(s12, Inches(0.8), Inches(1.8), Inches(11.6), Inches(4.8),
+    add_card(s14, Inches(0.8), Inches(1.8), Inches(11.6), Inches(4.8),
         "Official Competition Submission",
         [
             "Game Title: TWO LADLES: A Vietnam–Korea Kitchen Story",
@@ -514,14 +608,45 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
             "Concept Document: docs/two_ladles_concept.pptx (PowerPoint Format - Included)",
             "Game Engine: Unity C# (Android Platform + PC Testable)",
             "Deliverables: Presentation Deck (*.pptx) + Playable APK / PC Build + Demo Video",
-            "Copyright Statement: All code, systems, recipes, and presented materials are original works created for Two Ladles and comply fully with KGW2026 copyright regulations."
+            "Copyright Statement: The game features original gameplay systems and development work. All third-party assets, where applicable, are used in accordance with their respective licenses. See Asset Credits (next slide)."
         ],
         C_GOLD
     )
 
+    # ==========================================
+    # SLIDE 15: ASSET CREDITS
+    # ==========================================
+    s15 = prs.slides.add_slide(blank_layout)
+    set_slide_background(s15, C_DARK)
+    add_header(s15, "Asset Credits", "Third-Party Assets & Sources")
+
+    add_card(s15, Inches(0.8), Inches(1.8), Inches(5.6), Inches(5.0),
+        "Third-Party Art (Licensed)",
+        [
+            "Professional Kitchen Set (32x32) by 0_mem0ry — 0-mem0ry.itch.io/professional-kitchen-set-free (free, commercial use & modification allowed).",
+            "Pixel Mart by ghostpixxells — ghostpixxells.itch.io/pixel-mart (free, commercial use permitted).",
+            "Additional food sprites (beef, noodles, flour) and customer sprites — source & license being verified before final submission."
+        ],
+        C_TEAL,
+        body_size=12
+    )
+
+    add_card(s15, Inches(6.8), Inches(1.8), Inches(5.6), Inches(5.0),
+        "Original & Traditional",
+        [
+            "In-game chef sprites: created for Two Ladles.",
+            "Deck character illustrations: AI-assisted concept art made for this presentation.",
+            "Gameplay code & systems: written for Two Ladles in Unity C#.",
+            "Recipes: Tteokbokki, Bột Chiên, Korean BBQ and Cơm Tấm are traditional dishes; Bulgogi Bánh Mì is a well-known fusion style used as our finale.",
+            "Engine: Unity 2022.3 (Unity Personal license)."
+        ],
+        C_GOLD,
+        body_size=12
+    )
+
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     prs.save(output_path)
-    print(f"Presentation saved successfully to {output_path}")
+    print(f"Presentation saved successfully to {output_path} (Total Slides: {len(prs.slides)})")
 
 if __name__ == "__main__":
     create_deck()

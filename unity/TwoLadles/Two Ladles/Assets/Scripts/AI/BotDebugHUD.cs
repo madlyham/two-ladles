@@ -14,7 +14,11 @@ namespace TwoLadles.AI
     public class BotDebugHUD : MonoBehaviour
     {
         public static BotDebugHUD Instance { get; private set; }
-        public bool showHUD = true;
+        /// <summary>Hidden by default; F1 shows it. Phones/tablets never show it (no F1 key).</summary>
+        public bool showHUD = false;
+
+        /// <summary>Shared opacity for all developer/test overlays (TAS board, QA report, story tab).</summary>
+        public const float DEBUG_UI_ALPHA = 0.55f;
 
         private GUIStyle _boxStyle;
         private GUIStyle _headerStyle;
@@ -36,7 +40,7 @@ namespace TwoLadles.AI
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.F1))
+            if (!Application.isMobilePlatform && Input.GetKeyDown(KeyCode.F1))
             {
                 showHUD = !showHUD;
             }
@@ -47,7 +51,7 @@ namespace TwoLadles.AI
             if (_boxStyle != null) return;
 
             Texture2D darkBg = new Texture2D(1, 1);
-            darkBg.SetPixel(0, 0, new Color(0.05f, 0.07f, 0.10f, 0.88f));
+            darkBg.SetPixel(0, 0, new Color(0.05f, 0.07f, 0.10f, DEBUG_UI_ALPHA));
             darkBg.Apply();
 
             _boxStyle = new GUIStyle(GUI.skin.box);
@@ -93,7 +97,7 @@ namespace TwoLadles.AI
 
         private void OnGUI()
         {
-            if (!showHUD) return;
+            if (!showHUD || Application.isMobilePlatform) return;
 
             // Only show when bots or QA mode exist
             bool hasBots = false;

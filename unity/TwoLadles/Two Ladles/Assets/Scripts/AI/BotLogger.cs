@@ -90,6 +90,35 @@ namespace TwoLadles.AI
             Debug.Log(line);
         }
 
+        public static void LogWarning(string characterId, string message)
+        {
+            string timeStr = DateTime.Now.ToString("HH:mm:ss.fff");
+            string charTag = string.IsNullOrEmpty(characterId) ? "SYS" : characterId.ToUpper();
+            string line = $"[{timeStr}][BOT-{charTag}] [WARNING] {message}";
+
+            lock (_fileLock)
+            {
+                _recentLogs.Add(line);
+                if (_recentLogs.Count > MAX_RECENT_LOGS)
+                {
+                    _recentLogs.RemoveAt(0);
+                }
+
+                try
+                {
+                    File.AppendAllText(LogFilePath, line + Environment.NewLine);
+                }
+                catch { }
+            }
+
+            Debug.LogWarning(line);
+        }
+
+        public static void LogWarning(string message)
+        {
+            LogWarning(null, message);
+        }
+
         public static void LogGoal(string characterId, string goalName, string stationId)
         {
             Log(characterId, $"GOAL: '{goalName}' => Target: {(string.IsNullOrEmpty(stationId) ? "none" : stationId)}");

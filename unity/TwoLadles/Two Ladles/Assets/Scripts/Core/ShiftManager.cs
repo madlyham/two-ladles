@@ -233,6 +233,7 @@ namespace TwoLadles.Core
         public int rushRhythmsTriggered = 0;
 
         public int dynamicMaxOrders = MAX_ACTIVE_ORDERS;
+        public bool isWaitingForRecipeBook = false;
         public float orderSpawnInterval = 14.0f;
         public float currentWavePatience = 65.0f;
 
@@ -291,7 +292,7 @@ namespace TwoLadles.Core
 
         public void TickShift(float dt)
         {
-            if (!shiftActive) return;
+            if (!shiftActive || isWaitingForRecipeBook) return;
 
             shiftElapsedSeconds += dt;
 
@@ -599,6 +600,7 @@ namespace TwoLadles.Core
                 waveOrdersCompleted = 0;
             }
             shiftTimeRemaining = duration;
+            isWaitingForRecipeBook = (!isTutorial && !isAutoplayQAMode);
 
             orderSpawnTimer = isTutorial ? 99999.0f : 1.0f;
             OnFlowUpdated?.Invoke(kitchenFlow, false, 0.0f);

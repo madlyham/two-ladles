@@ -97,6 +97,16 @@ namespace TwoLadles.Stations
             return true;
         }
 
+        public bool HasEmptySlot()
+        {
+            InitSlots();
+            for (int i = 0; i < NUM_SLOTS; i++)
+            {
+                if (slots[i] == null || slots[i].item == null) return true;
+            }
+            return false;
+        }
+
         public (KitchenItem item, bool handoffAwarded) RetrieveItem(int slotIndex, int retrieverPeer, float currentTime)
         {
             InitSlots();
@@ -167,21 +177,51 @@ namespace TwoLadles.Stations
             else
             {
                 // First pass: retrieve an item placed by partner chef (immediate handoff)
+                // Intelligent selection:
+                // Linh prioritizes completed dishes or needed meats (bbq_beef, bulgogi)
+                // Jiwon prioritizes raw prep ingredients
+                int chosenSlot = -1;
                 for (int i = 0; i < NUM_SLOTS; i++)
                 {
                     if (slots[i].item != null && slots[i].placedByPeer != peerId)
                     {
-                        var res = RetrieveItem(i, peerId, now);
-                        playerItem = res.item;
-
-                        if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 5)
+                        if (characterId == "linh" && (GameData.IsCompletedDish(slots[i].item.itemId) || slots[i].item.itemId == "bbq_beef" || slots[i].item.itemId == "bulgogi"))
                         {
-                            ShiftManager.Instance.AdvanceTutorialStep(6);
+                            chosenSlot = i;
+                            break;
                         }
-
-                        string msg = res.handoffAwarded ? "Handoff! +15 Flow!" : "Retrieved.";
-                        return (true, msg);
+                        if (characterId == "jiwon" && !GameData.IsCompletedDish(slots[i].item.itemId))
+                        {
+                            chosenSlot = i;
+                            break;
+                        }
                     }
+                }
+
+                if (chosenSlot < 0)
+                {
+                    for (int i = 0; i < NUM_SLOTS; i++)
+                    {
+                        if (slots[i].item != null && slots[i].placedByPeer != peerId)
+                        {
+                            chosenSlot = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (chosenSlot >= 0)
+                {
+                    var res = RetrieveItem(chosenSlot, peerId, now);
+                    playerItem = res.item;
+
+                    if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 5)
+                    {
+                        ShiftManager.Instance.AdvanceTutorialStep(6);
+                    }
+
+                    string msg = res.handoffAwarded ? "Handoff! +15 Flow!" : "Retrieved.";
+                    return (true, msg);
                 }
 
                 // Second pass: if only items placed by self exist, only retrieve after 5.0 seconds (prevents ping-pong loop)

@@ -84,6 +84,7 @@ namespace TwoLadles.Tests
             Test15_WaveProgressionReputationAndGoldEconomy();
             Test16_SoloModeAndAIPartner();
             Test17_TwoBotQAManagerAndReporting();
+            Test18_StoryPhoneAndDayNightCycle();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -902,6 +903,57 @@ namespace TwoLadles.Tests
             DestroyImmediate(jiwonGo);
             DestroyImmediate(kcObj);
             DestroyImmediate(qaGo);
+        }
+
+        private void Test18_StoryPhoneAndDayNightCycle()
+        {
+            Debug.Log("\n[TEST 18] Story Phone Script & Day-Night Lighting Stages");
+
+            // Script structure (final five-day script, verbatim)
+            Assert(Story.StoryScript.Opening.Length == 8, "Opening chat has 8 messages");
+            Assert(Story.StoryScript.Days.Length == 5, "Story has 5 days");
+            int[] expectedCounts = { 0, 7, 8, 9, 9 };
+            string[] expectedPresenters = { "jiwon", "linh", "jiwon", "linh", "both" };
+            string[] expectedDishes = { "tteokbokki", "bot_chien", "korean_bbq_rice", "viet_broken_rice", "bulgogi_banh_mi" };
+            for (int i = 0; i < 5; i++)
+            {
+                var d = Story.StoryScript.GetDay(i + 1);
+                Assert(d != null && d.chat.Length == expectedCounts[i], $"Day {i + 1} chat has {expectedCounts[i]} messages");
+                Assert(d != null && d.presenter == expectedPresenters[i], $"Day {i + 1} dish presented by {expectedPresenters[i]}");
+                Assert(d != null && d.dishId == expectedDishes[i], $"Day {i + 1} dish is {expectedDishes[i]}");
+            }
+            Assert(Story.StoryScript.GetDay(0) == null && Story.StoryScript.GetDay(6) == null, "No story outside days 1-5");
+
+            // Every line and card exists in all three languages
+            bool allFilled = true;
+            foreach (var l in Story.StoryScript.Opening)
+                if (string.IsNullOrEmpty(l.en) || string.IsNullOrEmpty(l.vi) || string.IsNullOrEmpty(l.ko)) allFilled = false;
+            foreach (var d in Story.StoryScript.Days)
+            {
+                foreach (var l in d.chat)
+                    if (string.IsNullOrEmpty(l.en) || string.IsNullOrEmpty(l.vi) || string.IsNullOrEmpty(l.ko)) allFilled = false;
+                if (string.IsNullOrEmpty(d.descEn) || string.IsNullOrEmpty(d.descVi) || string.IsNullOrEmpty(d.descKo)) allFilled = false;
+            }
+            Assert(allFilled, "All story lines and dish cards have EN/VI/KO text");
+
+            // Vietnamese casual texting preserved exactly
+            Assert(Story.StoryScript.Opening[7].vi == "Ko sạch ko làm nha.", "Vietnamese slang preserved verbatim (opening)");
+            Assert(Story.StoryScript.Opening[7].Get("ko") == "안 깨끗하면 일 안 할 거야.", "Korean line selected by language code");
+            Assert(Story.StoryScript.Opening[7].Get("en") == "If it's not clean, I'm not working.", "English line selected by language code");
+
+            // Story only shows on campaign days 1-5 (never tutorial / QA autoplay / endless)
+            Assert(UI.PhoneStoryUI.ShouldShowStory(1, GameMode.CAMPAIGN, false), "Story shows on campaign Day 1");
+            Assert(UI.PhoneStoryUI.ShouldShowStory(5, GameMode.CAMPAIGN, false), "Story shows on campaign Day 5");
+            Assert(!UI.PhoneStoryUI.ShouldShowStory(0, GameMode.CAMPAIGN, false), "Story never shows in tutorial");
+            Assert(!UI.PhoneStoryUI.ShouldShowStory(3, GameMode.CAMPAIGN, true), "Story never shows in QA autoplay");
+            Assert(!UI.PhoneStoryUI.ShouldShowStory(3, GameMode.ENDLESS_RUSH, false), "Story never shows in endless mode");
+
+            // Lighting changes in one stage per wave
+            Assert(Visuals.DayNightCycleManager.StageForWave(1, 3) == 0, "3 waves: wave 1 = day");
+            Assert(Visuals.DayNightCycleManager.StageForWave(2, 3) == 1, "3 waves: wave 2 = red noon");
+            Assert(Visuals.DayNightCycleManager.StageForWave(3, 3) == 2, "3 waves: wave 3 = night");
+            Assert(Visuals.DayNightCycleManager.StageForWave(0, 3) == -1, "No lighting stage before first wave");
+            Assert(Visuals.DayNightCycleManager.StageForWave(2, 2) == 2, "2 waves: last wave reaches night");
         }
     }
 }

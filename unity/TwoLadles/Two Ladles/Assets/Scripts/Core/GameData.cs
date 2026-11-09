@@ -274,6 +274,12 @@ namespace TwoLadles.Core
             }
         }
 
+        public static bool IsCompletedDish(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId)) return false;
+            return itemId == "tteokbokki" || itemId == "bot_chien" || itemId == "korean_bbq_rice" || itemId == "viet_broken_rice" || itemId == "bulgogi_banh_mi" || itemId == "banh_mi_thit" || itemId == "pho_bo";
+        }
+
         public static bool TryCombineItems(KitchenItem itemA, KitchenItem itemB, out KitchenItem combined)
         {
             combined = null;

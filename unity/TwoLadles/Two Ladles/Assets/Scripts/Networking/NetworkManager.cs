@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -608,15 +609,15 @@ namespace TwoLadles.Networking
                 case "POS":
                     if (parts.Length >= 9 && Kitchen.KitchenController.Instance != null)
                     {
-                        int pId = int.Parse(parts[1]);
+                        int pId = int.Parse(parts[1], CultureInfo.InvariantCulture);
                         if (pId != localPeerId && Kitchen.KitchenController.Instance.playersByPeer.TryGetValue(pId, out var remoteChef))
                         {
-                            float x = float.Parse(parts[2]);
-                            float y = float.Parse(parts[3]);
-                            float z = float.Parse(parts[4]);
-                            float fx = float.Parse(parts[5]);
-                            float fy = float.Parse(parts[6]);
-                            float wAnim = float.Parse(parts[7]);
+                            float x = float.Parse(parts[2], CultureInfo.InvariantCulture);
+                            float y = float.Parse(parts[3], CultureInfo.InvariantCulture);
+                            float z = float.Parse(parts[4], CultureInfo.InvariantCulture);
+                            float fx = float.Parse(parts[5], CultureInfo.InvariantCulture);
+                            float fy = float.Parse(parts[6], CultureInfo.InvariantCulture);
+                            float wAnim = float.Parse(parts[7], CultureInfo.InvariantCulture);
                             string carried = parts[8];
 
                             remoteChef.transform.position = new Vector3(x, y, z);
@@ -654,13 +655,21 @@ namespace TwoLadles.Networking
                 case "THROW":
                     if (parts.Length >= 4 && Kitchen.KitchenController.Instance != null)
                     {
-                        int pId = int.Parse(parts[1]);
+                        int pId = int.Parse(parts[1], CultureInfo.InvariantCulture);
                         if (pId != localPeerId && Kitchen.KitchenController.Instance.playersByPeer.TryGetValue(pId, out var chef))
                         {
-                            float ax = float.Parse(parts[2]);
-                            float ay = float.Parse(parts[3]);
+                            float ax = float.Parse(parts[2], CultureInfo.InvariantCulture);
+                            float ay = float.Parse(parts[3], CultureInfo.InvariantCulture);
                             chef.ThrowItem(new Vector2(ax, ay));
                         }
+                    }
+                    break;
+
+                case "STORY_DONE":
+                    // Host finished/skipped the start-of-day story phone; close ours too.
+                    if (!IsHost())
+                    {
+                        UI.PhoneStoryUI.Close();
                     }
                     break;
             }
@@ -675,7 +684,8 @@ namespace TwoLadles.Networking
                 Vector3 pos = localChef.transform.position;
                 Vector2 f = localChef.facingDirection;
                 string item = localChef.carriedItem != null ? localChef.carriedItem.itemId : "none";
-                string pkt = $"POS|{localPeerId}|{pos.x:F3}|{pos.y:F3}|{pos.z:F3}|{f.x:F2}|{f.y:F2}|{localChef.walkAnimTime:F2}|{item}";
+                string pkt = string.Format(CultureInfo.InvariantCulture, "POS|{0}|{1:F3}|{2:F3}|{3:F3}|{4:F2}|{5:F2}|{6:F2}|{7}",
+                    localPeerId, pos.x, pos.y, pos.z, f.x, f.y, localChef.walkAnimTime, item);
                 SendPacket(pkt, partnerEndPoint);
             }
         }
@@ -692,7 +702,8 @@ namespace TwoLadles.Networking
         {
             if (partnerEndPoint != null)
             {
-                SendPacket($"THROW|{localPeerId}|{aim.x:F2}|{aim.y:F2}", partnerEndPoint);
+                string pkt = string.Format(CultureInfo.InvariantCulture, "THROW|{0}|{1:F2}|{2:F2}", localPeerId, aim.x, aim.y);
+                SendPacket(pkt, partnerEndPoint);
             }
         }
 
@@ -707,6 +718,14 @@ namespace TwoLadles.Networking
                 sb.Append($"|{p.peerId};{p.name};{p.character};{p.specialization};{(p.ready ? 1 : 0)}");
             }
             SendPacket(sb.ToString(), partnerEndPoint);
+        }
+
+        public void BroadcastStoryDone()
+        {
+            if (IsHost() && partnerEndPoint != null)
+            {
+                SendPacket("STORY_DONE", partnerEndPoint);
+            }
         }
 
         public void BroadcastShiftStart(int stage, GameMode mode)

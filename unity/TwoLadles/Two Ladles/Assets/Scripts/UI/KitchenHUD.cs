@@ -597,8 +597,8 @@ namespace TwoLadles.UI
             secondaryActionButton = CreateCircleActionButton("SecondaryActionBtn", actionsRoot.transform, new Vector2(-104f, 52f), new Vector2(78f, 78f), "CHOP\n[F]", new Color(0.90f, 0.52f, 0.14f, 0.95f), 11);
             throwActionButton = CreateCircleActionButton("ThrowActionBtn", actionsRoot.transform, new Vector2(-18f, 4f), new Vector2(74f, 74f), "THROW\n[Q]", new Color(0.82f, 0.24f, 0.38f, 0.95f), 11);
 
-            // Keep joystick & touch buttons visible by default so both mobile & desktop/touchscreen users can use them immediately!
-            mobileControlsContainer.SetActive(true);
+            // Joysticks & touch buttons only show on mobile/touch platforms (clean screen on desktop/laptop)
+            mobileControlsContainer.SetActive(Application.isMobilePlatform);
 
             // =========================================================================
             // 5. JIWON CREW BAR & COMPACT PROMPT BAR
@@ -797,8 +797,8 @@ namespace TwoLadles.UI
                 "chef_speed_boots",
                 "sharp_santoku_knives",
                 "turbo_wok_burners",
-                "high_pressure_sink",
-                "extra_plate_stack",
+                "specialist_tier_2",
+                "specialist_tier_3",
                 "insulated_broth_pot"
             };
 
@@ -807,8 +807,8 @@ namespace TwoLadles.UI
                 "Non-Slip Kitchen Footwear",
                 "Sharp Santoku Knife Set",
                 "High-Output Jet Burners",
-                "High-Pressure Rinse Sprayer",
-                "Porcelain Dish Rack Expansion",
+                "Chef Specialist Tier 2 (Day 3+)",
+                "Chef Specialist Tier 3 (Day 5+)",
                 "Double-Walled Phở Stockpot"
             };
 
@@ -817,12 +817,12 @@ namespace TwoLadles.UI
                 "+18% Movement Speed for both chefs.",
                 "+15% Prep speed & cadence window.",
                 "+25% Faster Cooking Speed on appliances.",
-                "Cleans dirty plates in 3 scrubs instead of 4.",
-                "Starts every level with 6 Clean Vessels.",
+                "Linh: 3rd Arm (+8% speed). Jiwon: Crew (1 helper, 1.5s/chop).",
+                "Linh: Glowing Arm (+15% speed). Jiwon: Crew (2 helpers, 1.0s/chop).",
                 "+50% longer OPTIMAL heat window."
             };
 
-            int[] defaultCosts = new int[] { 100, 100, 150, 150, 200, 250 };
+            int[] defaultCosts = new int[] { 100, 100, 150, 250, 500, 250 };
 
             for (int i = 0; i < upgradeKeys.Length; i++)
             {
@@ -871,7 +871,7 @@ namespace TwoLadles.UI
             rect.anchoredPosition = Vector2.zero;
             rect.sizeDelta = new Vector2(580f, 380f);
             var img = qaReportModal.AddComponent<Image>();
-            img.color = new Color(0.06f, 0.08f, 0.13f, 0.98f);
+            img.color = new Color(0.06f, 0.08f, 0.13f, 0.75f); // test UI: see-through so game stays visible
 
             qaReportTitleText = CreateLabel("QATitle", qaReportModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(540f, 32f), "🤖 TWO-BOT QA AUTOPLAY REPORT", 17, new Color(0.2f, 0.9f, 1.0f), TextAnchor.MiddleCenter);
 
@@ -894,7 +894,8 @@ namespace TwoLadles.UI
                 qaReportModal.SetActive(false);
                 if (TwoLadles.AI.TwoBotQAManager.Instance != null)
                 {
-                    TwoLadles.AI.TwoBotQAManager.Instance.StartAutoplayRun(1, 5, UnityEngine.Random.Range(100, 9999), 2.0f);
+                    var qaMgr = TwoLadles.AI.TwoBotQAManager.Instance;
+                    qaMgr.StartAutoplayRun(qaMgr.startDay, qaMgr.targetDay, UnityEngine.Random.Range(100, 9999), 2.0f);
                 }
             });
 
@@ -1129,7 +1130,13 @@ namespace TwoLadles.UI
         {
             if (recipeBookModal != null)
             {
-                recipeBookModal.SetActive(!recipeBookModal.activeSelf);
+                bool willBeActive = !recipeBookModal.activeSelf;
+                recipeBookModal.SetActive(willBeActive);
+                if (!willBeActive && ShiftManager.Instance != null && ShiftManager.Instance.isWaitingForRecipeBook)
+                {
+                    ShiftManager.Instance.isWaitingForRecipeBook = false;
+                    ShowFeedback("Recipe Book Closed! Shift Started!", new Color(0.3f, 1.0f, 0.5f));
+                }
             }
         }
 
@@ -1154,20 +1161,55 @@ namespace TwoLadles.UI
                 string key = kvp.Key;
                 var up = kvp.Value;
 
+                bool isLocked = false;
+                string lockReason = "";
+                if (key == "specialist_tier_2" && ProgressionManager.Instance.highestUnlockedStage < 3)
+                {
+                    isLocked = true;
+                    lockReason = "DAY 3+";
+                }
+                else if (key == "specialist_tier_3")
+                {
+                    if (ProgressionManager.Instance.linhTier < 2 && !ProgressionManager.Instance.IsUpgradeOwned("specialist_tier_2"))
+                    {
+                        isLocked = true;
+                        lockReason = "NEED TIER 2";
+                    }
+                    else if (ProgressionManager.Instance.highestUnlockedStage < 5)
+                    {
+                        isLocked = true;
+                        lockReason = "DAY 5+";
+                    }
+                }
+
                 if (shopLevelLabels.TryGetValue(key, out var lvlTxt) && lvlTxt != null)
                 {
-                    lvlTxt.text = up.purchased ? "OWNED ✓" : $"Lv {up.level}/{up.maxLevel}";
-                    lvlTxt.color = up.purchased ? new Color(0.35f, 1.0f, 0.55f) : Color.cyan;
+                    if (up.purchased)
+                    {
+                        lvlTxt.text = "OWNED ✓";
+                        lvlTxt.color = new Color(0.35f, 1.0f, 0.55f);
+                    }
+                    else if (isLocked)
+                    {
+                        lvlTxt.text = lockReason;
+                        lvlTxt.color = new Color(1.0f, 0.45f, 0.35f);
+                    }
+                    else
+                    {
+                        lvlTxt.text = $"Lv {up.level}/{up.maxLevel}";
+                        lvlTxt.color = Color.cyan;
+                    }
                 }
 
                 if (shopBuyButtons.TryGetValue(key, out var btn) && btn != null && shopBuyLabels.TryGetValue(key, out var bTxt) && bTxt != null)
                 {
                     bool canAfford = ProgressionManager.Instance.gold >= up.cost;
-                    btn.interactable = !up.purchased && canAfford;
-                    bTxt.text = up.purchased ? "OWNED" : $"{up.cost}g BUY";
+                    btn.interactable = !up.purchased && !isLocked && canAfford;
+                    bTxt.text = up.purchased ? "OWNED" : (isLocked ? lockReason : $"{up.cost}g BUY");
                     btn.GetComponent<Image>().color = up.purchased
                         ? new Color(0.22f, 0.28f, 0.25f, 0.8f)
-                        : (canAfford ? new Color(0.20f, 0.58f, 0.34f, 1f) : new Color(0.45f, 0.22f, 0.22f, 0.85f));
+                        : (isLocked ? new Color(0.35f, 0.25f, 0.25f, 0.85f)
+                        : (canAfford ? new Color(0.20f, 0.58f, 0.34f, 1f) : new Color(0.45f, 0.22f, 0.22f, 0.85f)));
                 }
             }
         }
@@ -1322,11 +1364,42 @@ namespace TwoLadles.UI
             }
         }
 
+        private bool hasAutoOpenedRecipeBook = false;
+        private bool storyShownForShift = false;
+
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.R))
+            // Start-of-day story phone plays first; the recipe book waits until it closes.
+            if (ShiftManager.Instance != null && ShiftManager.Instance.shiftActive && ShiftManager.Instance.isWaitingForRecipeBook
+                && !storyShownForShift
+                && PhoneStoryUI.ShouldShowStory(ShiftManager.Instance.currentStageId, ShiftManager.Instance.currentMode, ShiftManager.Instance.isAutoplayQAMode))
+            {
+                storyShownForShift = true;
+                PhoneStoryUI.Show(ShiftManager.Instance.currentStageId, null);
+            }
+
+            if (Input.GetKeyDown(KeyCode.R) && !PhoneStoryUI.IsShowing)
             {
                 ToggleRecipeBook();
+            }
+
+            if (Input.GetKeyDown(KeyCode.F3) && mobileControlsContainer != null)
+            {
+                mobileControlsContainer.SetActive(!mobileControlsContainer.activeSelf);
+            }
+
+            if (ShiftManager.Instance != null && ShiftManager.Instance.shiftActive && ShiftManager.Instance.isWaitingForRecipeBook)
+            {
+                if (recipeBookModal != null && !recipeBookModal.activeSelf && !hasAutoOpenedRecipeBook && !PhoneStoryUI.IsShowing)
+                {
+                    hasAutoOpenedRecipeBook = true;
+                    recipeBookModal.SetActive(true);
+                }
+            }
+            else if (ShiftManager.Instance != null && !ShiftManager.Instance.isWaitingForRecipeBook)
+            {
+                hasAutoOpenedRecipeBook = false;
+                storyShownForShift = false;
             }
 
             AnimateReputationTrailingBar(Time.deltaTime);
@@ -1384,12 +1457,12 @@ namespace TwoLadles.UI
                 if (hirePrepCooldownText != null)
                 {
                     float cd = KitchenController.Instance.workerCooldowns.TryGetValue("prep_assistant", out float val) ? val : 0.0f;
-                    hirePrepCooldownText.text = cd > 0.0f ? $"Prep ({cd:F0}s)" : "Prep Helper (20g)";
+                    hirePrepCooldownText.text = cd > 0.0f ? $"Crew ({cd:F0}s)" : "Part-Timer 1 [H] (20g)";
                 }
                 if (hireDishwasherCooldownText != null)
                 {
                     float cd = KitchenController.Instance.workerCooldowns.TryGetValue("dishwasher", out float val) ? val : 0.0f;
-                    hireDishwasherCooldownText.text = cd > 0.0f ? $"Wash ({cd:F0}s)" : "Dishwasher (20g)";
+                    hireDishwasherCooldownText.text = cd > 0.0f ? $"Crew 2 ({cd:F0}s)" : "Part-Timer 2 [H] (20g)";
                 }
             }
 

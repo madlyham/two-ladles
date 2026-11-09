@@ -47,8 +47,18 @@ namespace TwoLadles.Kitchen
             {
                 // Check if runtime sprites were cleared during Unity Edit->Play serialization or if layout was upgraded
                 bool needsSpriteRebuild = false;
-                Transform restCorner = transform.Find("FloorTileGrid/VisualBackWall/RestCorner_UpperLeft_v3");
-                if (restCorner == null)
+                Transform restCorner = transform.Find("FloorTileGrid/VisualBackWall/RestCorner_UpperLeft_v5");
+
+                // Stale baked layout check: the current layout adds counter_west_3 and moves the
+                // serving window to (0, 0, 4.2). Old baked scenes lack counter_west_3, which leaves
+                // the serving station where bots/nav can never reach it.
+                bool layoutOutdated = true;
+                foreach (var st in GetComponentsInChildren<StationBase>(true))
+                {
+                    if (st != null && st.stationId == "counter_west_3") { layoutOutdated = false; break; }
+                }
+
+                if (restCorner == null || layoutOutdated)
                 {
                     needsSpriteRebuild = true;
                 }
@@ -68,7 +78,8 @@ namespace TwoLadles.Kitchen
                 {
                     // Preserve any station positions that the user dragged/moved in the current layout
                     var customPositions = new Dictionary<string, Vector3>();
-                    if (restCorner != null)
+                    // Skip restore when the layout is outdated: old positions would undo the new layout.
+                    if (restCorner != null && !layoutOutdated)
                     {
                         foreach (var st in GetComponentsInChildren<StationBase>(true))
                         {
@@ -416,14 +427,14 @@ namespace TwoLadles.Kitchen
             // All floor & exterior tiles share the exact same Z-axis plane (local Z = 0.0f)
             // Expanded grid [-26.5..26.5, -14.5..16.5] covers ultrawide mobile & tablet aspect ratios with zero void:
             // - Spacious Kitchen Interior: x in [-10.5..10.5] (22 tiles wide), y in [-5.5..4.5] (11 tiles deep)
-            // - Lived-In Restaurant Dining Room outside North Double Doors: x in [-8.5..8.5], y in [5.5..10.5]
+            // - Lived-In Restaurant Dining Room outside North Double Doors: x in [-10.5..10.5], y in [5.5..16.5] (runs past the top of the view)
             // - Wide Lush Grass Surround on all outer sides
             for (float x = -26.5f; x <= 26.5f; x += 1.0f)
             {
                 for (float y = -14.5f; y <= 16.5f; y += 1.0f)
                 {
                     bool isInsideKitchen = (x >= -10.5f && x <= 10.5f && y >= -5.5f && y <= 4.5f);
-                    bool isRestaurantDining = (!isInsideKitchen && y >= 5.5f && y <= 10.5f && Mathf.Abs(x) <= 8.5f);
+                    bool isRestaurantDining = (!isInsideKitchen && y >= 5.5f && y <= 16.5f && Mathf.Abs(x) <= 10.5f);
 
                     GameObject tileObj = new GameObject($"Tile_{x:F1}_{y:F1}");
                     tileObj.transform.SetParent(floorRoot.transform, false);
@@ -485,10 +496,10 @@ namespace TwoLadles.Kitchen
             CreateStaticWall("Wall_West", new Vector3(-11.4f, 1.5f, 0.0f), new Vector3(0.8f, 3.0f, 14.5f));
             CreateStaticWall("Wall_East", new Vector3(11.4f, 1.5f, 0.0f), new Vector3(0.8f, 3.0f, 14.5f));
 
-            // Central Divider Barriers (Chefs stay in their assigned half, only interacting via Pass Counter!)
-            CreateStaticWall("CenterDivider_North", new Vector3(0.0f, 0.75f, 4.3f), new Vector3(0.45f, 1.5f, 4.2f));
-            CreateStaticWall("CenterDivider_South", new Vector3(0.0f, 0.75f, -2.5f), new Vector3(0.45f, 1.5f, 2.4f));
-            CreateStaticWall("CenterDivider_Bottom", new Vector3(0.0f, 0.75f, -5.8f), new Vector3(0.45f, 1.5f, 1.8f));
+            // Central Divider Barriers (Chefs stay in their assigned half, only interacting via Pass Counter & Serving Counter!)
+            // One invisible full-length wall at x = 0 (north wall to south wall). Collider only, no renderer.
+            // Pass Counter / Serving window sit on the line and stay reachable from both sides (2.6 interact range).
+            CreateStaticWall("CenterDivider_Full", new Vector3(0.0f, 1.5f, -0.2f), new Vector3(0.7f, 3.0f, 14.0f));
 
             // 2. Visual Room Walls & Labeled Room Border Tiles (Parented on FloorTileGrid plane for 100% seamless tile alignment!)
             Transform floorRoot = transform.Find("FloorTileGrid");
@@ -549,41 +560,38 @@ namespace TwoLadles.Kitchen
             CreateRoomBorderPiece(wallRoot.transform, "RoomCorner_LowerLeft", llCorner, new Vector3(-10.1f, -5.55f, 0.0f), Vector3.one, 0.0f, -9);
             CreateRoomBorderPiece(wallRoot.transform, "RoomCorner_LowerRight", lrCorner, new Vector3(10.1f, -5.55f, 0.0f), Vector3.one, 0.0f, -9);
 
-            // Top & Bottom Horizontal Wall Borders
+            // Top & Bottom Horizontal Wall Borders: tiled edge-to-edge between the corner pieces
+            // (corners are 2.0 units wide centered at x = +/-10.1, so their inner edges sit at +/-9.1).
             if (hWall != null)
             {
-                for (float x = -8.2f; x <= 8.2f; x += 1.75f)
-                {
-                    CreateRoomBorderPiece(wallRoot.transform, $"RoomWall_Top_{x:F1}", hWall, new Vector3(x, 7.3f, 0.0f), Vector3.one, 0.0f, -9);
-                    CreateRoomBorderPiece(wallRoot.transform, $"RoomWall_Bottom_{x:F1}", hWall, new Vector3(x, -6.0f, 0.0f), Vector3.one, 0.0f, -9);
-                }
+                TileBorderRun(wallRoot.transform, "RoomWall_Top", hWall, true, -9.1f, 9.1f, 7.3f, 0.0f, -9);
+                TileBorderRun(wallRoot.transform, "RoomWall_Bottom", hWall, true, -9.1f, 9.1f, -6.0f, 0.0f, -9);
             }
 
-            // West & East Vertical Side Wall Borders
+            // West & East Vertical Side Wall Borders: run from the lower corner's top edge up into the upper corner (no gaps)
             Sprite sideWallSprite = vWall != null ? vWall : hWall;
             float sideWallRot = vWall != null ? 0.0f : 90.0f;
             if (sideWallSprite != null)
             {
-                for (float y = -4.5f; y <= 5.8f; y += 0.98f)
-                {
-                    CreateRoomBorderPiece(wallRoot.transform, $"RoomWall_West_{y:F1}", sideWallSprite, new Vector3(-11.0f, y, 0.0f), Vector3.one, sideWallRot, -9);
-                    CreateRoomBorderPiece(wallRoot.transform, $"RoomWall_East_{y:F1}", sideWallSprite, new Vector3(11.0f, y, 0.0f), Vector3.one, sideWallRot, -9);
-                }
+                TileBorderRun(wallRoot.transform, "RoomWall_West", sideWallSprite, false, -5.05f, 6.4f, -11.0f, sideWallRot, -9);
+                TileBorderRun(wallRoot.transform, "RoomWall_East", sideWallSprite, false, -5.05f, 6.4f, 11.0f, sideWallRot, -9);
             }
 
             // North & South T-Shaped Center Divider Wall Caps
             CreateRoomBorderPiece(wallRoot.transform, "RoomWall_T_North", tNorth, new Vector3(0.0f, 5.85f, 0.0f), Vector3.one, 0.0f, -10);
             CreateRoomBorderPiece(wallRoot.transform, "RoomWall_T_South", tSouth, new Vector3(0.0f, -5.48f, 0.0f), Vector3.one, 0.0f, -8);
 
-            // 4. Restaurant Dining Patio Perimeter Walls (Enclosing the wooden restaurant floor y in [5.5..10.5], x in [-8.5..8.5])
+            // 4. Restaurant Dining Room Walls (wood floor y in [5.5..16.5], x in [-10.5..10.5], same width as the kitchen).
+            // The camera's top edge sits near local y ~13.4, so the far (south-facing) back wall at y ~16.6+ stays off-screen;
+            // the player only sees the dining room continuing past the top of the view.
             if (wallSprite != null)
             {
-                float[] restWallY = new float[] { 10.65f, 11.45f };
+                float[] restWallY = new float[] { 16.65f, 17.45f };
                 for (int i = 0; i < restWallY.Length; i++)
                 {
                     float ry = restWallY[i];
                     int rSort = -48 - i;
-                    for (float x = -8.5f; x <= 8.5f; x += 1.0f)
+                    for (float x = -10.5f; x <= 10.5f; x += 1.0f)
                     {
                         GameObject rwObj = new GameObject($"RestaurantWallTile_{x:F1}_{ry:F1}");
                         rwObj.transform.SetParent(wallRoot.transform, false);
@@ -598,22 +606,44 @@ namespace TwoLadles.Kitchen
                 }
             }
 
-            CreateRoomBorderPiece(wallRoot.transform, "RestCorner_UpperLeft_v3", ulCorner, new Vector3(-8.1f, 11.85f, 0.0f), Vector3.one, 0.0f, -45);
-            CreateRoomBorderPiece(wallRoot.transform, "RestCorner_UpperRight_v3", urCorner, new Vector3(8.1f, 11.85f, 0.0f), Vector3.one, 0.0f, -45);
+            // Restaurant corners/top run share the kitchen's x = +/-10.1 corner columns so every run lines up.
+            // NOTE: "RestCorner_UpperLeft_v5" is also the stale-scene rebuild marker checked in Start().
+            CreateRoomBorderPiece(wallRoot.transform, "RestCorner_UpperLeft_v5", ulCorner, new Vector3(-10.1f, 17.85f, 0.0f), Vector3.one, 0.0f, -45);
+            CreateRoomBorderPiece(wallRoot.transform, "RestCorner_UpperRight_v4", urCorner, new Vector3(10.1f, 17.85f, 0.0f), Vector3.one, 0.0f, -45);
             if (hWall != null)
             {
-                for (float x = -6.4f; x <= 6.4f; x += 1.6f)
-                {
-                    CreateRoomBorderPiece(wallRoot.transform, $"RestWall_Top_{x:F1}", hWall, new Vector3(x, 12.3f, 0.0f), Vector3.one, 0.0f, -45);
-                }
+                TileBorderRun(wallRoot.transform, "RestWall_Top", hWall, true, -9.1f, 9.1f, 18.3f, 0.0f, -45);
             }
             if (sideWallSprite != null)
             {
-                for (float y = 7.4f; y <= 11.0f; y += 0.90f)
-                {
-                    CreateRoomBorderPiece(wallRoot.transform, $"RestWall_West_{y:F1}", sideWallSprite, new Vector3(-9.0f, y, 0.0f), Vector3.one, sideWallRot, -45);
-                    CreateRoomBorderPiece(wallRoot.transform, $"RestWall_East_{y:F1}", sideWallSprite, new Vector3(9.0f, y, 0.0f), Vector3.one, sideWallRot, -45);
-                }
+                // Restaurant side walls continue straight up from the kitchen's side walls (same x = +/-11.0 line, no gaps)
+                TileBorderRun(wallRoot.transform, "RestWall_West", sideWallSprite, false, 6.4f, 17.4f, -11.0f, sideWallRot, -45);
+                TileBorderRun(wallRoot.transform, "RestWall_East", sideWallSprite, false, 6.4f, 17.4f, 11.0f, sideWallRot, -45);
+            }
+        }
+
+        /// <summary>
+        /// Lays border sprites edge-to-edge from 'start' to 'end' along one axis so the run has no gaps.
+        /// The piece count is ceil(span / spriteLength); pieces are spaced evenly (slight overlap, never a gap).
+        /// </summary>
+        private void TileBorderRun(Transform parent, string prefix, Sprite sp, bool horizontal, float start, float end, float fixedCoord, float rotZ, int sortOrder)
+        {
+            if (sp == null) return;
+            bool rotated = Mathf.Abs(Mathf.DeltaAngle(rotZ, 90.0f)) < 1.0f;
+            Vector2 size = sp.bounds.size;
+            float len = horizontal ? (rotated ? size.y : size.x) : (rotated ? size.x : size.y);
+            if (len <= 0.01f) len = 1.0f;
+            float span = end - start;
+            int count = Mathf.Max(1, Mathf.CeilToInt(span / len - 0.001f));
+            float step = span / count;
+            for (int i = 0; i < count; i++)
+            {
+                float c = start + step * (i + 0.5f);
+                Vector3 pos = horizontal ? new Vector3(c, fixedCoord, 0.0f) : new Vector3(fixedCoord, c, 0.0f);
+                // Stretch each piece just enough to cover its slot.
+                float stretch = step / len + 0.02f;
+                Vector3 scale = (horizontal != rotated) ? new Vector3(stretch, 1.0f, 1.0f) : new Vector3(1.0f, stretch, 1.0f);
+                CreateRoomBorderPiece(parent, $"{prefix}_{c:F1}", sp, pos, scale, rotZ, sortOrder);
             }
         }
 
@@ -709,10 +739,18 @@ namespace TwoLadles.Kitchen
             );
             stations["assembly_west"] = counterWest2;
 
-            var servingStation = CreateStation<ServingStation>(
-                "serving_station", "SERVING COUNTER", "shared",
+            var counterWest3 = CreateStation<CounterStation>(
+                "counter_west_3", "SELF-ASSEMBLY / HOLDING TABLE (West 3)", "linh_west",
                 new Vector3(-4.4f, 0.0f, -5.0f), new Vector3(2.8f, 0.9f, 1.2f),
-                new Color(0.75f, 0.78f, 0.82f), "table_double_horizontal", null
+                new Color(0.72f, 0.75f, 0.78f), "table_double_horizontal", null
+            );
+            stations["counter_west_3"] = counterWest3;
+
+            // Send-Out Table next to the North Door for BOTH Linh and Jiwon to submit food
+            var servingStation = CreateStation<ServingStation>(
+                "serving_station", "SERVING COUNTER (Send-Out Window)", "shared",
+                new Vector3(0.0f, 0.0f, 4.2f), new Vector3(1.8f, 0.9f, 2.2f),
+                new Color(0.75f, 0.78f, 0.82f), "table_double_vertical", null
             );
 
             // West Wall Column (X = -10.35f): Flush against West Wall!
@@ -900,6 +938,13 @@ namespace TwoLadles.Kitchen
             AddDecorSprite("dining_table_1", new Vector3(-2.6f, 0.0f, 10.6f), Vector3.one * 1.35f, 0, -34);
             AddDecorSprite("dining_table_2", new Vector3(2.6f, 0.0f, 10.6f), Vector3.one * 1.35f, 0, -34);
 
+            // Back row of the expanded dining room (fills the floor that used to sit behind the old restaurant wall)
+            AddDecorSprite("dining_table_1", new Vector3(-7.4f, 0.0f, 13.4f), Vector3.one * 1.35f, 0, -36);
+            AddDecorSprite("bistro_table_set", new Vector3(0.0f, 0.0f, 13.6f), Vector3.one * 1.45f, 0, -36);
+            AddDecorSprite("dining_table_2", new Vector3(7.4f, 0.0f, 13.4f), Vector3.one * 1.35f, 0, -36);
+            AddDecorSprite("bistro_plant", new Vector3(-10.0f, 0.0f, 11.6f), Vector3.one * 1.35f, 0, -38);
+            AddDecorSprite("bistro_plant", new Vector3(10.0f, 0.0f, 11.6f), Vector3.one * 1.35f, 0, -38);
+
             // Potted Plants strictly behind the kitchen walls (-38 < -15) yet in front of the wooden floor (-38 > -52)!
             AddDecorSprite("bistro_plant", new Vector3(-2.1f, 0.0f, 8.2f), Vector3.one * 1.3f, 0, -38);
             AddDecorSprite("bistro_plant", new Vector3(2.1f, 0.0f, 8.2f), Vector3.one * 1.3f, 0, -38);
@@ -907,9 +952,10 @@ namespace TwoLadles.Kitchen
             AddDecorSprite("bistro_plant", new Vector3(8.0f, 0.0f, 8.4f), Vector3.one * 1.35f, 0, -38);
 
             // Lively Restaurant Customers seated ON TOP of the chairs (sortingOrder = -26 > chairs -34)!
-            SpawnRestaurantCustomer("Customer_HanoiDiner", "customer_1", new Vector3(-6.1f, 0.0f, 9.35f), false);
-            SpawnRestaurantCustomer("Customer_SeoulFoodie", "customer_2", new Vector3(6.1f, 0.0f, 9.35f), true);
-            SpawnRestaurantCustomer("Customer_RegularGuest", "customer_3", new Vector3(-3.6f, 0.0f, 10.7f), false);
+            // Horizontally flipped as requested
+            SpawnRestaurantCustomer("Customer_HanoiDiner", "customer_1", new Vector3(-6.1f, 0.0f, 9.35f), true);
+            SpawnRestaurantCustomer("Customer_SeoulFoodie", "customer_2", new Vector3(6.1f, 0.0f, 9.35f), false);
+            SpawnRestaurantCustomer("Customer_RegularGuest", "customer_3", new Vector3(-3.6f, 0.0f, 10.7f), true);
         }
 
         private void SpawnRestaurantCustomer(string objName, string charSpriteName, Vector3 pos, bool flipX)
@@ -951,11 +997,14 @@ namespace TwoLadles.Kitchen
             // Clear previous player tracking if rebuild
             playersByPeer.Clear();
 
+            int lTier = (ProgressionManager.Instance != null) ? ProgressionManager.Instance.linhTier : 1;
+            int jTier = (ProgressionManager.Instance != null) ? ProgressionManager.Instance.jiwonTier : 1;
+
             // Spawn Linh (Player 1) at (-2.2, 0, 0.5) in spacious West walkway
-            SpawnChef(1, "linh", "prep_master", 1, new Vector3(-2.2f, 0.0f, 0.5f));
+            SpawnChef(1, "linh", "prep_master", lTier, new Vector3(-2.2f, 0.0f, 0.5f));
 
             // Spawn Jiwon (Player 2) at (2.2, 0, 0.5) in spacious East walkway
-            SpawnChef(2, "jiwon", "flame_keeper", 1, new Vector3(2.2f, 0.0f, 0.5f));
+            SpawnChef(2, "jiwon", "flame_keeper", jTier, new Vector3(2.2f, 0.0f, 0.5f));
         }
 
         private PlayerController SpawnChef(int peerId, string charId, string specId, int tier, Vector3 spawnPos)
@@ -1120,6 +1169,35 @@ namespace TwoLadles.Kitchen
 
             GameObject workerObj = new GameObject(wid);
             workerObj.transform.SetParent(transform);
+
+            // Cute mini part-timer chef: smaller than Jiwon (~1.35m height) with customer sprite styling
+            workerObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
+            var sr = workerObj.AddComponent<SpriteRenderer>();
+            string sprName = (roleId == "dishwasher" || workerUidCounter % 2 == 0) ? "customer_3" : "customer_2";
+            Sprite sp = Resources.Load<Sprite>($"Sprites/Characters/{sprName}");
+            if (sp == null)
+            {
+                Texture2D tex = Resources.Load<Texture2D>($"Sprites/Characters/{sprName}");
+                if (tex != null)
+                {
+                    tex.filterMode = FilterMode.Point;
+                    sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.0f), 32f);
+                }
+            }
+            if (sp == null) sp = Resources.Load<Sprite>("Sprites/Characters/jiwon");
+            sr.sprite = sp;
+            sr.sortingOrder = 15;
+
+            if (sp != null && sp.bounds.size.y > 0.01f)
+            {
+                float scale = 1.35f / sp.bounds.size.y;
+                workerObj.transform.localScale = Vector3.one * scale;
+            }
+            else
+            {
+                workerObj.transform.localScale = Vector3.one * 0.45f;
+            }
+
             var workerComp = workerObj.AddComponent<PartTimeWorker>();
             workerComp.InitializeWorker(wid, roleId, targetStation);
 

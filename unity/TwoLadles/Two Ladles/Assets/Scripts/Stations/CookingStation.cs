@@ -200,6 +200,17 @@ namespace TwoLadles.Stations
                             effectivePanItem.displayName = outSpec.displayName;
                     }
 
+                    // Case 0: Safeguard for Bột Chiên — if cooking flour for Bột Chiên, do not allow adding egg while flour is raw!
+                    if (playerItem.itemId == "egg_raw" && heldItem.itemId == "flour" && !panFinished)
+                    {
+                        int stage = ShiftManager.Instance != null ? ShiftManager.Instance.currentStageId : 1;
+                        bool hasBaguette = GameData.Instance != null && GameData.Instance.GetDayAllowedRecipes(stage).Contains("bulgogi_banh_mi");
+                        if (!hasBaguette)
+                        {
+                            return (false, "Flour is still frying! Wait for Flour Cake to finish cooking before adding Egg.");
+                        }
+                    }
+
                     if (GameData.TryCombineItems(effectivePanItem, playerItem, out var combined) ||
                         GameData.TryCombineItems(heldItem, playerItem, out combined))
                     {

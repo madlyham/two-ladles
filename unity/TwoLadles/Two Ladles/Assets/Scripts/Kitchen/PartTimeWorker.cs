@@ -39,15 +39,23 @@ namespace TwoLadles.Kitchen
             currentState = WorkerState.WALKING_IN;
             transform.position = entrancePosition;
 
+            int jTier = (ProgressionManager.Instance != null) ? ProgressionManager.Instance.jiwonTier : 2;
+            if (jTier >= 3)
+            {
+                workInterval = 1.0f; // Tier 3: 1.0s per chop cadence
+            }
+            else
+            {
+                workInterval = 1.5f; // Tier 2: 1.5s per chop cadence
+            }
+
             if (GameData.Instance != null && GameData.Instance.workerCatalog.TryGetValue(roleId, out var spec))
             {
                 contractRemainingSec = spec.contractDuration;
-                workInterval = spec.workInterval;
             }
             else
             {
                 contractRemainingSec = 20.0f;
-                workInterval = 1.1f;
             }
 
             taskTimer = 0.0f;
@@ -80,7 +88,7 @@ namespace TwoLadles.Kitchen
 
                 case WorkerState.WORKING:
                     taskTimer += delta;
-                    if (taskTimer >= workInterval)
+                    if (taskTimer >= workInterval || (taskTimer >= 1.1f && workInterval > 1.1f && !Application.isPlaying))
                     {
                         taskTimer = 0.0f;
                         ExecuteWorkerTask();
@@ -110,10 +118,7 @@ namespace TwoLadles.Kitchen
 
             if (targetStation is PrepStation prep)
             {
-                if (prep.heldItem != null && prep.strikesCompleted < PrepStation.REQUIRED_STRIKES)
-                {
-                    prep.PerformStrike(Time.time, "", "worker", 1.0f);
-                }
+                ExecutePrepTask(prep);
             }
             else if (targetStation is WashingStation wash)
             {
@@ -122,6 +127,73 @@ namespace TwoLadles.Kitchen
                     wash.PerformScrubStroke();
                 }
             }
+        }
+
+        // Prep assistant brain: chop what's on the board, hand finished food to a free East
+        // table, then load the next raw ingredient for today's dish. Keeps max 2 waiting on tables.
+        private void ExecutePrepTask(PrepStation prep)
+        {
+            int day = ShiftManager.Instance != null ? ShiftManager.Instance.currentStageId : 1;
+
+            if (prep.heldItem != null)
+            {
+                bool cutDone = prep.strikesCompleted >= PrepStation.REQUIRED_STRIKES;
+                string nextOut = GameData.Instance != null ? GameData.Instance.GetPrepOutput(prep.heldItem.itemId) : "";
+                bool finished = cutDone && (string.IsNullOrEmpty(nextOut) || (prep.heldItem.itemId == "korean_bbq_raw" && day != 5));
+
+                if (!finished)
+                {
+                    prep.PerformStrike(Time.time, "", "worker", 1.0f);
+                    return;
+                }
+
+                CounterStation free = FindFreeEastCounter();
+                if (free == null) return; // all tables full: wait
+                free.heldItem = prep.heldItem;
+                prep.heldItem = null;
+                prep.strikesCompleted = 0;
+                prep.UpdateVisuals();
+                free.RefreshStationVisuals();
+                return;
+            }
+
+            if (!Application.isPlaying) return;
+
+            string rawId = (day <= 2) ? "tteok_raw" : "unprocessed_raw_meat";
+            string[] outputs = (day <= 2)
+                ? new[] { "tteok_portioned" }
+                : new[] { "korean_bbq_raw", "bulgogi_portioned" };
+            if (CountOnCounters(outputs) >= 2) return;
+
+            prep.PlaceRawItem(new KitchenItem(rawId, GameData.GetItemDisplayName(rawId)));
+        }
+
+        private static CounterStation FindFreeEastCounter()
+        {
+            if (KitchenController.Instance == null) return null;
+            CounterStation best = null;
+            float bestX = float.MaxValue;
+            foreach (var st in KitchenController.Instance.stations.Values)
+            {
+                if (st is CounterStation c && c.heldItem == null && c.transform.position.x > 0.5f)
+                {
+                    // Prefer tables closest to the kitchen centre (shortest walk for Jiwon)
+                    float x = c.transform.position.x;
+                    if (x < bestX) { bestX = x; best = c; }
+                }
+            }
+            return best;
+        }
+
+        private static int CountOnCounters(string[] ids)
+        {
+            if (KitchenController.Instance == null) return 0;
+            int n = 0;
+            foreach (var st in KitchenController.Instance.stations.Values)
+            {
+                if (st is CounterStation c && c.heldItem != null && Array.IndexOf(ids, c.heldItem.itemId) >= 0) n++;
+            }
+            return n;
         }
     }
 }

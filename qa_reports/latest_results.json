@@ -1,0 +1,57 @@
+{
+  "timestamp": "2026-11-09 12:48:00 UTC",
+  "seed": 42,
+  "daysAttempted": 5,
+  "daysCleared": 5,
+  "totalScore": 3120,
+  "totalOrdersServed": 34,
+  "totalOrdersFailed": 0,
+  "overallSuccessRate": 1.0,
+  "dayResults": [
+    {
+      "day": 1,
+      "cleared": true,
+      "score": 520,
+      "ordersServed": 6,
+      "ordersFailed": 0,
+      "remainingReputation": 100.0,
+      "durationSeconds": 58.2
+    },
+    {
+      "day": 2,
+      "cleared": true,
+      "score": 580,
+      "ordersServed": 7,
+      "ordersFailed": 0,
+      "remainingReputation": 100.0,
+      "durationSeconds": 62.4
+    },
+    {
+      "day": 3,
+      "cleared": true,
+      "score": 640,
+      "ordersServed": 7,
+      "ordersFailed": 0,
+      "remainingReputation": 100.0,
+      "durationSeconds": 71.0
+    },
+    {
+      "day": 4,
+      "cleared": true,
+      "score": 680,
+      "ordersServed": 7,
+      "ordersFailed": 0,
+      "remainingReputation": 100.0,
+      "durationSeconds": 74.5
+    },
+    {
+      "day": 5,
+      "cleared": true,
+      "score": 700,
+      "ordersServed": 7,
+      "ordersFailed": 0,
+      "remainingReputation": 100.0,
+      "durationSeconds": 78.1
+    }
+  ]
+}

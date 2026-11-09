@@ -83,6 +83,7 @@ namespace TwoLadles.Tests
             Test14_HoldingCounterAndThrowMechanics();
             Test15_WaveProgressionReputationAndGoldEconomy();
             Test16_SoloModeAndAIPartner();
+            Test17_TwoBotQAManagerAndReporting();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -815,6 +816,70 @@ namespace TwoLadles.Tests
             DestroyImmediate(linhGo);
             DestroyImmediate(jiwonGo);
             DestroyImmediate(kcObj);
+        }
+
+        // Suite 17: Two-Bot QA Manager & Report Generation (5 assertions)
+        private void Test17_TwoBotQAManagerAndReporting()
+        {
+            Debug.Log("\n[Suite 17] Two-Bot QA Autoplay Manager & Reporting");
+
+            var qaGo = new GameObject("TestQAManager");
+            var qa = qaGo.AddComponent<AI.TwoBotQAManager>();
+
+            // Setup mock chefs
+            var kcObj = new GameObject("TestKitchen_QA");
+            var kc = kcObj.AddComponent<KitchenController>();
+            KitchenController.Instance = kc;
+
+            var linhGo = new GameObject("Chef_Linh");
+            var linhPlayer = linhGo.AddComponent<PlayerController>();
+            linhPlayer.peerId = 1;
+            linhPlayer.characterId = "linh";
+            kc.playersByPeer[1] = linhPlayer;
+
+            var jiwonGo = new GameObject("Chef_Jiwon");
+            var jiwonPlayer = jiwonGo.AddComponent<PlayerController>();
+            jiwonPlayer.peerId = 2;
+            jiwonPlayer.characterId = "jiwon";
+            kc.playersByPeer[2] = jiwonPlayer;
+
+            // 1. Two-Bot Configuration
+            qa.ConfigureTwoBots();
+            Assert(linhPlayer.isLocalPlayer == false && jiwonPlayer.isLocalPlayer == false, "Both chefs set to isLocalPlayer == false in Two-Bot QA mode");
+            Assert(linhGo.GetComponent<AI.BotController>() != null && jiwonGo.GetComponent<AI.BotController>() != null, "Both Linh and Jiwon equipped with active BotControllers");
+
+            // 2. Structured Report Serialization & File Generation
+            string tempReportDir = System.IO.Path.Combine(Application.temporaryCachePath, "test_qa_reports");
+            var sampleReport = new AI.QARunReport
+            {
+                timestamp = "2026-11-09 12:00:00 UTC",
+                seed = 12345,
+                daysAttempted = 5,
+                daysCleared = 5,
+                totalScore = 2450,
+                totalOrdersServed = 28,
+                totalOrdersFailed = 0,
+                overallSuccessRate = 1.0f
+            };
+            sampleReport.dayResults.Add(new AI.QADayResult { day = 1, cleared = true, score = 400, ordersServed = 5, ordersFailed = 0, remainingReputation = 100f, durationSeconds = 45f });
+            sampleReport.dayResults.Add(new AI.QADayResult { day = 2, cleared = true, score = 480, ordersServed = 6, ordersFailed = 0, remainingReputation = 100f, durationSeconds = 50f });
+
+            AI.TwoBotQAManager.SaveReportsToDisk(sampleReport, tempReportDir);
+
+            string jsonPath = System.IO.Path.Combine(tempReportDir, "latest_results.json");
+            string summaryPath = System.IO.Path.Combine(tempReportDir, "latest_summary.txt");
+            string csvPath = System.IO.Path.Combine(tempReportDir, "run_history.csv");
+
+            Assert(System.IO.File.Exists(jsonPath), "latest_results.json successfully generated on disk");
+            Assert(System.IO.File.Exists(summaryPath), "latest_summary.txt successfully generated on disk");
+            Assert(System.IO.File.Exists(csvPath), "run_history.csv successfully appended on disk");
+
+            // Cleanup
+            if (System.IO.Directory.Exists(tempReportDir)) System.IO.Directory.Delete(tempReportDir, true);
+            DestroyImmediate(linhGo);
+            DestroyImmediate(jiwonGo);
+            DestroyImmediate(kcObj);
+            DestroyImmediate(qaGo);
         }
     }
 }

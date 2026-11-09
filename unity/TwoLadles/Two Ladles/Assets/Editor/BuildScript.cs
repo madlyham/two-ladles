@@ -335,4 +335,14 @@ public class BuildScript
             EditorApplication.Exit(0);
         }
     }
+
+    public static void RunAutoplayQABatch()
+    {
+        Debug.Log("[BuildScript] Starting Headless Two-Bot Autoplay QA Batch...");
+        var go = new GameObject("QAManagerRunner");
+        var qa = go.AddComponent<TwoLadles.AI.TwoBotQAManager>();
+        qa.exitOnCompletion = true;
+        qa.ParseCommandLineArguments();
+        qa.StartAutoplayRun(qa.startDay, qa.targetDay, qa.randomSeed, qa.simTimeScale);
+    }
 }

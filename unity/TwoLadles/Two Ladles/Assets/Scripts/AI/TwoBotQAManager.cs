@@ -150,6 +150,7 @@ namespace TwoLadles.AI
             if (ShiftManager.Instance != null)
             {
                 ShiftManager.Instance.isAutoplayQAMode = true;
+                ShiftManager.Instance.OnShiftEnded -= HandleShiftEnded;
                 ShiftManager.Instance.OnShiftEnded += HandleShiftEnded;
             }
             BotCommunicationHub.Reset();
@@ -220,11 +221,35 @@ namespace TwoLadles.AI
         {
             if (!isQARunning) return;
 
+            // Reject duplicate or stale events for a different stage
+            int finishedStage = (results != null && results.TryGetValue("stage_id", out var sid)) ? Convert.ToInt32(sid) : currentDayRunning;
+            if (finishedStage != currentDayRunning)
+            {
+                Debug.LogWarning($"[TwoBotQAManager] Ignored mismatched shift end event for Stage {finishedStage} (Expected: {currentDayRunning})");
+                return;
+            }
+
             int day = currentDayRunning;
             bool victory = results != null && results.TryGetValue("victory", out var v) && (bool)v;
-            int score = results != null && results.TryGetValue("score", out var s) ? Convert.ToInt32(s) : 0;
-            int ordersServed = results != null && results.TryGetValue("ordersServed", out var os) ? Convert.ToInt32(os) : 0;
-            int ordersFailed = results != null && results.TryGetValue("ordersFailed", out var of) ? Convert.ToInt32(of) : 0;
+            int score = 0;
+            if (results != null)
+            {
+                if (results.TryGetValue("total_score", out var ts)) score = Convert.ToInt32(ts);
+                else if (results.TryGetValue("finalScore", out var fs)) score = Convert.ToInt32(fs);
+                else if (results.TryGetValue("score", out var sc)) score = Convert.ToInt32(sc);
+            }
+            int ordersServed = 0;
+            if (results != null)
+            {
+                if (results.TryGetValue("orders_served", out var os1)) ordersServed = Convert.ToInt32(os1);
+                else if (results.TryGetValue("ordersServed", out var os2)) ordersServed = Convert.ToInt32(os2);
+            }
+            int ordersFailed = 0;
+            if (results != null)
+            {
+                if (results.TryGetValue("orders_failed", out var of1)) ordersFailed = Convert.ToInt32(of1);
+                else if (results.TryGetValue("ordersFailed", out var of2)) ordersFailed = Convert.ToInt32(of2);
+            }
             float rep = ShiftManager.Instance != null ? ShiftManager.Instance.reputation : 0.0f;
             float dur = ShiftManager.Instance != null ? ShiftManager.Instance.shiftElapsedSeconds : 0.0f;
 

@@ -108,7 +108,7 @@ namespace TwoLadles.AI
             // Anti-Stuck Watchdog: Catches bot standing still or unable to reach/interact
             // Check stationary duration (excluding intentional standby or cooking monitoring)
             bool isIntentionalWait = !string.IsNullOrEmpty(currentGoalName) && 
-                (currentGoalName.StartsWith("Standby") || currentGoalName.StartsWith("Monitor"));
+                (currentGoalName.StartsWith("Standby") || currentGoalName.StartsWith("Monitor") || currentGoalName.StartsWith("Wait"));
 
             if (!isIntentionalWait && Vector3.Distance(transform.position, lastRecordedPosition) < 0.08f)
             {
@@ -187,7 +187,8 @@ namespace TwoLadles.AI
 
             // Determine active target recipe
             OrderTicket urgentTicket = GetMostUrgentOrder();
-            if (urgentTicket != null)
+            bool hasActiveOrder = (urgentTicket != null);
+            if (hasActiveOrder)
             {
                 activeRecipeId = urgentTicket.recipeId;
             }
@@ -232,22 +233,84 @@ namespace TwoLadles.AI
             // 2. DELIVER / PASS COMPLETED DISH (Score: 260)
             if (playerController.carriedItem != null && IsCompletedDish(playerController.carriedItem.itemId))
             {
+                bool isOrdered = IsDishCurrentlyOrdered(playerController.carriedItem.itemId);
+
                 if (characterId == "linh" || transform.position.x < -1.0f)
                 {
-                    StationBase serveWindow = GetStation("serving_station");
-                    if (serveWindow != null)
+                    if (isOrdered)
                     {
-                        SetTarget(serveWindow, "Deliver Dish to Serving Window");
-                        return;
+                        StationBase serveWindow = GetStation("serving_station");
+                        if (serveWindow != null)
+                        {
+                            SetTarget(serveWindow, "Deliver Dish to Serving Window");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        // Dish is completed but no active ticket needs it right now!
+                        // Store on an empty holding table for incoming orders, or discard in trash.
+                        StationBase dropCounter = FindNearestHoldingCounter();
+                        if (dropCounter != null)
+                        {
+                            SetTarget(dropCounter, "Store Unordered Dish on Table");
+                            return;
+                        }
+                        StationBase trash = GetStation("trash_bin");
+                        if (trash != null)
+                        {
+                            SetTarget(trash, "Discard Unordered Dish in Trash");
+                            return;
+                        }
                     }
                 }
                 else
                 {
-                    StationBase passCounter = GetStation("pass_counter");
-                    if (passCounter != null)
+                    // Jiwon on East side
+                    if (isOrdered)
                     {
-                        SetTarget(passCounter, "Pass Completed Dish to Linh");
-                        return;
+                        StationBase passCounter = GetStation("pass_counter");
+                        if (passCounter != null)
+                        {
+                            SetTarget(passCounter, "Pass Completed Dish to Linh");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        StationBase dropCounter = FindNearestHoldingCounter();
+                        if (dropCounter != null)
+                        {
+                            SetTarget(dropCounter, "Store Unordered Dish on Table");
+                            return;
+                        }
+                        StationBase trash = GetStation("trash_bin");
+                        if (trash != null)
+                        {
+                            SetTarget(trash, "Discard Unordered Dish in Trash");
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // 2b. PICK UP READY COMPLETED DISH FROM HOLDING TABLE TO SERVE (Score: 250)
+            if (playerController.carriedItem == null && (characterId == "linh" || transform.position.x < -1.0f))
+            {
+                if (ShiftManager.Instance != null && ShiftManager.Instance.activeOrders != null)
+                {
+                    for (int i = 0; i < ShiftManager.Instance.activeOrders.Count; i++)
+                    {
+                        var ord = ShiftManager.Instance.activeOrders[i];
+                        if (!ord.isCompleted && !ord.isFailed && IsCompletedDish(ord.recipeId))
+                        {
+                            CounterStation readyDishOnTable = FindItemOnCounters(ord.recipeId);
+                            if (readyDishOnTable != null)
+                            {
+                                SetTarget(readyDishOnTable, $"Pick Up Ready {ord.recipeId} to Serve");
+                                return;
+                            }
+                        }
                     }
                 }
             }
@@ -309,6 +372,15 @@ namespace TwoLadles.AI
             }
 
             // 5. CULINARY ORDER PIPELINE (Score: 150)
+            if (!hasActiveOrder)
+            {
+                // No customer ticket queued right now (wave transition or idle): Standby without wasting fresh items!
+                StationBase standby = (characterId == "linh") ? GetStation("pass_counter") : GetStation("counter_east");
+                SetTarget(standby, "Standby for Next Customer Order");
+                BotCommunicationHub.BroadcastIntent(peerId, characterId, currentGoalName, targetStation != null ? targetStation.stationId : null, activeRecipeId);
+                return;
+            }
+
             PlanOrderTask(activeRecipeId);
 
             // Broadcast Intent to partner chef
@@ -1307,8 +1379,24 @@ namespace TwoLadles.AI
             else
             {
                 var res = playerController.TryInteractPrimary(targetStation);
-                BotLogger.LogAction(characterId, $"Interact [{targetStation.stationId}]", targetStation.stationId, res.ok, res.reason);
+                string heldInfo = playerController.carriedItem != null ? $"'{playerController.carriedItem.itemId}'" : "empty hands";
+                BotLogger.LogAction(characterId, $"Interact [{targetStation.stationId}] (Holding: {heldInfo})", targetStation.stationId, res.ok, res.reason);
                 interactCooldown = INTERACTION_DELAY;
+
+                if (!res.ok && targetStation is ServingStation && playerController.carriedItem != null)
+                {
+                    // Immediate unblock recovery: if serving was rejected, unblock by placing on table or trashing
+                    StationBase drop = FindNearestHoldingCounter();
+                    if (drop != null)
+                    {
+                        SetTarget(drop, "Store Rejected Dish on Table");
+                    }
+                    else
+                    {
+                        StationBase trash = GetStation("trash_bin");
+                        if (trash != null) SetTarget(trash, "Discard Rejected Dish in Trash");
+                    }
+                }
             }
         }
 
@@ -1418,6 +1506,22 @@ namespace TwoLadles.AI
         {
             if (string.IsNullOrEmpty(itemId)) return false;
             return itemId == "tteokbokki" || itemId == "bot_chien" || itemId == "korean_bbq_rice" || itemId == "viet_broken_rice" || itemId == "bulgogi_banh_mi";
+        }
+
+        private bool IsDishCurrentlyOrdered(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId) || ShiftManager.Instance == null || ShiftManager.Instance.activeOrders == null)
+                return false;
+
+            for (int i = 0; i < ShiftManager.Instance.activeOrders.Count; i++)
+            {
+                var ord = ShiftManager.Instance.activeOrders[i];
+                if (!ord.isCompleted && !ord.isFailed && ord.recipeId == itemId)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

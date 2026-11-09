@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TwoLadles.Data;
@@ -276,13 +277,26 @@ namespace TwoLadles.AI
 
             if (currentDayRunning < targetDay)
             {
-                currentDayRunning++;
-                LaunchDay(currentDayRunning);
+                StartCoroutine(TransitionToNextDayRoutine(currentDayRunning + 1));
             }
             else
             {
                 FinishQARun();
             }
+        }
+
+        private IEnumerator TransitionToNextDayRoutine(int nextDay)
+        {
+            if (KitchenController.Instance != null)
+            {
+                KitchenController.Instance.TriggerStatusToast($"Day {currentDayRunning} Cleared! Resetting Kitchen for Day {nextDay}...", new Color(0.2f, 0.9f, 0.4f));
+                KitchenController.Instance.ClearKitchenDaily();
+            }
+
+            yield return new WaitForSeconds(2.0f);
+
+            currentDayRunning = nextDay;
+            LaunchDay(currentDayRunning);
         }
 
         public void FinishQARun()

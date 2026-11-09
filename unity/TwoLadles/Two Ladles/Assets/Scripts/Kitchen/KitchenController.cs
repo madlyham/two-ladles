@@ -6,6 +6,7 @@ using TwoLadles.Core;
 using TwoLadles.Stations;
 using TwoLadles.Player;
 using TwoLadles.Networking;
+using TwoLadles.AI;
 
 namespace TwoLadles.Kitchen
 {
@@ -1347,6 +1348,94 @@ namespace TwoLadles.Kitchen
                 case "crate_cooler": return "fridge_south";
                 default: return null;
             }
+        }
+
+        /// <summary>
+        /// Clears all leftover food, items, and ingredients across all stations, counters,
+        /// appliances, prep boards, pass counters, and chef hands daily for a spotless new day.
+        /// </summary>
+        public void ClearKitchenDaily()
+        {
+            // 1. Clear all Stations
+            if (stations != null)
+            {
+                foreach (var st in stations.Values)
+                {
+                    if (st == null) continue;
+
+                    if (st is CounterStation counter)
+                    {
+                        counter.heldItem = null;
+                        counter.RefreshStationVisuals();
+                    }
+                    else if (st is CookingStation cooking)
+                    {
+                        cooking.heldItem = null;
+                        cooking.cookingElapsedSeconds = 0.0f;
+                        cooking.currentState = CookingState.RAW;
+                        cooking.RefreshStationVisuals();
+                    }
+                    else if (st is PrepStation prep)
+                    {
+                        prep.heldItem = null;
+                        prep.strikesCompleted = 0;
+                        prep.RefreshStationVisuals();
+                    }
+                    else if (st is PassCounter pass)
+                    {
+                        pass.InitSlots();
+                        for (int s = 0; s < pass.slots.Length; s++)
+                        {
+                            if (pass.slots[s] != null)
+                            {
+                                pass.slots[s].item = null;
+                                pass.slots[s].placedByPeer = 0;
+                                pass.slots[s].placedAtTime = 0.0f;
+                            }
+                        }
+                        pass.RefreshStationVisuals();
+                    }
+                }
+            }
+
+            // 2. Clear Chef Hands and Reset Spawn Positions
+            if (playersByPeer != null)
+            {
+                foreach (var kvp in playersByPeer)
+                {
+                    var chef = kvp.Value;
+                    if (chef == null) continue;
+
+                    chef.carriedItem = null;
+                    chef.RefreshVisuals();
+
+                    // Halt any active bot controller
+                    var bot = chef.GetComponent<BotController>();
+                    if (bot != null)
+                    {
+                        bot.HaltBot();
+                    }
+
+                    // Reset position
+                    Vector3 homePos = (chef.characterId == "linh" || kvp.Key == 1) 
+                        ? new Vector3(-4.5f, 0.0f, 0.0f) 
+                        : new Vector3(4.5f, 0.0f, 0.0f);
+                    
+                    if (chef.characterController != null && chef.characterController.enabled)
+                    {
+                        chef.characterController.enabled = false;
+                        chef.transform.position = homePos;
+                        chef.characterController.enabled = true;
+                    }
+                    else
+                    {
+                        chef.transform.position = homePos;
+                    }
+                }
+            }
+
+            // 3. Reset Communication Hub
+            BotCommunicationHub.Reset();
         }
     }
 }

@@ -98,7 +98,16 @@ namespace TwoLadles.AI
         private void Update()
         {
             if (!botActive || playerController == null) return;
-            if (ShiftManager.Instance == null || !ShiftManager.Instance.shiftActive) return;
+            if (ShiftManager.Instance == null || !ShiftManager.Instance.shiftActive)
+            {
+                playerController.ApplyMovement(Vector2.zero, Time.deltaTime);
+                currentPath.Clear();
+                currentWaypointIndex = 0;
+                targetStation = null;
+                desiredItemId = null;
+                currentGoalName = "Shift Inactive";
+                return;
+            }
 
             float dt = Time.deltaTime;
             decisionTimer += dt;
@@ -116,7 +125,9 @@ namespace TwoLadles.AI
                 if (stuckTimer > 3.0f)
                 {
                     BotLogger.LogStuck(characterId, $"Stationary for {stuckTimer:F1}s at {(targetStation != null ? targetStation.stationId : "none")} (Goal: '{currentGoalName}')", transform.position);
-                    UpdatePathToTarget();
+                    targetStation = null;
+                    currentPath.Clear();
+                    currentWaypointIndex = 0;
                     EvaluateAndSelectGoal();
                     stuckTimer = 0.0f;
                 }
@@ -157,6 +168,19 @@ namespace TwoLadles.AI
             ExecuteMovementAndAction(dt);
         }
 
+        public void HaltBot()
+        {
+            if (playerController != null)
+            {
+                playerController.ApplyMovement(Vector2.zero, 0.0f);
+            }
+            currentPath.Clear();
+            currentWaypointIndex = 0;
+            targetStation = null;
+            desiredItemId = null;
+            currentGoalName = "Halted";
+        }
+
         /// <summary>
         /// Recalculates A* path to the walkable approach position for the current target station.
         /// </summary>
@@ -190,7 +214,7 @@ namespace TwoLadles.AI
             bool hasActiveOrder = (urgentTicket != null);
             if (hasActiveOrder)
             {
-                activeRecipeId = urgentTicket.recipeId;
+                activeRecipeId = urgentTicket.GetNextUnfulfilledRecipeId();
             }
             else
             {
@@ -302,13 +326,20 @@ namespace TwoLadles.AI
                     for (int i = 0; i < ShiftManager.Instance.activeOrders.Count; i++)
                     {
                         var ord = ShiftManager.Instance.activeOrders[i];
-                        if (!ord.isCompleted && !ord.isFailed && IsCompletedDish(ord.recipeId))
+                        if (!ord.isCompleted && !ord.isFailed && !ord.IsFullyFulfilled())
                         {
-                            CounterStation readyDishOnTable = FindItemOnCounters(ord.recipeId);
-                            if (readyDishOnTable != null)
+                            for (int itemIdx = 0; itemIdx < ord.requiredItems.Count; itemIdx++)
                             {
-                                SetTarget(readyDishOnTable, $"Pick Up Ready {ord.recipeId} to Serve");
-                                return;
+                                if (!ord.fulfilledIndices.Contains(itemIdx))
+                                {
+                                    string neededDish = ord.requiredItems[itemIdx];
+                                    CounterStation readyDishOnTable = FindItemOnCounters(neededDish);
+                                    if (readyDishOnTable != null)
+                                    {
+                                        SetTarget(readyDishOnTable, $"Pick Up Ready {neededDish} to Serve");
+                                        return;
+                                    }
+                                }
                             }
                         }
                     }
@@ -655,6 +686,12 @@ namespace TwoLadles.AI
                 // Linh: Supports with pass counter handoff or stands by to serve completed dish
                 if (playerController.carriedItem == null)
                 {
+                    // Goal commitment: if already walking to fetch rice cakes, don't flap back to standby
+                    if (currentGoalName == "Get Rice Cakes to Pass to Jiwon" && targetStation != null && currentPath != null && currentPath.Count > 0)
+                    {
+                        return;
+                    }
+
                     CookingStation eastWok = GetStation("simmer_wok") as CookingStation;
                     PassCounter pass = GetStation("pass_counter") as PassCounter;
                     bool passHasItem = pass != null && pass.slots[0].item != null;
@@ -1229,6 +1266,14 @@ namespace TwoLadles.AI
                     var res = playerController.TryInteractPrimary(targetStation);
                     BotLogger.LogAction(characterId, $"Place '{playerController.carriedItem?.itemId}' on Prep", targetStation.stationId, res.ok, res.reason);
                     interactCooldown = INTERACTION_DELAY;
+                    if (res.ok)
+                    {
+                        targetStation = null;
+                        currentPath.Clear();
+                        currentWaypointIndex = 0;
+                        EvaluateAndSelectGoal();
+                        return;
+                    }
                 }
                 else if (prep.heldItem != null)
                 {
@@ -1260,6 +1305,14 @@ namespace TwoLadles.AI
                             var res = playerController.TryInteractPrimary(targetStation);
                             BotLogger.LogAction(characterId, "Pick up Prepped Item", targetStation.stationId, res.ok, res.reason);
                             interactCooldown = INTERACTION_DELAY;
+                            if (res.ok)
+                            {
+                                targetStation = null;
+                                currentPath.Clear();
+                                currentWaypointIndex = 0;
+                                EvaluateAndSelectGoal();
+                                return;
+                            }
                         }
                     }
                 }
@@ -1273,13 +1326,21 @@ namespace TwoLadles.AI
                         var res = playerController.TryInteractPrimary(targetStation);
                         BotLogger.LogAction(characterId, $"Pick up Cooked '{cook.heldItem?.itemId}'", targetStation.stationId, res.ok, res.reason);
                         interactCooldown = INTERACTION_DELAY;
+                        if (res.ok)
+                        {
+                            targetStation = null;
+                            currentPath.Clear();
+                            currentWaypointIndex = 0;
+                            EvaluateAndSelectGoal();
+                            return;
+                        }
                     }
                     else
                     {
                         interactCooldown = INTERACTION_DELAY;
                     }
                 }
-                else if (cook.heldItem == null && playerController.carriedItem != null)
+                else if (cook.heldItem == null && playerController.carriedItem != null && (currentGoalName.Contains("Place") || currentGoalName.Contains("Cook") || currentGoalName.Contains("Add")))
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
                     BotLogger.LogAction(characterId, $"Place '{playerController.carriedItem?.itemId}' into Cooker", targetStation.stationId, res.ok, res.reason);
@@ -1287,13 +1348,31 @@ namespace TwoLadles.AI
                     if (res.ok)
                     {
                         recentlyPlacedCooldowns[targetStation] = PLACED_ITEM_COOLDOWN;
+                        targetStation = null;
+                        currentPath.Clear();
+                        currentWaypointIndex = 0;
+                        EvaluateAndSelectGoal();
+                        return;
                     }
                 }
-                else if (cook.heldItem != null && playerController.carriedItem != null)
+                else if (cook.heldItem != null && playerController.carriedItem != null && (currentGoalName.Contains("Add") || currentGoalName.Contains("Cook") || currentGoalName.Contains("Assemble")))
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
                     BotLogger.LogAction(characterId, $"Add '{playerController.carriedItem?.itemId}' to Cooker", targetStation.stationId, res.ok, res.reason);
                     interactCooldown = INTERACTION_DELAY;
+                    if (res.ok)
+                    {
+                        targetStation = null;
+                        currentPath.Clear();
+                        currentWaypointIndex = 0;
+                        EvaluateAndSelectGoal();
+                        return;
+                    }
+                }
+                else if (cook.currentState == CookingState.COOKING || cook.currentState == CookingState.RAW)
+                {
+                    // Pan is actively cooking: wait peacefully without interrupting or spamming interactions
+                    return;
                 }
             }
             else if (targetStation is PassCounter pass)
@@ -1314,6 +1393,11 @@ namespace TwoLadles.AI
                                 break;
                             }
                         }
+                        targetStation = null;
+                        currentPath.Clear();
+                        currentWaypointIndex = 0;
+                        EvaluateAndSelectGoal();
+                        return;
                     }
                 }
                 else
@@ -1336,9 +1420,17 @@ namespace TwoLadles.AI
                         var res = playerController.TryInteractPrimary(targetStation);
                         BotLogger.LogAction(characterId, "Retrieve from Pass Counter", targetStation.stationId, res.ok, res.reason);
                         interactCooldown = INTERACTION_DELAY;
-                        if (res.ok && slotToClaim >= 0)
+                        if (res.ok)
                         {
-                            BotCommunicationHub.ClaimHandoff(slotToClaim, peerId);
+                            if (slotToClaim >= 0)
+                            {
+                                BotCommunicationHub.ClaimHandoff(slotToClaim, peerId);
+                            }
+                            targetStation = null;
+                            currentPath.Clear();
+                            currentWaypointIndex = 0;
+                            EvaluateAndSelectGoal();
+                            return;
                         }
                     }
                 }
@@ -1353,6 +1445,11 @@ namespace TwoLadles.AI
                     if (res.ok)
                     {
                         recentlyPlacedCooldowns[targetStation] = PLACED_ITEM_COOLDOWN;
+                        targetStation = null;
+                        currentPath.Clear();
+                        currentWaypointIndex = 0;
+                        EvaluateAndSelectGoal();
+                        return;
                     }
                 }
                 else
@@ -1362,6 +1459,14 @@ namespace TwoLadles.AI
                         var res = playerController.TryInteractPrimary(targetStation);
                         BotLogger.LogAction(characterId, "Pick up from Table", targetStation.stationId, res.ok, res.reason);
                         interactCooldown = INTERACTION_DELAY;
+                        if (res.ok)
+                        {
+                            targetStation = null;
+                            currentPath.Clear();
+                            currentWaypointIndex = 0;
+                            EvaluateAndSelectGoal();
+                            return;
+                        }
                     }
                 }
             }
@@ -1374,6 +1479,14 @@ namespace TwoLadles.AI
                     playerController.RefreshVisuals();
                     desiredItemId = null;
                     interactCooldown = INTERACTION_DELAY;
+                    if (res.ok)
+                    {
+                        targetStation = null;
+                        currentPath.Clear();
+                        currentWaypointIndex = 0;
+                        EvaluateAndSelectGoal();
+                        return;
+                    }
                 }
             }
             else
@@ -1383,7 +1496,15 @@ namespace TwoLadles.AI
                 BotLogger.LogAction(characterId, $"Interact [{targetStation.stationId}] (Holding: {heldInfo})", targetStation.stationId, res.ok, res.reason);
                 interactCooldown = INTERACTION_DELAY;
 
-                if (!res.ok && targetStation is ServingStation && playerController.carriedItem != null)
+                if (res.ok)
+                {
+                    targetStation = null;
+                    currentPath.Clear();
+                    currentWaypointIndex = 0;
+                    EvaluateAndSelectGoal();
+                    return;
+                }
+                else if (targetStation is ServingStation && playerController.carriedItem != null)
                 {
                     // Immediate unblock recovery: if serving was rejected, unblock by placing on table or trashing
                     StationBase drop = FindNearestHoldingCounter();
@@ -1479,7 +1600,7 @@ namespace TwoLadles.AI
             for (int i = 0; i < ShiftManager.Instance.activeOrders.Count; i++)
             {
                 var o = ShiftManager.Instance.activeOrders[i];
-                if (!o.isCompleted && !o.isFailed && o.timeRemaining < lowestTime)
+                if (!o.isCompleted && !o.isFailed && !o.IsFullyFulfilled() && o.timeRemaining < lowestTime)
                 {
                     lowestTime = o.timeRemaining;
                     mostUrgent = o;
@@ -1516,7 +1637,7 @@ namespace TwoLadles.AI
             for (int i = 0; i < ShiftManager.Instance.activeOrders.Count; i++)
             {
                 var ord = ShiftManager.Instance.activeOrders[i];
-                if (!ord.isCompleted && !ord.isFailed && ord.recipeId == itemId)
+                if (!ord.isCompleted && !ord.isFailed && ord.NeedsDish(itemId))
                 {
                     return true;
                 }

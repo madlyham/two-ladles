@@ -1473,29 +1473,15 @@ namespace TwoLadles.UI
                     var o = orders[i];
                     orderCardObjs[i].SetActive(true);
 
-                    string rName = o.recipeId;
-                    if (LocalizationManager.Instance != null)
-                    {
-                        string loc = LocalizationManager.Instance.Get("dish." + o.recipeId + ".name", null);
-                        if (!string.IsNullOrEmpty(loc)) rName = loc;
-                        else if (GameData.Instance != null)
-                        {
-                            var rSpec = GameData.Instance.GetRecipeSpec(o.recipeId);
-                            if (rSpec != null) rName = rSpec.displayName;
-                        }
-                    }
-                    else if (GameData.Instance != null)
-                    {
-                        var rSpec = GameData.Instance.GetRecipeSpec(o.recipeId);
-                        if (rSpec != null) rName = rSpec.displayName;
-                    }
+                    string rName = o.GetFormattedDisplayLabel();
                     if (orderCardLabels[i] != null)
                     {
                         orderCardLabels[i].text = rName;
                     }
                     if (orderCardIcons[i] != null)
                     {
-                        Sprite spr = PlayerController.LoadItemSprite(o.recipeId);
+                        string iconRecipeId = o.GetNextUnfulfilledRecipeId();
+                        Sprite spr = PlayerController.LoadItemSprite(iconRecipeId);
                         if (spr != null) orderCardIcons[i].sprite = spr;
                     }
                     if (orderCardBarFills[i] != null)

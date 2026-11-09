@@ -32,6 +32,10 @@ namespace TwoLadles.Core
         public bool isCompleted;
         public bool isFailed;
 
+        // Multi-item order support
+        public List<string> requiredItems = new List<string>();
+        public List<int> fulfilledIndices = new List<int>();
+
         public OrderTicket(string id, string recipe, string vessel, float patience, bool rush = false)
         {
             ticketId = id;
@@ -43,6 +47,124 @@ namespace TwoLadles.Core
             handoffBonusClaimed = false;
             isCompleted = false;
             isFailed = false;
+            requiredItems = new List<string> { recipe };
+            fulfilledIndices = new List<int>();
+        }
+
+        public OrderTicket(string id, List<string> recipes, string vessel, float patience, bool rush = false)
+        {
+            ticketId = id;
+            requiredItems = (recipes != null && recipes.Count > 0) ? new List<string>(recipes) : new List<string> { "tteokbokki" };
+            recipeId = requiredItems[0];
+            targetVessel = vessel;
+            timeRemaining = patience;
+            initialPatience = patience;
+            isRushTicket = rush;
+            handoffBonusClaimed = false;
+            isCompleted = false;
+            isFailed = false;
+            fulfilledIndices = new List<int>();
+        }
+
+        public bool NeedsDish(string dishId)
+        {
+            if (isCompleted || isFailed) return false;
+            for (int i = 0; i < requiredItems.Count; i++)
+            {
+                if (requiredItems[i] == dishId && !fulfilledIndices.Contains(i))
+                    return true;
+            }
+            return false;
+        }
+
+        public int GetUnfulfilledItemIndex(string dishId)
+        {
+            if (isCompleted || isFailed) return -1;
+            for (int i = 0; i < requiredItems.Count; i++)
+            {
+                if (requiredItems[i] == dishId && !fulfilledIndices.Contains(i))
+                    return i;
+            }
+            return -1;
+        }
+
+        public void MarkItemFulfilled(int index)
+        {
+            if (!fulfilledIndices.Contains(index))
+            {
+                fulfilledIndices.Add(index);
+            }
+            recipeId = GetNextUnfulfilledRecipeId();
+            if (IsFullyFulfilled())
+            {
+                isCompleted = true;
+            }
+        }
+
+        public string GetNextUnfulfilledRecipeId()
+        {
+            for (int i = 0; i < requiredItems.Count; i++)
+            {
+                if (!fulfilledIndices.Contains(i)) return requiredItems[i];
+            }
+            return requiredItems.Count > 0 ? requiredItems[0] : "";
+        }
+
+        public bool IsFullyFulfilled()
+        {
+            return fulfilledIndices.Count >= requiredItems.Count;
+        }
+
+        public string GetFormattedDisplayLabel()
+        {
+            if (requiredItems == null || requiredItems.Count <= 1)
+            {
+                return GetDishDisplayName(recipeId);
+            }
+
+            var dict = new Dictionary<string, int>();
+            for (int i = 0; i < requiredItems.Count; i++)
+            {
+                if (fulfilledIndices.Contains(i)) continue;
+                string item = requiredItems[i];
+                if (!dict.ContainsKey(item)) dict[item] = 0;
+                dict[item]++;
+            }
+
+            if (dict.Count == 0)
+            {
+                return "Complete!";
+            }
+
+            List<string> parts = new List<string>();
+            foreach (var kvp in dict)
+            {
+                string dishName = GetDishDisplayName(kvp.Key);
+                if (kvp.Value > 1) parts.Add($"{kvp.Value}x {dishName}");
+                else parts.Add(dishName);
+            }
+
+            string label = string.Join(" + ", parts);
+            if (fulfilledIndices.Count > 0)
+            {
+                label = $"({fulfilledIndices.Count}/{requiredItems.Count}) " + label;
+            }
+            return label;
+        }
+
+        public static string GetDishDisplayName(string id)
+        {
+            if (LocalizationManager.Instance != null)
+            {
+                string loc = LocalizationManager.Instance.Get("dish." + id + ".name", null);
+                if (!string.IsNullOrEmpty(loc)) return loc;
+            }
+            if (GameData.Instance != null)
+            {
+                var spec = GameData.Instance.GetRecipeSpec(id);
+                if (spec != null) return spec.displayName;
+            }
+            return id;
         }
     }
 
@@ -382,6 +504,7 @@ namespace TwoLadles.Core
 
             if (KitchenController.Instance != null)
             {
+                KitchenController.Instance.ClearKitchenDaily();
                 if (isAutoplayQAMode)
                 {
                     KitchenController.Instance.ConfigureTwoBotsQA();
@@ -492,6 +615,15 @@ namespace TwoLadles.Core
         {
             if (!shiftActive) return;
             shiftActive = false;
+
+            orderSpawnTimer = 999999.0f;
+            activeOrders.Clear();
+            OnOrderQueueUpdated?.Invoke(activeOrders);
+
+            if (KitchenController.Instance != null)
+            {
+                KitchenController.Instance.ClearKitchenDaily();
+            }
 
             bool victory = explicitVictory ?? (reputation > 0.0f && (isTutorial || wavesClearedCount >= totalWaves || ordersServed > 0));
             if (reputation <= 0.0f)
@@ -627,9 +759,12 @@ namespace TwoLadles.Core
             for (int i = 0; i < activeOrders.Count; i++)
             {
                 var ord = activeOrders[i];
-                if (ord.recipeId == dish.itemId)
+                int unfulfilledIdx = ord.GetUnfulfilledItemIndex(dish.itemId);
+                if (unfulfilledIdx >= 0)
                 {
-                    var spec = GameData.Instance != null ? GameData.Instance.GetRecipeSpec(ord.recipeId) : null;
+                    ord.MarkItemFulfilled(unfulfilledIdx);
+
+                    var spec = GameData.Instance != null ? GameData.Instance.GetRecipeSpec(dish.itemId) : null;
                     int baseScore = spec != null ? spec.baseScore : 100;
 
                     if (rushRhythmActive)
@@ -642,22 +777,31 @@ namespace TwoLadles.Core
                     int finalScore = baseScore + tip;
 
                     totalScore += finalScore;
-                    ordersServed++;
-                    waveOrdersCompleted++;
-                    activeOrders.RemoveAt(i);
-
-                    if (isTutorial && tutorialStep < 10)
-                    {
-                        AdvanceTutorialStep(10);
-                    }
 
                     float flowBonus = dish.quality == QualityTier.OPTIMAL ? 20.0f : 12.0f;
                     AddKitchenFlow(flowBonus);
 
-                    OnOrderQueueUpdated?.Invoke(activeOrders);
-                    OnFeedbackBanner?.Invoke($"+{finalScore} pts", new Color(0.2f, 1.0f, 0.4f));
+                    if (ord.IsFullyFulfilled())
+                    {
+                        ordersServed++;
+                        waveOrdersCompleted++;
+                        activeOrders.RemoveAt(i);
 
-                    CheckWaveProgression();
+                        if (isTutorial && tutorialStep < 10)
+                        {
+                            AdvanceTutorialStep(10);
+                        }
+
+                        OnOrderQueueUpdated?.Invoke(activeOrders);
+                        OnFeedbackBanner?.Invoke($"Order Complete! +{finalScore} pts", new Color(0.2f, 1.0f, 0.4f));
+                        CheckWaveProgression();
+                    }
+                    else
+                    {
+                        OnOrderQueueUpdated?.Invoke(activeOrders);
+                        OnFeedbackBanner?.Invoke($"Delivered! +{finalScore} pts", new Color(0.3f, 0.85f, 1.0f));
+                    }
+
                     return (true, finalScore);
                 }
             }
@@ -726,15 +870,50 @@ namespace TwoLadles.Core
             if (activeOrders.Count >= maxOrders || allowedRecipes == null || allowedRecipes.Count == 0) return;
             if (currentMode == GameMode.CAMPAIGN && !isTutorial && waveOrdersSpawned >= waveOrdersRequired) return;
 
-            string selectedRecipe = allowedRecipes[UnityEngine.Random.Range(0, allowedRecipes.Count)];
-            var recipeSpec = GameData.Instance != null ? GameData.Instance.GetRecipeSpec(selectedRecipe) : null;
+            // Determine multi-item count (1, 2, or 3 items per customer ticket)
+            int itemCount = 1;
+            if (!isTutorial)
+            {
+                float roll = UnityEngine.Random.value;
+                if (currentStageId >= 3 || currentMode == GameMode.ENDLESS_RUSH)
+                {
+                    if (roll < 0.45f) itemCount = 1;
+                    else if (roll < 0.80f) itemCount = 2;
+                    else itemCount = 3;
+                }
+                else if (currentStageId == 2)
+                {
+                    if (roll < 0.55f) itemCount = 1;
+                    else itemCount = 2;
+                }
+                else // Stage 1 (Tteokbokki)
+                {
+                    if (roll < 0.70f) itemCount = 1;
+                    else itemCount = 2; // Can order 2x Tteokbokki!
+                }
+            }
+
+            List<string> selectedItems = new List<string>();
+            for (int k = 0; k < itemCount; k++)
+            {
+                selectedItems.Add(allowedRecipes[UnityEngine.Random.Range(0, allowedRecipes.Count)]);
+            }
+
+            string primaryRecipe = selectedItems[0];
+            var recipeSpec = GameData.Instance != null ? GameData.Instance.GetRecipeSpec(primaryRecipe) : null;
             string vessel = recipeSpec != null ? recipeSpec.requiredVessel : "none";
             if (patience <= 0.0f)
                 patience = recipeSpec != null ? recipeSpec.targetPatienceSeconds : 60.0f;
 
+            // Extra patience for combo orders (+22s per extra dish)
+            if (itemCount > 1)
+            {
+                patience += (itemCount - 1) * 22.0f;
+            }
+
             ticketCounter++;
             waveOrdersSpawned++;
-            var ticket = new OrderTicket($"ticket_{ticketCounter}", selectedRecipe, vessel, patience);
+            var ticket = new OrderTicket($"ticket_{ticketCounter}", selectedItems, vessel, patience);
             activeOrders.Add(ticket);
 
             OnOrderQueueUpdated?.Invoke(activeOrders);

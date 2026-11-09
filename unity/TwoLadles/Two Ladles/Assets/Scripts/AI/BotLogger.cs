@@ -19,25 +19,31 @@ namespace TwoLadles.AI
         private static List<string> _recentLogs = new List<string>();
         private const int MAX_RECENT_LOGS = 25;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void InitPath()
+        {
+            try
+            {
+                string logsDir = Path.Combine(Application.dataPath, "../Logs");
+                if (!Directory.Exists(logsDir))
+                {
+                    Directory.CreateDirectory(logsDir);
+                }
+                _logFilePath = Path.Combine(logsDir, "bot_qa.log");
+            }
+            catch
+            {
+                _logFilePath = Path.Combine(Application.persistentDataPath, "bot_qa.log");
+            }
+        }
+
         public static string LogFilePath
         {
             get
             {
                 if (string.IsNullOrEmpty(_logFilePath))
                 {
-                    try
-                    {
-                        string logsDir = Path.Combine(Application.dataPath, "../Logs");
-                        if (!Directory.Exists(logsDir))
-                        {
-                            Directory.CreateDirectory(logsDir);
-                        }
-                        _logFilePath = Path.Combine(logsDir, "bot_qa.log");
-                    }
-                    catch
-                    {
-                        _logFilePath = Path.Combine(Application.persistentDataPath, "bot_qa.log");
-                    }
+                    InitPath();
                 }
                 return _logFilePath;
             }
@@ -51,7 +57,7 @@ namespace TwoLadles.AI
                 try
                 {
                     string path = LogFilePath;
-                    if (File.Exists(path))
+                    if (!string.IsNullOrEmpty(path))
                     {
                         File.WriteAllText(path, $"=== TWO LADLES BOT SESSION STARTED: {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\n");
                     }

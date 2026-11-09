@@ -99,19 +99,16 @@ namespace TwoLadles.AI
             goalTimer += dt;
             if (workerHireCooldown > 0.0f) workerHireCooldown -= dt;
 
-            // Anti-Stuck Watchdog
-            if (Vector3.Distance(transform.position, lastRecordedPosition) < 0.08f && targetStation != null)
+            // Anti-Stuck Watchdog: Only counts if bot is actively trying to traverse waypoints
+            bool isActivelyNavigating = (currentPath != null && currentWaypointIndex < currentPath.Count);
+            if (isActivelyNavigating && Vector3.Distance(transform.position, lastRecordedPosition) < 0.08f)
             {
                 stuckTimer += dt;
-                if (stuckTimer > 2.8f)
+                if (stuckTimer > 2.5f)
                 {
-                    // Stuck attempting to reach station: clear path and re-plan
-                    targetStation = null;
-                    desiredItemId = null;
-                    currentPath.Clear();
-                    currentWaypointIndex = 0;
+                    // Snagged while moving: force recalculate path from current spot
+                    UpdatePathToTarget();
                     stuckTimer = 0.0f;
-                    goalTimer = 0.0f;
                 }
             }
             else
@@ -346,17 +343,27 @@ namespace TwoLadles.AI
                     return;
                 }
 
-                if (wok.currentState == CookingState.OPTIMAL && playerController.carriedItem == null)
+                if (wok.heldItem.itemId == "tteokbokki_raw" || wok.heldItem.itemId == "tteokbokki")
                 {
-                    SetTarget(wok, "Pick Up Cooked Tteokbokki");
+                    if (wok.currentState == CookingState.OPTIMAL || wok.currentState == CookingState.OVERCOOKED)
+                    {
+                        if (playerController.carriedItem == null)
+                        {
+                            SetTarget(wok, "Pick Up Cooked Tteokbokki");
+                        }
+                    }
+                    else
+                    {
+                        SetTarget(wok, "Monitor Tteokbokki Simmering in Wok");
+                    }
+                    return;
                 }
             }
             else
             {
-                // Linh: Supports with pass counter handoff or serves completed dish
+                // Linh: Supports with pass counter handoff or stands by to serve completed dish
                 if (playerController.carriedItem == null)
                 {
-                    // Check if East wok is empty and pass counter has no tteok: pass tteok to Jiwon!
                     CookingStation eastWok = GetStation("simmer_wok") as CookingStation;
                     PassCounter pass = GetStation("pass_counter") as PassCounter;
                     bool passHasItem = pass != null && pass.slots[0].item != null;
@@ -365,6 +372,10 @@ namespace TwoLadles.AI
                     {
                         desiredItemId = "tteok_portioned";
                         SetTarget(GetStation("shelf_west"), "Get Rice Cakes to Pass to Jiwon");
+                    }
+                    else
+                    {
+                        SetTarget(GetStation("pass_counter"), "Standby at Pass Counter");
                     }
                 }
                 else if (playerController.carriedItem.itemId == "tteok_portioned")
@@ -397,23 +408,41 @@ namespace TwoLadles.AI
                     return;
                 }
 
-                if (stove.heldItem.itemId == "flour" || stove.heldItem.itemId == "cooked_flour")
+                if (stove.heldItem.itemId == "flour")
                 {
-                    if (playerController.carriedItem == null)
+                    if (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED)
                     {
-                        desiredItemId = "egg_raw";
-                        SetTarget(GetStation("fridge_west"), "Get Egg from Fridge");
+                        if (playerController.carriedItem == null)
+                        {
+                            desiredItemId = "egg_raw";
+                            SetTarget(GetStation("fridge_west"), "Get Egg from Fridge");
+                        }
+                        else if (playerController.carriedItem.itemId == "egg_raw")
+                        {
+                            SetTarget(stove, "Add Egg to Cooked Flour");
+                        }
                     }
-                    else if (playerController.carriedItem.itemId == "egg_raw")
+                    else
                     {
-                        SetTarget(stove, "Add Egg to Cooked Flour");
+                        SetTarget(stove, "Wait for Flour Cake to Cook");
                     }
                     return;
                 }
 
-                if (stove.currentState == CookingState.OPTIMAL && playerController.carriedItem == null)
+                if (stove.heldItem.itemId == "bot_chien_batter" || stove.heldItem.itemId == "bot_chien")
                 {
-                    SetTarget(stove, "Pick Up Bột Chiên");
+                    if (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED)
+                    {
+                        if (playerController.carriedItem == null)
+                        {
+                            SetTarget(stove, "Pick Up Bột Chiên");
+                        }
+                    }
+                    else
+                    {
+                        SetTarget(stove, "Monitor Bột Chiên Frying");
+                    }
+                    return;
                 }
             }
             else
@@ -436,23 +465,41 @@ namespace TwoLadles.AI
                     return;
                 }
 
-                if (wok.heldItem.itemId == "flour" || wok.heldItem.itemId == "cooked_flour")
+                if (wok.heldItem.itemId == "flour")
                 {
-                    if (playerController.carriedItem == null)
+                    if (wok.currentState == CookingState.OPTIMAL || wok.currentState == CookingState.OVERCOOKED)
                     {
-                        desiredItemId = "egg_raw";
-                        SetTarget(GetStation("fridge_east"), "Get Egg for Second Batch");
+                        if (playerController.carriedItem == null)
+                        {
+                            desiredItemId = "egg_raw";
+                            SetTarget(GetStation("fridge_east"), "Get Egg for Second Batch");
+                        }
+                        else if (playerController.carriedItem.itemId == "egg_raw")
+                        {
+                            SetTarget(wok, "Add Egg to Wok");
+                        }
                     }
-                    else if (playerController.carriedItem.itemId == "egg_raw")
+                    else
                     {
-                        SetTarget(wok, "Add Egg to Wok");
+                        SetTarget(wok, "Wait for Flour Cake to Cook");
                     }
                     return;
                 }
 
-                if (wok.currentState == CookingState.OPTIMAL && playerController.carriedItem == null)
+                if (wok.heldItem.itemId == "bot_chien_batter" || wok.heldItem.itemId == "bot_chien")
                 {
-                    SetTarget(wok, "Pick Up Bột Chiên Batch");
+                    if (wok.currentState == CookingState.OPTIMAL || wok.currentState == CookingState.OVERCOOKED)
+                    {
+                        if (playerController.carriedItem == null)
+                        {
+                            SetTarget(wok, "Pick Up Bột Chiên Batch");
+                        }
+                    }
+                    else
+                    {
+                        SetTarget(wok, "Monitor Bột Chiên Frying");
+                    }
+                    return;
                 }
             }
         }
@@ -468,20 +515,31 @@ namespace TwoLadles.AI
 
                 if (playerController.carriedItem == null)
                 {
-                    if (prep != null && prep.heldItem != null && prep.strikesCompleted >= PrepStation.REQUIRED_STRIKES)
+                    if (grill != null && grill.heldItem != null)
                     {
-                        SetTarget(prep, "Pick Up Sliced BBQ Meat");
-                        return;
-                    }
-                    if (grill != null && grill.currentState == CookingState.OPTIMAL)
-                    {
-                        SetTarget(grill, "Pick Up Grilled BBQ Beef");
-                        return;
+                        if (grill.currentState == CookingState.OPTIMAL || grill.currentState == CookingState.OVERCOOKED)
+                        {
+                            SetTarget(grill, "Pick Up Grilled BBQ Beef");
+                            return;
+                        }
+                        else
+                        {
+                            SetTarget(grill, "Monitor BBQ Beef Grilling");
+                            return;
+                        }
                     }
                     if (prep != null && prep.heldItem != null)
                     {
-                        SetTarget(prep, "Chop Raw Meat");
-                        return;
+                        if (prep.strikesCompleted >= PrepStation.REQUIRED_STRIKES)
+                        {
+                            SetTarget(prep, "Pick Up Sliced BBQ Meat");
+                            return;
+                        }
+                        else
+                        {
+                            SetTarget(prep, "Chop Raw Meat");
+                            return;
+                        }
                     }
                     if (grill != null && grill.heldItem == null)
                     {
@@ -518,10 +576,18 @@ namespace TwoLadles.AI
 
                 if (playerController.carriedItem == null)
                 {
-                    if (stove != null && stove.currentState == CookingState.OPTIMAL)
+                    if (stove != null && stove.heldItem != null)
                     {
-                        SetTarget(stove, "Pick Up Steamed Rice");
-                        return;
+                        if (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED)
+                        {
+                            SetTarget(stove, "Pick Up Steamed Rice");
+                            return;
+                        }
+                        else
+                        {
+                            SetTarget(stove, "Wait for Rice to Steam");
+                            return;
+                        }
                     }
                     if (counter != null && counter.heldItem != null && counter.heldItem.itemId == "korean_bbq_rice")
                     {
@@ -531,6 +597,7 @@ namespace TwoLadles.AI
                     if (counter != null && counter.heldItem != null && counter.heldItem.itemId == "cooked_rice")
                     {
                         // Holding counter has rice, waiting for BBQ beef from Pass Counter
+                        SetTarget(GetStation("pass_counter"), "Standby at Pass Counter for BBQ Beef");
                         return;
                     }
                     if (stove != null && stove.heldItem == null)
@@ -584,15 +651,22 @@ namespace TwoLadles.AI
                     }
                     if (counter != null && counter.heldItem != null && counter.heldItem.itemId == "cooked_rice")
                     {
-                        // Add egg to rice!
                         desiredItemId = "egg_raw";
                         SetTarget(GetStation("fridge_west"), "Get Egg for Broken Rice");
                         return;
                     }
-                    if (stove != null && stove.currentState == CookingState.OPTIMAL)
+                    if (stove != null && stove.heldItem != null)
                     {
-                        SetTarget(stove, "Pick Up Steamed Rice");
-                        return;
+                        if (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED)
+                        {
+                            SetTarget(stove, "Pick Up Steamed Rice");
+                            return;
+                        }
+                        else
+                        {
+                            SetTarget(stove, "Wait for Rice to Steam");
+                            return;
+                        }
                     }
                     if (stove != null && stove.heldItem == null && (counter == null || counter.heldItem == null))
                     {
@@ -644,20 +718,31 @@ namespace TwoLadles.AI
                         SetTarget(counter, "Pick Up Bulgogi Bánh Mì");
                         return;
                     }
-                    if (prep != null && prep.heldItem != null && prep.strikesCompleted >= PrepStation.REQUIRED_STRIKES)
-                    {
-                        SetTarget(prep, "Pick Up Pickled Veg");
-                        return;
-                    }
                     if (prep != null && prep.heldItem != null)
                     {
-                        SetTarget(prep, "Chop Radish & Carrots");
-                        return;
+                        if (prep.strikesCompleted >= PrepStation.REQUIRED_STRIKES)
+                        {
+                            SetTarget(prep, "Pick Up Pickled Veg");
+                            return;
+                        }
+                        else
+                        {
+                            SetTarget(prep, "Chop Radish & Carrots");
+                            return;
+                        }
                     }
-                    if (stove != null && stove.currentState == CookingState.OPTIMAL)
+                    if (stove != null && stove.heldItem != null)
                     {
-                        SetTarget(stove, "Pick Up Baked Baguette");
-                        return;
+                        if (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED)
+                        {
+                            SetTarget(stove, "Pick Up Baked Baguette");
+                            return;
+                        }
+                        else
+                        {
+                            SetTarget(stove, "Wait for Baguette to Bake");
+                            return;
+                        }
                     }
                     if (counter == null || counter.heldItem == null)
                     {
@@ -714,6 +799,19 @@ namespace TwoLadles.AI
 
                 if (playerController.carriedItem == null)
                 {
+                    if (grill != null && grill.heldItem != null)
+                    {
+                        if (grill.currentState == CookingState.OPTIMAL || grill.currentState == CookingState.OVERCOOKED)
+                        {
+                            SetTarget(grill, "Pick Up Grilled Bulgogi");
+                            return;
+                        }
+                        else
+                        {
+                            SetTarget(grill, "Monitor Bulgogi Grilling");
+                            return;
+                        }
+                    }
                     if (prep != null && prep.heldItem != null)
                     {
                         if (prep.strikesCompleted < PrepStation.REQUIRED_STRIKES)
@@ -728,11 +826,6 @@ namespace TwoLadles.AI
                             return;
                         }
                         SetTarget(prep, "Pick Up Bulgogi Portion");
-                        return;
-                    }
-                    if (grill != null && grill.currentState == CookingState.OPTIMAL)
-                    {
-                        SetTarget(grill, "Pick Up Grilled Bulgogi");
                         return;
                     }
                     if (grill != null && grill.heldItem == null)

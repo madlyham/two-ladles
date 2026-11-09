@@ -24,8 +24,8 @@ namespace TwoLadles.AI
 
     /// <summary>
     /// Deterministic 2.5D A* Waypoint Navigation Graph for Two Ladles Kitchen.
-    /// Provides 100% collision-free paths along clear corridors, aisles, and station approach zones.
-    /// Eliminates snagging on counter BoxColliders.
+    /// Provides 100% collision-free paths along clear corridors, wide crosswalks, and station approach zones.
+    /// Completely avoids all station BoxColliders.
     /// </summary>
     public static class KitchenNavGraph
     {
@@ -38,58 +38,66 @@ namespace TwoLadles.AI
             nodes.Clear();
 
             // 1. WEST ZONE (Linh's Walkways & Stations)
-            // Outer West Column (X = -8.8)
-            AddNode("NW_Outer", new Vector3(-8.8f, 0f, 4.2f), "W_Fridge_App", "W_Stove1", "W_N_Cross");
-            AddNode("W_Stove1", new Vector3(-8.8f, 0f, 3.4f), "NW_Outer", "W_Stove2");
-            AddNode("W_Stove2", new Vector3(-8.8f, 0f, 0.2f), "W_Stove1", "W_Shelf");
-            AddNode("W_Shelf", new Vector3(-8.8f, 0f, -3.3f), "W_Stove2", "SW_Outer");
-            AddNode("SW_Outer", new Vector3(-8.8f, 0f, -4.8f), "W_Shelf", "W_S_Cross");
+            // Outer West Column (X = -8.5f)
+            AddNode("NW_Outer", new Vector3(-8.5f, 0f, 4.6f), "W_Stove1", "W_Fridge_App");
+            AddNode("W_Stove1", new Vector3(-8.5f, 0f, 3.4f), "NW_Outer", "W_Stove2");
+            AddNode("W_Stove2", new Vector3(-8.5f, 0f, 0.2f), "W_Stove1", "W_Mid_North_Outer", "W_Mid_South_Outer");
+            AddNode("W_Mid_North_Outer", new Vector3(-8.5f, 0f, 2.2f), "W_Stove2", "W_Mid_North_Cross", "W_Mid_South_Outer");
+            AddNode("W_Mid_South_Outer", new Vector3(-8.5f, 0f, -3.4f), "W_Stove2", "W_Mid_North_Outer", "W_Mid_South_Cross", "W_Shelf");
+            AddNode("W_Shelf", new Vector3(-8.5f, 0f, -3.3f), "W_Mid_South_Outer", "SW_Outer");
+            AddNode("SW_Outer", new Vector3(-8.5f, 0f, -4.8f), "W_Shelf");
 
-            // North Wall Fridge West Approach
-            AddNode("W_Fridge_App", new Vector3(-6.2f, 0f, 4.2f), "NW_Outer", "NW_Inner");
+            // North Wall Fridge West Approach (Z = 4.6f)
+            AddNode("W_Fridge_App", new Vector3(-6.2f, 0f, 4.6f), "NW_Outer", "NW_Inner");
 
-            // Inner West Column (X = -2.6)
-            AddNode("NW_Inner", new Vector3(-2.6f, 0f, 4.2f), "W_Fridge_App", "W_Prep_App", "C_North");
-            AddNode("W_Prep_App", new Vector3(-2.6f, 0f, 3.6f), "NW_Inner", "W_Counter1_App");
-            AddNode("W_Counter1_App", new Vector3(-2.6f, 0f, 0.8f), "W_Prep_App", "W_Pass_App", "W_Counter2_App");
-            AddNode("W_Pass_App", new Vector3(-1.4f, 0f, 0.5f), "W_Counter1_App", "W_Counter2_App", "NW_Inner", "SW_Inner");
-            AddNode("W_Counter2_App", new Vector3(-2.6f, 0f, -2.0f), "W_Counter1_App", "W_Pass_App", "W_Serving_App");
-            AddNode("W_Serving_App", new Vector3(-2.6f, 0f, -4.8f), "W_Counter2_App", "SW_Inner");
-            AddNode("SW_Inner", new Vector3(-2.6f, 0f, -4.8f), "W_Serving_App", "W_S_Cross", "C_South");
+            // Inner West Column (X = -2.2f)
+            AddNode("NW_Inner", new Vector3(-2.2f, 0f, 4.6f), "W_Fridge_App", "C_North", "W_Prep_App");
+            AddNode("W_Prep_App", new Vector3(-2.2f, 0f, 3.6f), "NW_Inner", "W_Counter1_App");
+            AddNode("W_Counter1_App", new Vector3(-2.2f, 0f, 0.8f), "W_Prep_App", "W_Mid_North_Cross", "W_Pass_App", "W_Counter2_App");
+            AddNode("W_Pass_App", new Vector3(-1.4f, 0f, 0.5f), "W_Counter1_App", "W_Counter2_App");
+            AddNode("W_Counter2_App", new Vector3(-2.2f, 0f, -2.0f), "W_Counter1_App", "W_Pass_App", "SW_Inner");
+            AddNode("SW_Inner", new Vector3(-2.2f, 0f, -3.4f), "W_Counter2_App", "W_Mid_South_Cross", "W_Serving_App", "C_South");
+            AddNode("W_Serving_App", new Vector3(-2.2f, 0f, -5.0f), "SW_Inner");
 
-            // West Cross Connectors
-            AddNode("W_N_Cross", new Vector3(-5.5f, 0f, 4.2f), "NW_Outer", "NW_Inner");
-            AddNode("W_S_Cross", new Vector3(-5.5f, 0f, -4.8f), "SW_Outer", "SW_Inner");
+            // West Clear Crosswalks (Zero BoxCollider Intersections)
+            // Mid-North Crosswalk (Z = 2.2f, wide gap between prep_west and counter_west)
+            AddNode("W_Mid_North_Cross", new Vector3(-5.5f, 0f, 2.2f), "W_Mid_North_Outer", "W_Counter1_App");
+            // Mid-South Crosswalk (Z = -3.4f, wide gap between counter_west_2 and serving_station)
+            AddNode("W_Mid_South_Cross", new Vector3(-5.5f, 0f, -3.4f), "W_Mid_South_Outer", "SW_Inner");
 
             // 2. CENTER PASSAGE & DIVIDER
-            AddNode("C_North", new Vector3(0.0f, 0f, 4.2f), "NW_Inner", "NE_Inner");
+            AddNode("C_North", new Vector3(0.0f, 0f, 4.6f), "NW_Inner", "NE_Inner");
             AddNode("C_South", new Vector3(0.0f, 0f, -4.8f), "SW_Inner", "SE_Inner", "Trash_App");
             AddNode("Trash_App", new Vector3(0.0f, 0f, -5.2f), "C_South");
 
             // 3. EAST ZONE (Jiwon's Walkways & Stations)
-            // Inner East Column (X = +2.6)
-            AddNode("NE_Inner", new Vector3(2.6f, 0f, 4.2f), "C_North", "E_Fridge_App", "E_Counter1_App");
-            AddNode("E_Counter1_App", new Vector3(2.6f, 0f, 1.8f), "NE_Inner", "E_Pass_App", "E_Prep_App");
-            AddNode("E_Pass_App", new Vector3(1.4f, 0f, 0.5f), "E_Counter1_App", "E_Prep_App", "NE_Inner", "SE_Inner");
-            AddNode("E_Prep_App", new Vector3(2.6f, 0f, -1.6f), "E_Counter1_App", "E_Pass_App", "E_Counter2_App");
-            AddNode("E_Counter2_App", new Vector3(2.6f, 0f, -4.8f), "E_Prep_App", "SE_Inner");
-            AddNode("SE_Inner", new Vector3(2.6f, 0f, -4.8f), "E_Counter2_App", "E_S_Cross", "C_South");
+            // Inner East Column (X = +2.2f)
+            AddNode("NE_Inner", new Vector3(2.2f, 0f, 4.6f), "C_North", "E_Fridge_App", "E_Counter1_App");
+            AddNode("E_Counter1_App", new Vector3(2.2f, 0f, 1.8f), "NE_Inner", "E_Mid_North_Cross", "E_Pass_App", "E_Prep_App");
+            AddNode("E_Pass_App", new Vector3(1.4f, 0f, 0.5f), "E_Counter1_App", "E_Mid_North_Cross", "E_Prep_App");
+            AddNode("E_Prep_App", new Vector3(2.2f, 0f, -1.6f), "E_Counter1_App", "E_Pass_App", "SE_Inner");
+            AddNode("SE_Inner", new Vector3(2.2f, 0f, -3.4f), "E_Prep_App", "E_Mid_South_Cross", "E_Counter2_App", "C_South");
+            AddNode("E_Counter2_App", new Vector3(2.2f, 0f, -5.0f), "SE_Inner");
 
-            // North Wall Fridge East Approach
-            AddNode("E_Fridge_App", new Vector3(6.2f, 0f, 4.2f), "NE_Inner", "NE_Outer");
+            // North Wall Fridge East Approach (Z = 4.6f)
+            AddNode("E_Fridge_App", new Vector3(6.2f, 0f, 4.6f), "NE_Inner", "NE_Outer");
 
-            // Outer East Column (X = +8.8)
-            AddNode("NE_Outer", new Vector3(8.8f, 0f, 4.2f), "E_Fridge_App", "E_Grill", "E_N_Cross");
-            AddNode("E_Grill", new Vector3(8.8f, 0f, 3.4f), "NE_Outer", "E_Wok");
-            AddNode("E_Wok", new Vector3(8.8f, 0f, 0.2f), "E_Grill", "E_Shelf");
-            AddNode("E_Shelf", new Vector3(8.8f, 0f, -3.3f), "E_Wok", "SE_Outer");
-            AddNode("SE_Outer", new Vector3(8.8f, 0f, -4.8f), "E_Shelf", "E_S_Cross");
+            // East Outer Column (X = +8.5f)
+            AddNode("NE_Outer", new Vector3(8.5f, 0f, 4.6f), "E_Fridge_App", "E_Grill");
+            AddNode("E_Grill", new Vector3(8.5f, 0f, 3.4f), "NE_Outer", "E_Wok");
+            AddNode("E_Wok", new Vector3(8.5f, 0f, 0.2f), "E_Grill", "E_Mid_North_Outer", "E_Mid_South_Outer");
+            AddNode("E_Mid_North_Outer", new Vector3(8.5f, 0f, 0.1f), "E_Wok", "E_Mid_North_Cross", "E_Mid_South_Outer");
+            AddNode("E_Mid_South_Outer", new Vector3(8.5f, 0f, -3.4f), "E_Wok", "E_Mid_North_Outer", "E_Mid_South_Cross", "E_Shelf");
+            AddNode("E_Shelf", new Vector3(8.5f, 0f, -3.3f), "E_Mid_South_Outer", "SE_Outer");
+            AddNode("SE_Outer", new Vector3(8.5f, 0f, -4.8f), "E_Shelf");
 
-            // East Cross Connectors
-            AddNode("E_N_Cross", new Vector3(5.5f, 0f, 4.2f), "NE_Inner", "NE_Outer");
-            AddNode("E_S_Cross", new Vector3(5.5f, 0f, -4.8f), "SE_Inner", "SE_Outer");
+            // East Clear Crosswalks (Zero BoxCollider Intersections)
+            // Mid-North Crosswalk (Z = 0.1f, wide gap directly connecting simmer_wok to Pass Counter)
+            AddNode("E_Mid_North_Cross", new Vector3(5.5f, 0f, 0.1f), "E_Mid_North_Outer", "E_Counter1_App", "E_Pass_App");
+            // Mid-South Crosswalk (Z = -3.4f, wide gap between prep_east and counter_east_2)
+            AddNode("E_Mid_South_Cross", new Vector3(5.5f, 0f, -3.4f), "E_Mid_South_Outer", "SE_Inner");
 
-            // Ensure all graph connections are bidirectional
+            // Ensure all graph connections are 100% bidirectional
             foreach (var kvp in nodes)
             {
                 foreach (var nId in new List<string>(kvp.Value.neighborIds))
@@ -144,7 +152,7 @@ namespace TwoLadles.AI
             if (sId == "counter_east") return nodes["E_Counter1_App"].position;
             if (sId == "counter_east_2") return nodes["E_Counter2_App"].position;
 
-            // Fallback: 1.2m offset toward kitchen center
+            // Fallback: 1.25m offset toward kitchen center
             Vector3 centerDir = (Vector3.zero - station.transform.position).normalized;
             centerDir.y = 0f;
             return station.transform.position + centerDir * 1.25f;
@@ -198,8 +206,8 @@ namespace TwoLadles.AI
             EnsureInitialized();
             List<Vector3> path = new List<Vector3>();
 
-            // Direct line check: if already very close (< 1.2m) with clear line, move direct
-            if (Vector3.Distance(startPos, targetPos) < 1.2f)
+            // Direct line check: if already very close (< 1.1m), move direct
+            if (Vector3.Distance(startPos, targetPos) < 1.1f)
             {
                 path.Add(targetPos);
                 return path;

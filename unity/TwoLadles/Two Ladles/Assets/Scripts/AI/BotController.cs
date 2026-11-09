@@ -336,15 +336,123 @@ namespace TwoLadles.AI
         {
             if (characterId == "jiwon")
             {
-                // Jiwon: Cooks Tteokbokki in simmer_wok with Gochujang
+                // Jiwon: Prepares and cooks Tteokbokki in simmer_wok with Gochujang (supports in-wok or table self-assembly)
                 CookingStation wok = GetStation("simmer_wok") as CookingStation;
+                CounterStation counter = GetStation("counter_east") as CounterStation;
+                PassCounter pass = GetStation("pass_counter") as PassCounter;
+                CrateStation fridge = GetStation("fridge_east") as CrateStation;
+                CrateStation shelf = GetStation("shelf_east") as CrateStation;
                 if (wok == null) return;
 
-                if (wok.heldItem == null)
+                // 1. Holding Completed Dish
+                if (playerController.carriedItem != null && playerController.carriedItem.itemId == "tteokbokki")
                 {
-                    if (playerController.carriedItem == null)
+                    SetTarget(pass, "Pass Completed Tteokbokki to Linh");
+                    return;
+                }
+
+                // 2. Holding Rice Cakes
+                if (playerController.carriedItem != null && (playerController.carriedItem.itemId == "tteok_portioned" || playerController.carriedItem.itemId == "tteok_raw"))
+                {
+                    if (wok.heldItem == null)
                     {
-                        PassCounter pass = GetStation("pass_counter") as PassCounter;
+                        SetTarget(wok, "Place Rice Cakes in Pan");
+                        return;
+                    }
+                    else if (counter != null && counter.heldItem == null)
+                    {
+                        SetTarget(counter, "Place Rice Cakes on Table");
+                        return;
+                    }
+                }
+
+                // 3. Holding Gochujang
+                if (playerController.carriedItem != null && playerController.carriedItem.itemId == "gochujang")
+                {
+                    // If wok has rice cakes (raw, cooking, or already simmered), add gochujang directly to wok!
+                    if (wok.heldItem != null && (wok.heldItem.itemId == "tteok_portioned" || wok.heldItem.itemId == "tteok_raw" ||
+                        wok.heldItem.itemId == "tteokbokki_simmered" || wok.heldItem.itemId == "tteok_cooked" || wok.heldItem.itemId == "tteokbokki_raw"))
+                    {
+                        SetTarget(wok, "Add Gochujang to Wok");
+                        return;
+                    }
+                    // If table has rice cakes, assemble on table!
+                    if (counter != null && counter.heldItem != null && (counter.heldItem.itemId == "tteok_portioned" || counter.heldItem.itemId == "tteok_raw" ||
+                        counter.heldItem.itemId == "tteokbokki_simmered" || counter.heldItem.itemId == "tteok_cooked"))
+                    {
+                        SetTarget(counter, "Assemble Tteokbokki on Table");
+                        return;
+                    }
+                }
+
+                // 4. Holding Simmered/Cooked Rice Cakes (e.g. taken out of pan)
+                if (playerController.carriedItem != null && (playerController.carriedItem.itemId == "tteokbokki_simmered" || playerController.carriedItem.itemId == "tteok_cooked"))
+                {
+                    if (counter != null && counter.heldItem == null)
+                    {
+                        SetTarget(counter, "Place Simmered Toboki on Table");
+                        return;
+                    }
+                }
+
+                // 5. Holding Raw Tteokbokki (already combined, ready to cook)
+                if (playerController.carriedItem != null && playerController.carriedItem.itemId == "tteokbokki_raw")
+                {
+                    if (wok.heldItem == null)
+                    {
+                        SetTarget(wok, "Cook Tteokbokki in Wok");
+                        return;
+                    }
+                }
+
+                // 6. Empty Hands (playerController.carriedItem == null)
+                if (playerController.carriedItem == null)
+                {
+                    // Check if table has completed Tteokbokki
+                    if (counter != null && counter.heldItem != null && counter.heldItem.itemId == "tteokbokki")
+                    {
+                        SetTarget(counter, "Pick Up Completed Tteokbokki");
+                        return;
+                    }
+
+                    // Check if table has simmered rice cakes waiting for Gochujang
+                    if (counter != null && counter.heldItem != null && (counter.heldItem.itemId == "tteokbokki_simmered" || counter.heldItem.itemId == "tteok_portioned" || counter.heldItem.itemId == "tteok_cooked"))
+                    {
+                        desiredItemId = "gochujang";
+                        SetTarget(shelf, "Get Gochujang for Table Assembly");
+                        return;
+                    }
+
+                    // Check Wok contents:
+                    if (wok.heldItem != null)
+                    {
+                        // Case A: Finished Tteokbokki in wok -> pick up!
+                        if (wok.heldItem.itemId == "tteokbokki" || (wok.heldItem.itemId == "tteokbokki_raw" && (wok.currentState == CookingState.OPTIMAL || wok.currentState == CookingState.OVERCOOKED)))
+                        {
+                            SetTarget(wok, "Pick Up Cooked Tteokbokki");
+                            return;
+                        }
+
+                        // Case B: Raw Tteokbokki actively cooking in wok -> monitor!
+                        if (wok.heldItem.itemId == "tteokbokki_raw")
+                        {
+                            SetTarget(wok, "Monitor Tteokbokki Simmering in Wok");
+                            return;
+                        }
+
+                        // Case C: Wok has rice cakes (raw, cooking, or simmered) -> Go get Gochujang to add to wok!
+                        if (wok.heldItem.itemId == "tteok_portioned" || wok.heldItem.itemId == "tteok_raw" ||
+                            wok.heldItem.itemId == "tteokbokki_simmered" || wok.heldItem.itemId == "tteok_cooked")
+                        {
+                            desiredItemId = "gochujang";
+                            SetTarget(shelf, "Get Gochujang for Wok");
+                            return;
+                        }
+                    }
+
+                    // Case D: Wok is empty. Check Pass Counter for rice cakes from Linh:
+                    if (wok.heldItem == null)
+                    {
                         if (pass != null)
                         {
                             for (int i = 0; i < pass.slots.Length; i++)
@@ -357,44 +465,11 @@ namespace TwoLadles.AI
                             }
                         }
 
+                        // Otherwise get rice cakes from fridge
                         desiredItemId = "tteok_portioned";
-                        SetTarget(GetStation("fridge_east"), "Get Rice Cakes from Fridge");
+                        SetTarget(fridge, "Get Rice Cakes from Fridge");
+                        return;
                     }
-                    else if (playerController.carriedItem.itemId == "tteok_portioned" || playerController.carriedItem.itemId == "tteok_raw")
-                    {
-                        SetTarget(wok, "Place Rice Cakes in Pan");
-                    }
-                    return;
-                }
-
-                if (wok.heldItem.itemId == "tteok_portioned" || wok.heldItem.itemId == "tteok_raw")
-                {
-                    if (playerController.carriedItem == null)
-                    {
-                        desiredItemId = "gochujang";
-                        SetTarget(GetStation("shelf_east"), "Get Gochujang from Shelf");
-                    }
-                    else if (playerController.carriedItem.itemId == "gochujang")
-                    {
-                        SetTarget(wok, "Add Gochujang to Wok");
-                    }
-                    return;
-                }
-
-                if (wok.heldItem.itemId == "tteokbokki_raw" || wok.heldItem.itemId == "tteokbokki")
-                {
-                    if (wok.currentState == CookingState.OPTIMAL || wok.currentState == CookingState.OVERCOOKED)
-                    {
-                        if (playerController.carriedItem == null)
-                        {
-                            SetTarget(wok, "Pick Up Cooked Tteokbokki");
-                        }
-                    }
-                    else
-                    {
-                        SetTarget(wok, "Monitor Tteokbokki Simmering in Wok");
-                    }
-                    return;
                 }
             }
             else
@@ -446,7 +521,7 @@ namespace TwoLadles.AI
                     return;
                 }
 
-                if (stove.heldItem.itemId == "flour")
+                if (stove.heldItem.itemId == "flour" || stove.heldItem.itemId == "cooked_flour")
                 {
                     if (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED)
                     {
@@ -503,7 +578,7 @@ namespace TwoLadles.AI
                     return;
                 }
 
-                if (wok.heldItem.itemId == "flour")
+                if (wok.heldItem.itemId == "flour" || wok.heldItem.itemId == "cooked_flour")
                 {
                     if (wok.currentState == CookingState.OPTIMAL || wok.currentState == CookingState.OVERCOOKED)
                     {
@@ -1154,7 +1229,9 @@ namespace TwoLadles.AI
             {
                 if (st is CookingStation cook && cook.heldItem != null)
                 {
-                    if (cook.currentState == CookingState.OPTIMAL || cook.currentState == CookingState.OVERCOOKED)
+                    // Only OVERCOOKED (in imminent danger of burning into waste) triggers an urgent pan rescue!
+                    // OPTIMAL is the normal recipe completion/combination window and must not trigger false panic aborts.
+                    if (cook.currentState == CookingState.OVERCOOKED)
                     {
                         // Check if station belongs to this bot's zone or is shared
                         if (peerId == 1 && cook.transform.position.x <= 0f) return cook;

@@ -252,25 +252,25 @@ namespace TwoLadles.Kitchen
             if (nearest != null)
             {
                 if (nearest is PrepStation)
-                    prompt = "[E] Place/Pick/Assemble  •  [F] Chop";
+                    prompt = LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("hud.prep_station") : "[E] Place/Pick/Assemble  •  [F] Chop";
                 else if (nearest is CookingStation)
-                    prompt = "[E] Cook / Add Ingredient / Pick Up";
+                    prompt = LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("hud.cooking_station") : "[E] Cook / Add Ingredient / Pick Up";
                 else if (nearest is PassCounter)
-                    prompt = "[E] Pass / Take / Assemble (+15 Flow)";
+                    prompt = LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("hud.pass_counter") : "[E] Pass / Take / Assemble (+15 Flow)";
                 else if (nearest is CounterStation)
-                    prompt = "[E] Place / Pick / Self-Assemble";
+                    prompt = LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("hud.holding_table") : "[E] Place / Pick / Self-Assemble";
                 else if (nearest is ServingStation)
-                    prompt = "[E] Serve Dish";
+                    prompt = LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("hud.prompt_serve") : "[E] Serve Dish";
                 else if (nearest is CrateStation crate)
                     prompt = $"[E] {crate.displayName}";
                 else if (nearest is TrashStation)
-                    prompt = "[E] Trash";
+                    prompt = LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("hud.trash_station") : "[E] Trash";
                 else
                     prompt = "[E] Use";
             }
             else
             {
-                prompt = "[WASD] Move  •  [E] Interact / Assemble  •  [F] Chop  •  [R] Recipes";
+                prompt = LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("menu.controls_guide") : "[WASD] Move  •  [E] Interact / Assemble  •  [F] Chop  •  [R] Recipes";
             }
 
             if (prompt != currentPrompt)
@@ -338,8 +338,13 @@ namespace TwoLadles.Kitchen
                 kvp.Value.isLocalPlayer = (kvp.Key == nextLocal);
             }
             UpdateLocalPrompt();
-            string chefName = (nextLocal == 1) ? "Chef Linh (West Zone)" : "Chef Jiwon (East Zone)";
-            TriggerStatusToast($"Active Chef: {chefName}", new Color(0.35f, 0.9f, 1.0f));
+            string chefName = (nextLocal == 1) 
+                ? (LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("char.linh") : "Chef Linh (West Zone)")
+                : (LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("char.jiwon") : "Chef Jiwon (East Zone)");
+            string activeChefText = LocalizationManager.Instance != null 
+                ? LocalizationManager.Instance.Format("hud.active_chef", chefName)
+                : $"Active Chef: {chefName}";
+            TriggerStatusToast(activeChefText, new Color(0.35f, 0.9f, 1.0f));
             OnChefSwitched?.Invoke(nextLocal);
 
             if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 5 && nextLocal == 2)

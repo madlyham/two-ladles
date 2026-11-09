@@ -227,6 +227,33 @@ namespace TwoLadles.Core
             return null;
         }
 
+        public static string GetRecipeDisplayName(string recipeId)
+        {
+            if (string.IsNullOrEmpty(recipeId)) return string.Empty;
+            if (LocalizationManager.Instance != null)
+            {
+                string loc = LocalizationManager.Instance.Get("dish." + recipeId + ".name", null);
+                if (!string.IsNullOrEmpty(loc)) return loc;
+            }
+            if (Instance != null)
+            {
+                var spec = Instance.GetRecipeSpec(recipeId);
+                if (spec != null) return spec.displayName;
+            }
+            return recipeId;
+        }
+
+        public static string GetItemDisplayName(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId)) return string.Empty;
+            if (LocalizationManager.Instance != null)
+            {
+                string loc = LocalizationManager.Instance.Get("item." + itemId, null);
+                if (!string.IsNullOrEmpty(loc)) return loc;
+            }
+            return itemId.Replace("_", " ");
+        }
+
         public List<string> GetDayAllowedRecipes(int dayStageId)
         {
             switch (dayStageId)

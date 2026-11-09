@@ -316,38 +316,39 @@ namespace TwoLadles.Core
             if (step <= tutorialStep && step != 1) return;
             tutorialStep = step;
 
+            var lm = LocalizationManager.Instance;
             switch (tutorialStep)
             {
                 case 1:
-                    tutorialStepTitle = "STEP 1: MOVE TO FRIDGE";
-                    tutorialStepInstruction = "Use [WASD] or Joystick to walk up to the Fridge.";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step1_title") : "STEP 1: MOVE TO FRIDGE";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step1_desc") : "Use [WASD] or Joystick to walk up to the Fridge.";
                     break;
                 case 2:
-                    tutorialStepTitle = "STEP 2: GET TOBOKI PORTION";
-                    tutorialStepInstruction = "Walk to Fridge -> Press [E] (INTERACT) -> Select 'Toboki Portion'.";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step2_title") : "STEP 2: GET TOBOKI PORTION";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step2_desc") : "Walk to Fridge -> Press [E] (INTERACT) -> Select 'Toboki Portion'.";
                     break;
                 case 3:
-                    tutorialStepTitle = "STEP 3: GET GOCHUJANG";
-                    tutorialStepInstruction = "Place Toboki in Stove/Counter [E], then grab 'Gochujang' from Shelf [E].";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step3_title") : "STEP 3: GET GOCHUJANG";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step3_desc") : "Place Toboki in Stove/Counter [E], then grab 'Gochujang' from Shelf [E].";
                     break;
                 case 4:
-                    tutorialStepTitle = "STEP 4: COOK TTEOKBOKKI";
-                    tutorialStepInstruction = "Press [E] with Gochujang at the Stove to combine & cook Tteokbokki!";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step4_title") : "STEP 4: COOK TTEOKBOKKI";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step4_desc") : "Press [E] with Gochujang at the Stove to combine & cook Tteokbokki!";
                     break;
                 case 5:
-                    tutorialStepTitle = "STEP 5: PICK UP AT GREEN BAR";
-                    tutorialStepInstruction = "Wait for the Stove bar to turn GREEN, then press [E] to pick up!";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step5_title") : "STEP 5: PICK UP AT GREEN BAR";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step5_desc") : "Wait for the Stove bar to turn GREEN, then press [E] to pick up!";
                     break;
                 case 6:
                 case 7:
                 case 8:
                 case 9:
-                    tutorialStepTitle = "STEP 6: SERVE TTEOKBOKKI!";
-                    tutorialStepInstruction = "Bring Tteokbokki to the Serving Counter and press [E]!";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step6_title") : "STEP 6: SERVE TTEOKBOKKI!";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step6_desc") : "Bring Tteokbokki to the Serving Counter and press [E]!";
                     break;
                 case 10:
-                    tutorialStepTitle = "★ COMPLETE! ★";
-                    tutorialStepInstruction = "You're ready! Click 'Lobby' to start Day 1: Tteokbokki!";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.complete_title") : "★ COMPLETE! ★";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.complete_desc") : "You're ready! Click 'Lobby' to start Day 1: Tteokbokki!";
                     break;
             }
 

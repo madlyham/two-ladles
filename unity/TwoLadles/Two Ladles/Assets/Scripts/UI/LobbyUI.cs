@@ -9,7 +9,28 @@ namespace TwoLadles.UI
 {
     public class LobbyUI : MonoBehaviour
     {
-        [Header("Connection & LAN Discovery")]
+        [Header("Language & Mode Selection")]
+        public Button langEnButton;
+        public Button langViButton;
+        public Button langKoButton;
+        public Text langEnText;
+        public Text langViText;
+        public Text langKoText;
+        public Button modeToggleButton;
+        public Text modeToggleText;
+        public Button chefSelectButton;
+        public Text chefSelectText;
+        public bool isSoloMode = false;
+        public int humanChefPeerId = 1; // 1 = Linh, 2 = Jiwon
+
+        private Text titleLabel;
+        private Text lanHeaderLabel;
+        private Text hostButtonLabel;
+        private Text joinButtonLabel;
+        private Text levelSelectHeaderLabel;
+        private Text playTutorialButtonLabel;
+        private Text endlessModeButtonLabel;
+        private Text openShopButtonLabel;
         public InputField ipInput;
         public InputField portInput;
         public InputField nameInput;
@@ -193,7 +214,7 @@ namespace TwoLadles.UI
             mRect.anchorMax = new Vector2(0.5f, 0.5f);
             mRect.pivot = new Vector2(0.5f, 0.5f);
             mRect.anchoredPosition = new Vector2(0f, 10f);
-            mRect.sizeDelta = new Vector2(720f, 430f);
+            mRect.sizeDelta = new Vector2(740f, 475f);
 
             var mImg = modal.AddComponent<Image>();
             mImg.color = new Color(0.07f, 0.09f, 0.13f, 0.94f);
@@ -201,33 +222,50 @@ namespace TwoLadles.UI
             Transform mRoot = modal.transform;
 
             // Header
-            CreateLabel("Title", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(680f, 24f), "TWO LADLES: VIETNAM & KOREA CO-OP", 16, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
+            titleLabel = CreateLabel("Title", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(680f, 24f), "TWO LADLES: VIETNAM & KOREA CO-OP", 16, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
             coinsText = CreateLabel("GoldText", mRoot, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(20f, -14f), new Vector2(180f, 22f), "GOLD: 150g", 14, new Color(1.0f, 0.85f, 0.2f), TextAnchor.MiddleLeft);
             careerScoreText = CreateLabel("CareerScoreText", mRoot, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-20f, -14f), new Vector2(180f, 22f), "SCORE: 0", 13, Color.cyan, TextAnchor.MiddleRight);
 
-            // --- SECTION A: TERRARIA-STYLE LAN ROOM HOST & AUTO-SCAN ---
-            CreateLabel("LanHeader", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -42f), new Vector2(680f, 18f), "LAN MULTIPLAYER — CREATE A ROOM OR CLICK A DISCOVERED ROOM TO JOIN", 11, new Color(0.65f, 0.82f, 0.95f), TextAnchor.MiddleCenter);
+            // Sub-Header: Mode Toggle & Language Switcher
+            modeToggleButton = CreateButton("ModeToggleBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-215f, -38f), new Vector2(150f, 24f), "MODE: LAN CO-OP", new Color(0.18f, 0.35f, 0.55f, 0.95f), out modeToggleText, 11);
+            modeToggleButton.onClick.AddListener(OnToggleModeClicked);
 
-            nameInput = CreateInputField("NameInput", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-245f, -68f), new Vector2(150f, 28f), "Chef Linh", "Your Name");
-            roomNameInput = CreateInputField("RoomNameInput", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-60f, -68f), new Vector2(195f, 28f), "Linh & Jiwon Bistro", "Room Name");
-            hostButton = CreateButton("HostBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(115f, -68f), new Vector2(130f, 28f), "HOST ROOM", new Color(0.18f, 0.62f, 0.35f, 1f), out _);
-            joinButton = CreateButton("JoinBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(252f, -68f), new Vector2(125f, 28f), "AUTO-JOIN LAN", new Color(0.22f, 0.50f, 0.78f, 1f), out _);
+            chefSelectButton = CreateButton("ChefSelectBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-45f, -38f), new Vector2(170f, 24f), "YOU: LINH (AI: JIWON)", new Color(0.24f, 0.28f, 0.38f, 0.95f), out chefSelectText, 11);
+            chefSelectButton.onClick.AddListener(OnToggleChefSelectClicked);
+            chefSelectButton.gameObject.SetActive(isSoloMode);
+
+            langEnButton = CreateButton("LangEnBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(145f, -38f), new Vector2(65f, 24f), "EN", new Color(0.15f, 0.18f, 0.24f, 0.9f), out langEnText, 11);
+            langEnButton.onClick.AddListener(() => SetAppLanguage(LocalizationManager.LANG_EN));
+
+            langViButton = CreateButton("LangViBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(215f, -38f), new Vector2(65f, 24f), "VI", new Color(0.15f, 0.18f, 0.24f, 0.9f), out langViText, 11);
+            langViButton.onClick.AddListener(() => SetAppLanguage(LocalizationManager.LANG_VI));
+
+            langKoButton = CreateButton("LangKoBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(285f, -38f), new Vector2(65f, 24f), "KO", new Color(0.15f, 0.18f, 0.24f, 0.9f), out langKoText, 11);
+            langKoButton.onClick.AddListener(() => SetAppLanguage(LocalizationManager.LANG_KO));
+
+            // --- SECTION A: TERRARIA-STYLE LAN ROOM HOST & AUTO-SCAN ---
+            lanHeaderLabel = CreateLabel("LanHeader", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -66f), new Vector2(680f, 18f), "LAN MULTIPLAYER — CREATE A ROOM OR CLICK A DISCOVERED ROOM TO JOIN", 11, new Color(0.65f, 0.82f, 0.95f), TextAnchor.MiddleCenter);
+
+            nameInput = CreateInputField("NameInput", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-245f, -92f), new Vector2(150f, 28f), "Chef Linh", "Your Name");
+            roomNameInput = CreateInputField("RoomNameInput", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-60f, -92f), new Vector2(195f, 28f), "Linh & Jiwon Bistro", "Room Name");
+            hostButton = CreateButton("HostBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(115f, -92f), new Vector2(130f, 28f), "HOST ROOM", new Color(0.18f, 0.62f, 0.35f, 1f), out hostButtonLabel);
+            joinButton = CreateButton("JoinBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(252f, -92f), new Vector2(125f, 28f), "AUTO-JOIN LAN", new Color(0.22f, 0.50f, 0.78f, 1f), out joinButtonLabel);
 
             // Discovered LAN Room Slots
             for (int i = 0; i < 2; i++)
             {
                 int slotIdx = i;
                 float xPos = (i == 0) ? -170f : 170f;
-                lanRoomButtons[i] = CreateButton($"LanRoomBtn_{i}", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(xPos, -102f), new Vector2(325f, 26f),
+                lanRoomButtons[i] = CreateButton($"LanRoomBtn_{i}", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(xPos, -126f), new Vector2(325f, 26f),
                     i == 0 ? "[LAN] Scanning for open kitchens..." : "[LAN] Click to refresh scan",
                     new Color(0.14f, 0.18f, 0.24f, 0.95f), out lanRoomButtonLabels[i], 11);
                 lanRoomButtons[i].onClick.AddListener(() => OnLanRoomSlotClicked(slotIdx));
             }
 
-            statusText = CreateLabel("StatusText", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -130f), new Vector2(680f, 18f), "LAN Auto-Scanner Active.", 11, new Color(0.85f, 0.9f, 0.95f), TextAnchor.MiddleCenter);
+            statusText = CreateLabel("StatusText", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -154f), new Vector2(680f, 18f), "LAN Auto-Scanner Active.", 11, new Color(0.85f, 0.9f, 0.95f), TextAnchor.MiddleCenter);
 
             // --- SECTION B: LEVEL SELECTION & REPLAY (LEVELS 1-5) ---
-            CreateLabel("LevelSelectHeader", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -154f), new Vector2(680f, 18f), "SELECT LEVEL (REPLAY COMPLETED LEVELS ANYTIME TO EARN MORE GOLD)", 11, new Color(1.0f, 0.85f, 0.35f), TextAnchor.MiddleCenter);
+            levelSelectHeaderLabel = CreateLabel("LevelSelectHeader", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -178f), new Vector2(680f, 18f), "SELECT LEVEL (REPLAY COMPLETED LEVELS ANYTIME TO EARN MORE GOLD)", 11, new Color(1.0f, 0.85f, 0.35f), TextAnchor.MiddleCenter);
 
             string[] lvlShortNames = new string[] { "Tteokbokki", "+ Bột Chiên", "+ K-BBQ Rice", "+ Broken Rice", "3m Banh Mi" };
             for (int i = 0; i < 5; i++)
@@ -237,7 +275,7 @@ namespace TwoLadles.UI
                 bool defaultUnlocked = (lvlId == 1);
                 string defaultTag = defaultUnlocked ? "UNLOCKED" : "LOCKED";
                 Color defaultCol = defaultUnlocked ? new Color(0.88f, 0.55f, 0.15f, 1f) : new Color(0.16f, 0.16f, 0.18f, 0.85f);
-                levelSelectButtons[i] = CreateButton($"LevelBtn_{lvlId}", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(xPos, -198f), new Vector2(128f, 58f),
+                levelSelectButtons[i] = CreateButton($"LevelBtn_{lvlId}", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(xPos, -222f), new Vector2(128f, 58f),
                     $"DAY {lvlId}\n{lvlShortNames[i]}\n[{defaultTag}]",
                     defaultCol, out levelSelectLabels[i], 11);
                 levelSelectBgs[i] = levelSelectButtons[i].GetComponent<Image>();
@@ -245,18 +283,19 @@ namespace TwoLadles.UI
             }
 
             // Mode Row: Tutorial, Endless Survival, Upgrade Shop
-            playTutorialButton = CreateButton("PlayTutorialBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-225f, -264f), new Vector2(205f, 36f), "★ PLAY TUTORIAL ★", new Color(0.18f, 0.58f, 0.38f, 1f), out _, 12);
-            endlessModeButton = CreateButton("EndlessBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -264f), new Vector2(205f, 36f), "∞ ENDLESS MODE", new Color(0.48f, 0.25f, 0.58f, 1f), out _, 12);
-            openShopButton = CreateButton("OpenShopBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(225f, -264f), new Vector2(205f, 36f), "★ UPGRADE SHOP ★", new Color(0.75f, 0.52f, 0.12f, 1f), out _, 12);
+            playTutorialButton = CreateButton("PlayTutorialBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-225f, -288f), new Vector2(205f, 36f), "★ PLAY TUTORIAL ★", new Color(0.18f, 0.58f, 0.38f, 1f), out playTutorialButtonLabel, 12);
+            endlessModeButton = CreateButton("EndlessBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -288f), new Vector2(205f, 36f), "∞ ENDLESS MODE", new Color(0.48f, 0.25f, 0.58f, 1f), out endlessModeButtonLabel, 12);
+            openShopButton = CreateButton("OpenShopBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(225f, -288f), new Vector2(205f, 36f), "★ UPGRADE SHOP ★", new Color(0.75f, 0.52f, 0.12f, 1f), out openShopButtonLabel, 12);
 
             // Primary Launch Row: Ready & Start Selected Level
-            readyButton = CreateButton("ReadyBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-155f, -318f), new Vector2(220f, 42f), "READY: YES", new Color(0.25f, 0.45f, 0.68f, 1f), out readyButtonText, 13);
-            startShiftButton = CreateButton("StartShiftBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(125f, -318f), new Vector2(310f, 42f), "▶ START LEVEL 1 (3 WAVES)", new Color(0.88f, 0.42f, 0.14f, 1f), out startShiftButtonText, 14);
+            readyButton = CreateButton("ReadyBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-155f, -342f), new Vector2(220f, 42f), "READY: YES", new Color(0.25f, 0.45f, 0.68f, 1f), out readyButtonText, 13);
+            startShiftButton = CreateButton("StartShiftBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(125f, -342f), new Vector2(310f, 42f), "▶ START LEVEL 1 (3 WAVES)", new Color(0.88f, 0.42f, 0.14f, 1f), out startShiftButtonText, 14);
 
-            playersListText = CreateLabel("PlayersList", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -372f), new Vector2(680f, 20f), "Chefs: Linh (West) & Jiwon (East)", 11, new Color(0.8f, 0.85f, 0.9f), TextAnchor.MiddleCenter);
-            controlsGuideText = CreateLabel("ControlsGuide", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -396f), new Vector2(680f, 20f), "[WASD] Move  •  [TAB] Ingredient Wheel  •  [E] Use  •  [F] Chop/Wash  •  [C] Switch Chef  •  [R] Recipe Book", 11, new Color(0.70f, 0.85f, 0.98f), TextAnchor.MiddleCenter);
+            playersListText = CreateLabel("PlayersList", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -396f), new Vector2(680f, 20f), "Chefs: Linh (West) & Jiwon (East)", 11, new Color(0.8f, 0.85f, 0.9f), TextAnchor.MiddleCenter);
+            controlsGuideText = CreateLabel("ControlsGuide", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -420f), new Vector2(680f, 20f), "[WASD] Move  •  [TAB] Ingredient Wheel  •  [E] Use  •  [F] Chop/Wash  •  [C] Switch Chef  •  [R] Recipe Book", 11, new Color(0.70f, 0.85f, 0.98f), TextAnchor.MiddleCenter);
 
             RefreshProgressionDisplay();
+            RefreshLocalizedText();
         }
 
         private void Update()
@@ -303,6 +342,11 @@ namespace TwoLadles.UI
                 NetworkManager.Instance.OnLanRoomsUpdated += RefreshLanRoomsDisplay;
                 NetworkManager.Instance.OnShiftStartReceived += (stage, mode) => gameObject.SetActive(false);
                 NetworkManager.Instance.OnReturnedToMenu += OnReturnedToMenuHandler;
+            }
+
+            if (LocalizationManager.Instance != null)
+            {
+                LocalizationManager.Instance.OnLanguageChanged += RefreshLocalizedText;
             }
 
             if (ProgressionManager.Instance != null)
@@ -504,15 +548,90 @@ namespace TwoLadles.UI
             }
         }
 
+        public void SetAppLanguage(string langCode)
+        {
+            if (LocalizationManager.Instance != null)
+            {
+                LocalizationManager.Instance.SetLanguage(langCode);
+            }
+        }
+
+        private void OnToggleModeClicked()
+        {
+            isSoloMode = !isSoloMode;
+            if (chefSelectButton != null)
+            {
+                chefSelectButton.gameObject.SetActive(isSoloMode);
+            }
+            RefreshLocalizedText();
+        }
+
+        private void OnToggleChefSelectClicked()
+        {
+            humanChefPeerId = (humanChefPeerId == 1) ? 2 : 1;
+            RefreshLocalizedText();
+        }
+
+        public void RefreshLocalizedText()
+        {
+            if (LocalizationManager.Instance == null) return;
+            var lm = LocalizationManager.Instance;
+
+            if (titleLabel != null) titleLabel.text = lm.Get("menu.title");
+            if (lanHeaderLabel != null) lanHeaderLabel.text = lm.Get("menu.lan_header");
+            if (hostButtonLabel != null) hostButtonLabel.text = lm.Get("menu.host_room");
+            if (joinButtonLabel != null) joinButtonLabel.text = lm.Get("menu.auto_join");
+            if (levelSelectHeaderLabel != null) levelSelectHeaderLabel.text = lm.Get("menu.level_select");
+            if (playTutorialButtonLabel != null) playTutorialButtonLabel.text = lm.Get("menu.play_tutorial");
+            if (endlessModeButtonLabel != null) endlessModeButtonLabel.text = lm.Get("menu.endless_mode");
+            if (openShopButtonLabel != null) openShopButtonLabel.text = lm.Get("menu.upgrade_shop");
+            if (controlsGuideText != null) controlsGuideText.text = lm.Get("menu.controls_guide");
+            if (toggleMenuButtonText != null)
+            {
+                bool isVisible = (modalPanel != null && modalPanel.activeSelf);
+                toggleMenuButtonText.text = isVisible ? lm.Get("menu.hide_menu") : lm.Get("menu.show_menu");
+            }
+
+            if (modeToggleText != null)
+            {
+                modeToggleText.text = isSoloMode ? lm.Get("menu.mode_solo") : lm.Get("menu.mode_coop");
+            }
+
+            if (chefSelectText != null)
+            {
+                chefSelectText.text = (humanChefPeerId == 1) ? lm.Get("menu.human_linh") : lm.Get("menu.human_jiwon");
+            }
+
+            string curLang = lm.CurrentLanguage;
+            UpdateLangBtnHighlight(langEnButton, langEnText, curLang == LocalizationManager.LANG_EN);
+            UpdateLangBtnHighlight(langViButton, langViText, curLang == LocalizationManager.LANG_VI);
+            UpdateLangBtnHighlight(langKoButton, langKoText, curLang == LocalizationManager.LANG_KO);
+
+            RefreshProgressionDisplay();
+        }
+
+        private void UpdateLangBtnHighlight(Button btn, Text txt, bool active)
+        {
+            if (btn == null || txt == null) return;
+            var img = btn.GetComponent<Image>();
+            if (img != null)
+            {
+                img.color = active ? new Color(0.88f, 0.55f, 0.15f, 1f) : new Color(0.15f, 0.18f, 0.24f, 0.9f);
+            }
+            txt.color = active ? Color.white : new Color(0.7f, 0.75f, 0.85f, 1f);
+            txt.fontStyle = active ? FontStyle.Bold : FontStyle.Normal;
+        }
+
         public void RefreshProgressionDisplay()
         {
             if (ProgressionManager.Instance == null) return;
+            var lm = LocalizationManager.Instance;
 
             if (coinsText != null)
-                coinsText.text = $"GOLD: {ProgressionManager.Instance.gold}g";
+                coinsText.text = lm != null ? lm.Format("menu.gold", ProgressionManager.Instance.gold) : $"GOLD: {ProgressionManager.Instance.gold}g";
 
             if (careerScoreText != null)
-                careerScoreText.text = $"SCORE: {ProgressionManager.Instance.totalCareerScore}";
+                careerScoreText.text = lm != null ? lm.Format("menu.score", ProgressionManager.Instance.totalCareerScore) : $"SCORE: {ProgressionManager.Instance.totalCareerScore}";
 
             string[] lvlNames = new string[] { "Tteokbokki", "+ Bột Chiên", "+ K-BBQ Rice", "+ Broken Rice", "3m Banh Mi" };
             for (int i = 0; i < 5; i++)
@@ -524,7 +643,7 @@ namespace TwoLadles.UI
                 bool completed = ProgressionManager.Instance.IsLevelCompleted(lvlId);
                 bool isSelected = (!isEndlessSelected && selectedLevelId == lvlId);
 
-                string statusTag = completed ? "★ COMPLETED ★" : (unlocked ? "UNLOCKED" : "LOCKED");
+                string statusTag = completed ? "★ COMPLETED ★" : (unlocked ? (lm != null ? lm.Get("menu.unlocked") : "UNLOCKED") : (lm != null ? lm.Get("menu.locked") : "LOCKED"));
                 levelSelectLabels[i].text = $"DAY {lvlId}\n{lvlNames[i]}\n[{statusTag}]";
 
                 if (!unlocked)
@@ -549,14 +668,12 @@ namespace TwoLadles.UI
             {
                 if (isEndlessSelected)
                 {
-                    startShiftButtonText.text = "▶ START ENDLESS RUSH";
+                    startShiftButtonText.text = lm != null ? lm.Get("menu.start_endless") : "▶ START ENDLESS RUSH";
                 }
                 else
                 {
-                    bool done = ProgressionManager.Instance.IsLevelCompleted(selectedLevelId);
-                    string actionVerb = done ? "REPLAY" : "START";
-                    string suffix = (selectedLevelId == 5) ? "(3-MIN HIGH SCORE)" : "(3 WAVES)";
-                    startShiftButtonText.text = $"▶ {actionVerb} DAY {selectedLevelId} {suffix}";
+                    int waves = (selectedLevelId == 5) ? 1 : 3;
+                    startShiftButtonText.text = lm != null ? lm.Format("menu.start_level", selectedLevelId, waves) : $"▶ START LEVEL {selectedLevelId} ({waves} WAVES)";
                 }
             }
         }
@@ -566,6 +683,7 @@ namespace TwoLadles.UI
             gameObject.SetActive(true);
             if (modalPanel != null) modalPanel.SetActive(true);
             RefreshProgressionDisplay();
+            RefreshLocalizedText();
             UpdateStatus(reason, false);
         }
 
@@ -581,6 +699,10 @@ namespace TwoLadles.UI
             if (ProgressionManager.Instance != null)
             {
                 ProgressionManager.Instance.OnProgressionUpdated -= RefreshProgressionDisplay;
+            }
+            if (LocalizationManager.Instance != null)
+            {
+                LocalizationManager.Instance.OnLanguageChanged -= RefreshLocalizedText;
             }
         }
     }

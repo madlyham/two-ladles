@@ -85,6 +85,8 @@ namespace TwoLadles.UI
         [Header("Recipe Book Modal")]
         public GameObject recipeBookModal;
         public Button closeRecipeBookButton;
+        public Text recipeBookTitleText;
+        public Text[] recipeRowTitleTexts;
 
         [Header("End of Shift / Level Results Modal")]
         public GameObject endShiftModal;
@@ -143,9 +145,24 @@ namespace TwoLadles.UI
                 }
                 catch { }
             }
-            if (font != null && font.material != null && font.material.mainTexture != null)
+            if (font != null)
             {
-                font.material.mainTexture.filterMode = FilterMode.Point;
+                // Fallback font names across Windows, Android, Mac/iOS for Korean Hangul and extended Unicode glyphs
+                font.fontNames = new string[] { 
+                    "PixelFont", 
+                    "Malgun Gothic", 
+                    "NanumGothic", 
+                    "Apple SD Gothic Neo", 
+                    "Noto Sans CJK KR", 
+                    "Noto Sans KR", 
+                    "Segoe UI", 
+                    "Arial" 
+                };
+
+                if (font.material != null && font.material.mainTexture != null)
+                {
+                    font.material.mainTexture.filterMode = FilterMode.Point;
+                }
             }
             _cachedPixelFont = font;
             return font;
@@ -639,16 +656,17 @@ namespace TwoLadles.UI
             var rbImg = recipeBookModal.AddComponent<Image>();
             rbImg.color = new Color(0.08f, 0.10f, 0.15f, 0.96f);
 
-            CreateLabel("RBTitle", recipeBookModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(560f, 26f), "📖 5-DAY RECIPE BOOK — PRESS [E] ON COUNTER/PAN TO SELF-ASSEMBLE!", 14, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
+            recipeBookTitleText = CreateLabel("RBTitle", recipeBookModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(560f, 26f), "📖 5-DAY RECIPE BOOK — PRESS [E] ON COUNTER/PAN TO SELF-ASSEMBLE!", 14, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
 
-            var recipeRows = new (string title, string dishIcon, (string icon, string tag)[] steps)[]
+            var recipeRows = new (string dayKey, string fallbackTitle, string dishIcon, (string icon, string tag)[] steps)[]
             {
-                ("Day 1: Tteokbokki", "tteokbokki", new[] { ("tteok_portioned", "Toboki Portion"), ("gochujang", "+ Gochujang"), ("tteokbokki", "Cook Together!") }),
-                ("Day 2: Bột Chiên", "bot_chien", new[] { ("flour", "Cook Flour"), ("egg_raw", "+ Egg & Cook"), ("bot_chien", "Bột Chiên!") }),
-                ("Day 3: K-BBQ Rice", "korean_bbq_rice", new[] { ("unprocessed_raw_meat", "Cut 1x➔Cook"), ("cooked_rice", "Cook Rice"), ("korean_bbq_rice", "Assemble [E]") }),
-                ("Day 4: Broken Rice", "viet_broken_rice", new[] { ("rice_portioned", "Cook Rice"), ("bulgogi", "+ BBQ Beef"), ("egg_raw", "+ Egg [E]") }),
-                ("Day 5: Bulgogi Bánh Mì", "bulgogi_banh_mi", new[] { ("baguette", "Cook Flour+Egg"), ("pickled_veg", "Cut Radish"), ("bulgogi", "Cut 2x➔Cook") })
+                ("day.1", "Day 1: Tteokbokki", "tteokbokki", new[] { ("tteok_portioned", "Toboki Portion"), ("gochujang", "+ Gochujang"), ("tteokbokki", "Cook Together!") }),
+                ("day.2", "Day 2: + Bột Chiên", "bot_chien", new[] { ("flour", "Cook Flour"), ("egg_raw", "+ Egg & Cook"), ("bot_chien", "Bột Chiên!") }),
+                ("day.3", "Day 3: + K-BBQ Rice", "korean_bbq_rice", new[] { ("unprocessed_raw_meat", "Cut 1x➔Cook"), ("cooked_rice", "Cook Rice"), ("korean_bbq_rice", "Assemble [E]") }),
+                ("day.4", "Day 4: + Broken Rice", "viet_broken_rice", new[] { ("rice_portioned", "Cook Rice"), ("bulgogi", "+ BBQ Beef"), ("egg_raw", "+ Egg [E]") }),
+                ("day.5", "Day 5: Bulgogi Bánh Mì", "bulgogi_banh_mi", new[] { ("baguette", "Cook Flour+Egg"), ("pickled_veg", "Cut Radish"), ("bulgogi", "Cut 2x➔Cook") })
             };
+            recipeRowTitleTexts = new Text[recipeRows.Length];
 
             for (int i = 0; i < recipeRows.Length; i++)
             {
@@ -666,7 +684,8 @@ namespace TwoLadles.UI
                 var rBg = rowGo.AddComponent<Image>();
                 rBg.color = new Color(0.13f, 0.16f, 0.22f, 0.92f);
 
-                CreateLabel("DishTitle", rowGo.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(12f, 0f), new Vector2(135f, 0f), row.title, 11, new Color(1.0f, 0.90f, 0.45f), TextAnchor.MiddleLeft);
+                string rowTitle = (LocalizationManager.Instance != null) ? LocalizationManager.Instance.Get(row.dayKey, row.fallbackTitle) : row.fallbackTitle;
+                recipeRowTitleTexts[i] = CreateLabel("DishTitle", rowGo.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(12f, 0f), new Vector2(135f, 0f), rowTitle, 11, new Color(1.0f, 0.90f, 0.45f), TextAnchor.MiddleLeft);
 
                 // Final Dish Icon
                 CreateRecipeStepBadge(rowGo.transform, 152f, row.dishIcon, "Dish");
@@ -875,6 +894,12 @@ namespace TwoLadles.UI
             {
                 ProgressionManager.Instance.OnProgressionUpdated += RefreshUpgradeShopDisplay;
             }
+
+            if (LocalizationManager.Instance != null)
+            {
+                LocalizationManager.Instance.OnLanguageChanged += RefreshLocalizedHUD;
+            }
+            RefreshLocalizedHUD();
 
             if (switchChefButton != null)
             {
@@ -1331,7 +1356,17 @@ namespace TwoLadles.UI
                     orderCardObjs[i].SetActive(true);
 
                     string rName = o.recipeId;
-                    if (GameData.Instance != null)
+                    if (LocalizationManager.Instance != null)
+                    {
+                        string loc = LocalizationManager.Instance.Get("dish." + o.recipeId + ".name", null);
+                        if (!string.IsNullOrEmpty(loc)) rName = loc;
+                        else if (GameData.Instance != null)
+                        {
+                            var rSpec = GameData.Instance.GetRecipeSpec(o.recipeId);
+                            if (rSpec != null) rName = rSpec.displayName;
+                        }
+                    }
+                    else if (GameData.Instance != null)
                     {
                         var rSpec = GameData.Instance.GetRecipeSpec(o.recipeId);
                         if (rSpec != null) rName = rSpec.displayName;
@@ -1389,9 +1424,12 @@ namespace TwoLadles.UI
                     int totalWaves = summary.ContainsKey("total_waves") ? Convert.ToInt32(summary["total_waves"]) : 3;
                     int served = summary.ContainsKey("ordersServed") ? Convert.ToInt32(summary["ordersServed"]) : 0;
 
+                    var lm = LocalizationManager.Instance;
                     if (endShiftTitleText != null)
                     {
-                        endShiftTitleText.text = victory ? "★ VICTORY! LEVEL COMPLETE ★" : "✖ DEFEAT — REPUTATION LOST ✖";
+                        endShiftTitleText.text = victory 
+                            ? (lm != null ? lm.Format("results.victory", ShiftManager.Instance != null ? ShiftManager.Instance.currentStageId : 1) : "★ VICTORY! LEVEL COMPLETE ★")
+                            : (lm != null ? lm.Get("results.game_over") : "✖ DEFEAT — REPUTATION LOST ✖");
                         endShiftTitleText.color = victory ? new Color(0.30f, 1.0f, 0.50f) : new Color(1.0f, 0.35f, 0.35f);
                     }
 
@@ -1402,7 +1440,15 @@ namespace TwoLadles.UI
                         int finalScore = summary.ContainsKey("total_score") ? Convert.ToInt32(summary["total_score"]) : 0;
                         int highScore = summary.ContainsKey("high_score") ? Convert.ToInt32(summary["high_score"]) : finalScore;
 
-                        if (stageId == 5)
+                        if (lm != null)
+                        {
+                            string repStr = lm.Format("results.rep_remaining", Mathf.CeilToInt(rep));
+                            string waveStr = lm.Format("results.waves_done", wavesDone, totalWaves, served);
+                            string goldStr = lm.Format("results.gold_earned", gold);
+                            string balStr = lm.Format("results.gold_balance", totalGold);
+                            endShiftDetailsText.text = $"{repStr}\n{waveStr}\n{goldStr}\n{balStr}";
+                        }
+                        else if (stageId == 5)
                         {
                             endShiftDetailsText.text =
                                 $"3-MINUTE BULGOGI BÁNH MÌ HIGH SCORE: {finalScore} pts\n" +
@@ -1422,7 +1468,9 @@ namespace TwoLadles.UI
 
                     if (retryShiftButtonText != null)
                     {
-                        retryShiftButtonText.text = victory ? "▶ NEXT LEVEL" : "↻ RETRY LEVEL";
+                        retryShiftButtonText.text = victory 
+                            ? (lm != null ? lm.Get("results.next_level") : "▶ NEXT LEVEL")
+                            : (lm != null ? lm.Get("results.retry_level") : "↻ RETRY LEVEL");
                     }
                 }
             }
@@ -1492,6 +1540,62 @@ namespace TwoLadles.UI
             }
         }
 
+        public void RefreshLocalizedHUD()
+        {
+            if (LocalizationManager.Instance == null) return;
+            var lm = LocalizationManager.Instance;
+
+            if (returnToLobbyButton != null)
+            {
+                var txt = returnToLobbyButton.GetComponentInChildren<Text>();
+                if (txt != null) txt.text = lm.Get("hud.return_lobby");
+            }
+            if (recipeBookButton != null)
+            {
+                var txt = recipeBookButton.GetComponentInChildren<Text>();
+                if (txt != null) txt.text = lm.Get("hud.recipes");
+            }
+            if (audioMuteButtonText != null)
+            {
+                bool isMuted = AudioManager.Instance != null && AudioManager.Instance.isMuted;
+                audioMuteButtonText.text = isMuted ? lm.Get("hud.bgm_off") : lm.Get("hud.bgm_on");
+            }
+            if (touchControlsToggleButton != null)
+            {
+                var txt = touchControlsToggleButton.GetComponentInChildren<Text>();
+                if (txt != null) txt.text = lm.Get("hud.joypad");
+            }
+            if (primaryActionButton != null)
+            {
+                var txt = primaryActionButton.GetComponentInChildren<Text>();
+                if (txt != null) txt.text = lm.Get("hud.prompt_use");
+            }
+            if (secondaryActionButton != null)
+            {
+                var txt = secondaryActionButton.GetComponentInChildren<Text>();
+                if (txt != null) txt.text = lm.Get("hud.prompt_chop");
+            }
+            if (throwActionButton != null)
+            {
+                var txt = throwActionButton.GetComponentInChildren<Text>();
+                if (txt != null) txt.text = lm.Get("hud.prompt_throw");
+            }
+            if (recipeRowTitleTexts != null)
+            {
+                string[] dayKeys = new[] { "day.1", "day.2", "day.3", "day.4", "day.5" };
+                for (int i = 0; i < recipeRowTitleTexts.Length && i < dayKeys.Length; i++)
+                {
+                    if (recipeRowTitleTexts[i] != null)
+                        recipeRowTitleTexts[i].text = lm.Get(dayKeys[i]);
+                }
+            }
+
+            if (ShiftManager.Instance != null && ShiftManager.Instance.activeOrders != null)
+            {
+                RefreshOrders(ShiftManager.Instance.activeOrders);
+            }
+        }
+
         private void OnDestroy()
         {
             if (NetworkManager.Instance != null)
@@ -1511,6 +1615,10 @@ namespace TwoLadles.UI
             if (ProgressionManager.Instance != null)
             {
                 ProgressionManager.Instance.OnProgressionUpdated -= RefreshUpgradeShopDisplay;
+            }
+            if (LocalizationManager.Instance != null)
+            {
+                LocalizationManager.Instance.OnLanguageChanged -= RefreshLocalizedHUD;
             }
         }
     }

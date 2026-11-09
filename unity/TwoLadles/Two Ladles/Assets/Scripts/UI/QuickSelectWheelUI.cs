@@ -152,7 +152,13 @@ namespace TwoLadles.UI
             var item = currentCatalog[index];
             if (centerTitleText != null)
             {
-                centerTitleText.text = item.displayName.ToUpper();
+                string locName = item.displayName;
+                if (LocalizationManager.Instance != null)
+                {
+                    string loc = LocalizationManager.Instance.Get("item." + item.itemId, null);
+                    if (!string.IsNullOrEmpty(loc)) locName = loc;
+                }
+                centerTitleText.text = locName.ToUpper();
                 centerTitleText.color = item.itemColor;
             }
             if (centerIconImage != null)

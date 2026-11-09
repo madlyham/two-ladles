@@ -161,6 +161,7 @@ namespace TwoLadles.AI
         public void LaunchDay(int dayId)
         {
             Debug.Log($"[TwoBotQAManager] Launching Day {dayId} in Automated Two-Bot Mode...");
+            BotLogger.Log("QA", $"=== Launching Day {dayId} of {targetDay} in Automated Two-Bot Mode (TimeScale: {simTimeScale}x) ===");
 
             // Ensure KitchenController exists
             if (KitchenController.Instance == null)
@@ -246,6 +247,7 @@ namespace TwoLadles.AI
             currentReport.totalOrdersFailed += ordersFailed;
 
             Debug.Log($"[TwoBotQAManager] Day {day} Result: {(victory ? "CLEARED" : "FAILED")} | Score: {score} | Orders: {ordersServed}/{ordersServed + ordersFailed} | Rep: {rep:F0}/100");
+            BotLogger.Log("QA", $"Day {day} Completed: {(victory ? "CLEARED" : "FAILED")} | Score: {score} | Orders: {ordersServed}/{ordersServed + ordersFailed} | Rep: {rep:F0}/100");
 
             if (currentDayRunning < targetDay)
             {

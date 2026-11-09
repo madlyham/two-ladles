@@ -105,15 +105,15 @@ namespace TwoLadles.AI
             goalTimer += dt;
             if (workerHireCooldown > 0.0f) workerHireCooldown -= dt;
 
-            // Anti-Stuck Watchdog: Only counts if bot is actively trying to traverse waypoints
-            bool isActivelyNavigating = (currentPath != null && currentWaypointIndex < currentPath.Count);
-            if (isActivelyNavigating && Vector3.Distance(transform.position, lastRecordedPosition) < 0.08f)
+            // Anti-Stuck Watchdog: Catches bot standing still or unable to reach/interact
+            if (Vector3.Distance(transform.position, lastRecordedPosition) < 0.08f)
             {
                 stuckTimer += dt;
-                if (stuckTimer > 2.5f)
+                if (stuckTimer > 3.0f)
                 {
-                    // Snagged while moving: force recalculate path from current spot
+                    BotLogger.LogStuck(characterId, $"Stationary for {stuckTimer:F1}s at {(targetStation != null ? targetStation.stationId : "none")} (Goal: '{currentGoalName}')", transform.position);
                     UpdatePathToTarget();
+                    EvaluateAndSelectGoal();
                     stuckTimer = 0.0f;
                 }
             }
@@ -170,6 +170,8 @@ namespace TwoLadles.AI
             currentPath = KitchenNavGraph.FindPath(transform.position, targetApproachPosition, peerId);
             currentWaypointIndex = 0;
             lastTargetStation = targetStation;
+            int count = currentPath != null ? currentPath.Count : 0;
+            BotLogger.Log(characterId, $"Path to [{targetStation.stationId}] approach ({targetApproachPosition.x:F1}, {targetApproachPosition.z:F1}) has {count} waypoints.");
         }
 
         /// <summary>
@@ -237,7 +239,7 @@ namespace TwoLadles.AI
                 if (pendingHandoff != null)
                 {
                     StationBase passCounter = GetStation("pass_counter");
-                    if (passCounter != null && !recentlyPlacedCooldowns.ContainsKey(passCounter))
+                    if (passCounter != null)
                     {
                         SetTarget(passCounter, $"Retrieve {pendingHandoff.itemId} from Pass Counter");
                         return;
@@ -246,7 +248,7 @@ namespace TwoLadles.AI
 
                 // Check physical pass counter slots if comms missed
                 PassCounter pass = GetStation("pass_counter") as PassCounter;
-                if (pass != null && !recentlyPlacedCooldowns.ContainsKey(pass))
+                if (pass != null)
                 {
                     for (int i = 0; i < pass.slots.Length; i++)
                     {
@@ -295,15 +297,12 @@ namespace TwoLadles.AI
 
         private void SetTarget(StationBase station, string goalName)
         {
-            if (targetStation != station)
+            if (targetStation != station || currentGoalName != goalName)
             {
                 targetStation = station;
                 currentGoalName = goalName;
                 UpdatePathToTarget();
-            }
-            else
-            {
-                currentGoalName = goalName;
+                BotLogger.LogGoal(characterId, currentGoalName, targetStation != null ? targetStation.stationId : "null");
             }
         }
 
@@ -346,7 +345,7 @@ namespace TwoLadles.AI
                     if (playerController.carriedItem == null)
                     {
                         PassCounter pass = GetStation("pass_counter") as PassCounter;
-                        if (pass != null && !recentlyPlacedCooldowns.ContainsKey(pass))
+                        if (pass != null)
                         {
                             for (int i = 0; i < pass.slots.Length; i++)
                             {
@@ -974,6 +973,7 @@ namespace TwoLadles.AI
                 if (prep.heldItem == null && playerController.carriedItem != null)
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
+                    BotLogger.LogAction(characterId, $"Place '{playerController.carriedItem?.itemId}' on Prep", targetStation.stationId, res.ok, res.reason);
                     if (res.ok)
                     {
                         interactCooldown = INTERACTION_DELAY;
@@ -987,7 +987,8 @@ namespace TwoLadles.AI
                         if (chopTimer >= chopCadenceInterval)
                         {
                             chopTimer = 0.0f;
-                            playerController.TryInteractSecondary(targetStation);
+                            var res = playerController.TryInteractSecondary(targetStation);
+                            BotLogger.LogAction(characterId, $"Chop Strike ({prep.strikesCompleted}/{PrepStation.REQUIRED_STRIKES})", targetStation.stationId, res.ok, res.reason);
                         }
                     }
                     else
@@ -999,12 +1000,14 @@ namespace TwoLadles.AI
                             if (chopTimer >= chopCadenceInterval)
                             {
                                 chopTimer = 0.0f;
-                                playerController.TryInteractSecondary(targetStation);
+                                var res = playerController.TryInteractSecondary(targetStation);
+                                BotLogger.LogAction(characterId, "Chop 2nd Cut Strike", targetStation.stationId, res.ok, res.reason);
                             }
                         }
                         else
                         {
                             var res = playerController.TryInteractPrimary(targetStation);
+                            BotLogger.LogAction(characterId, "Pick up Prepped Item", targetStation.stationId, res.ok, res.reason);
                             if (res.ok)
                             {
                                 interactCooldown = INTERACTION_DELAY;
@@ -1020,6 +1023,7 @@ namespace TwoLadles.AI
                     if (playerController.carriedItem == null)
                     {
                         var res = playerController.TryInteractPrimary(targetStation);
+                        BotLogger.LogAction(characterId, $"Pick up Cooked '{cook.heldItem?.itemId}'", targetStation.stationId, res.ok, res.reason);
                         if (res.ok)
                         {
                             interactCooldown = INTERACTION_DELAY;
@@ -1029,6 +1033,7 @@ namespace TwoLadles.AI
                 else if (cook.heldItem == null && playerController.carriedItem != null)
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
+                    BotLogger.LogAction(characterId, $"Place '{playerController.carriedItem?.itemId}' into Cooker", targetStation.stationId, res.ok, res.reason);
                     if (res.ok)
                     {
                         recentlyPlacedCooldowns[targetStation] = PLACED_ITEM_COOLDOWN;
@@ -1038,6 +1043,7 @@ namespace TwoLadles.AI
                 else if (cook.heldItem != null && playerController.carriedItem != null)
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
+                    BotLogger.LogAction(characterId, $"Add '{playerController.carriedItem?.itemId}' to Cooker", targetStation.stationId, res.ok, res.reason);
                     if (res.ok)
                     {
                         interactCooldown = INTERACTION_DELAY;
@@ -1050,9 +1056,9 @@ namespace TwoLadles.AI
                 {
                     string passedItemId = playerController.carriedItem.itemId;
                     var res = playerController.TryInteractPrimary(targetStation);
+                    BotLogger.LogAction(characterId, $"Pass '{passedItemId}'", targetStation.stationId, res.ok, res.reason);
                     if (res.ok)
                     {
-                        recentlyPlacedCooldowns[targetStation] = PLACED_ITEM_COOLDOWN;
                         interactCooldown = INTERACTION_DELAY;
                         for (int s = 0; s < pass.slots.Length; s++)
                         {
@@ -1082,6 +1088,7 @@ namespace TwoLadles.AI
                     {
                         int slotToClaim = handoff != null ? handoff.slotIndex : -1;
                         var res = playerController.TryInteractPrimary(targetStation);
+                        BotLogger.LogAction(characterId, "Retrieve from Pass Counter", targetStation.stationId, res.ok, res.reason);
                         if (res.ok)
                         {
                             interactCooldown = INTERACTION_DELAY;
@@ -1098,6 +1105,7 @@ namespace TwoLadles.AI
                 if (playerController.carriedItem != null)
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
+                    BotLogger.LogAction(characterId, $"Place '{playerController.carriedItem?.itemId}' on Table", targetStation.stationId, res.ok, res.reason);
                     if (res.ok)
                     {
                         recentlyPlacedCooldowns[targetStation] = PLACED_ITEM_COOLDOWN;
@@ -1109,6 +1117,7 @@ namespace TwoLadles.AI
                     if (!recentlyPlacedCooldowns.ContainsKey(targetStation))
                     {
                         var res = playerController.TryInteractPrimary(targetStation);
+                        BotLogger.LogAction(characterId, "Pick up from Table", targetStation.stationId, res.ok, res.reason);
                         if (res.ok)
                         {
                             interactCooldown = INTERACTION_DELAY;
@@ -1120,7 +1129,8 @@ namespace TwoLadles.AI
             {
                 if (playerController.carriedItem == null && !string.IsNullOrEmpty(desiredItemId))
                 {
-                    crate.DispenseItemDirect(ref playerController.carriedItem, desiredItemId);
+                    var res = crate.DispenseItemDirect(ref playerController.carriedItem, desiredItemId);
+                    BotLogger.LogAction(characterId, $"Dispense '{desiredItemId}'", crate.stationId, res.ok, res.reason);
                     playerController.RefreshVisuals();
                     desiredItemId = null;
                     interactCooldown = INTERACTION_DELAY;
@@ -1129,6 +1139,7 @@ namespace TwoLadles.AI
             else
             {
                 var res = playerController.TryInteractPrimary(targetStation);
+                BotLogger.LogAction(characterId, $"Interact [{targetStation.stationId}]", targetStation.stationId, res.ok, res.reason);
                 if (res.ok)
                 {
                     interactCooldown = INTERACTION_DELAY;

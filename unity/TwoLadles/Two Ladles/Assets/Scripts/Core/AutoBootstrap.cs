@@ -80,6 +80,14 @@ namespace TwoLadles.Core
                 lobby.AutoBuildUI();
                 lobbyObj.SetActive(true);
             }
+
+            // 4. Create BotDebugHUD for Real-time AI Telemetry and Logs
+            if (Object.FindObjectOfType<TwoLadles.AI.BotDebugHUD>() == null)
+            {
+                GameObject hudDebugObj = new GameObject("BotDebugHUD");
+                Object.DontDestroyOnLoad(hudDebugObj);
+                hudDebugObj.AddComponent<TwoLadles.AI.BotDebugHUD>();
+            }
         }
     }
 }

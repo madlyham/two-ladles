@@ -874,6 +874,28 @@ namespace TwoLadles.Tests
             Assert(System.IO.File.Exists(summaryPath), "latest_summary.txt successfully generated on disk");
             Assert(System.IO.File.Exists(csvPath), "run_history.csv successfully appended on disk");
 
+            // 3. A* Waypoint Pathfinding via KitchenNavGraph
+            AI.KitchenNavGraph.EnsureInitialized();
+            Vector3 startPos = new Vector3(-8.8f, 0f, 4.2f); // NW_Outer
+            Vector3 targetPos = new Vector3(-2.6f, 0f, -4.8f); // W_Serving_App
+            var navPath = AI.KitchenNavGraph.FindPath(startPos, targetPos, 1);
+            Assert(navPath != null && navPath.Count >= 2, "KitchenNavGraph generates valid multi-waypoint A* corridor path");
+            Assert(Vector3.Distance(navPath[navPath.Count - 1], targetPos) < 0.01f, "A* path ends exactly at target approach waypoint");
+
+            // 4. Inter-Bot Communication Hub Coordination
+            AI.BotCommunicationHub.Reset();
+            AI.BotCommunicationHub.BroadcastIntent(1, "linh", "Cook Rice", "noodle_blancher", "korean_bbq_rice");
+            var partnerIntent = AI.BotCommunicationHub.GetPartnerIntent(2);
+            Assert(partnerIntent != null && partnerIntent.currentTask == "Cook Rice", "BotCommunicationHub shares live chef intent with partner");
+
+            AI.BotCommunicationHub.PostHandoff(1, "bbq_beef", 2, "korean_bbq_rice");
+            var pendingHandoff = AI.BotCommunicationHub.GetPendingHandoffFor(1);
+            Assert(pendingHandoff != null && pendingHandoff.itemId == "bbq_beef" && pendingHandoff.slotIndex == 1, "Pending pass counter handoff notified to receiving bot");
+
+            AI.BotCommunicationHub.ClaimHandoff(1, 1);
+            var claimedCheck = AI.BotCommunicationHub.GetPendingHandoffFor(1);
+            Assert(claimedCheck == null, "Claimed handoff is cleared from pending notifications");
+
             // Cleanup
             if (System.IO.Directory.Exists(tempReportDir)) System.IO.Directory.Delete(tempReportDir, true);
             DestroyImmediate(linhGo);

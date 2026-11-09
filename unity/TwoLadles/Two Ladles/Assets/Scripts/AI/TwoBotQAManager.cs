@@ -149,8 +149,10 @@ namespace TwoLadles.AI
 
             if (ShiftManager.Instance != null)
             {
+                ShiftManager.Instance.isAutoplayQAMode = true;
                 ShiftManager.Instance.OnShiftEnded += HandleShiftEnded;
             }
+            BotCommunicationHub.Reset();
 
             currentDayRunning = startDay;
             LaunchDay(currentDayRunning);
@@ -263,8 +265,10 @@ namespace TwoLadles.AI
 
             if (ShiftManager.Instance != null)
             {
+                ShiftManager.Instance.isAutoplayQAMode = false;
                 ShiftManager.Instance.OnShiftEnded -= HandleShiftEnded;
             }
+            BotCommunicationHub.Reset();
 
             int totalOrders = currentReport.totalOrdersServed + currentReport.totalOrdersFailed;
             currentReport.overallSuccessRate = totalOrders > 0 ? (float)currentReport.totalOrdersServed / totalOrders : 0.0f;

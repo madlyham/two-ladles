@@ -65,6 +65,7 @@ namespace TwoLadles.Core
         public bool isSoloMode = false;
         public int humanChefPeerId = 1;
         public BotDifficulty botDifficulty = BotDifficulty.Standard;
+        public bool isAutoplayQAMode = false;
 
         public event Action<float, bool, float> OnFlowUpdated;
         public event Action<bool> OnRushRhythmChanged;
@@ -381,7 +382,14 @@ namespace TwoLadles.Core
 
             if (KitchenController.Instance != null)
             {
-                KitchenController.Instance.ConfigureSoloAndAIMode(isSoloMode, humanChefPeerId, botDifficulty);
+                if (isAutoplayQAMode)
+                {
+                    KitchenController.Instance.ConfigureTwoBotsQA();
+                }
+                else
+                {
+                    KitchenController.Instance.ConfigureSoloAndAIMode(isSoloMode, humanChefPeerId, botDifficulty);
+                }
             }
 
             totalScore = 0;

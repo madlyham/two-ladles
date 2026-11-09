@@ -34,6 +34,23 @@ namespace TwoLadles.Tests
                 EditorApplication.Exit(1);
             }
         }
+
+        [MenuItem("Two Ladles/🤖 Run Two-Bot QA Test")]
+        public static void RunTwoBotQATest()
+        {
+            if (!Application.isPlaying)
+            {
+                EditorApplication.isPlaying = true;
+            }
+
+            var qa = UnityEngine.Object.FindObjectOfType<TwoLadles.AI.TwoBotQAManager>();
+            if (qa == null)
+            {
+                var go = new GameObject("TwoBotQAManager");
+                qa = go.AddComponent<TwoLadles.AI.TwoBotQAManager>();
+            }
+            qa.StartAutoplayRun(1, 5, UnityEngine.Random.Range(10, 9999), 2.0f);
+        }
     }
 }
 #endif

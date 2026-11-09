@@ -107,8 +107,22 @@ namespace TwoLadles.UI
         private Dictionary<string, Text> shopBuyLabels = new Dictionary<string, Text>();
         private Dictionary<string, Text> shopLevelLabels = new Dictionary<string, Text>();
 
+        [Header("Two-Bot QA Testing Report Modal")]
+        public GameObject qaReportModal;
+        public Text qaReportTitleText;
+        public Text qaReportDetailsText;
+        public Button qaReportCloseButton;
+        public Button qaReportRerunButton;
+
+        [Header("QA Mode Active Indicator Banner")]
+        public GameObject qaModeBannerObj;
+        public Text qaModeBannerText;
+
+        public static KitchenHUD Instance { get; private set; }
+
         private void Awake()
         {
+            Instance = this;
             if (shiftTimerText == null)
             {
                 AutoBuildUI();
@@ -619,6 +633,20 @@ namespace TwoLadles.UI
             feedbackBannerText = CreateLabel("FeedbackBanner", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -102f), new Vector2(460f, 28f), "", 15, Color.yellow, TextAnchor.MiddleCenter);
             feedbackBannerText.gameObject.SetActive(false);
 
+            // QA Mode Active Indicator Banner (Y = -44f, directly below top bar)
+            qaModeBannerObj = new GameObject("QAModeBanner", typeof(RectTransform));
+            qaModeBannerObj.transform.SetParent(root, false);
+            var qbRect = qaModeBannerObj.GetComponent<RectTransform>();
+            qbRect.anchorMin = new Vector2(0.5f, 1f);
+            qbRect.anchorMax = new Vector2(0.5f, 1f);
+            qbRect.pivot = new Vector2(0.5f, 1f);
+            qbRect.anchoredPosition = new Vector2(0f, -44f);
+            qbRect.sizeDelta = new Vector2(460f, 22f);
+            var qbImg = qaModeBannerObj.AddComponent<Image>();
+            qbImg.color = new Color(0.10f, 0.35f, 0.50f, 0.92f);
+            qaModeBannerText = CreateLabel("QABannerText", qaModeBannerObj.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, "🤖 TWO-BOT QA PLAYTEST ACTIVE", 11, new Color(0.9f, 0.98f, 1.0f), TextAnchor.MiddleCenter);
+            qaModeBannerObj.SetActive(false);
+
             // Quick-Select Radial Ingredient Wheel
             if (GetComponentInChildren<QuickSelectWheelUI>() == null)
             {
@@ -641,6 +669,11 @@ namespace TwoLadles.UI
             // 8. BETWEEN-LEVEL UPGRADE SHOP MODAL
             // =========================================================================
             BuildUpgradeShopModal(root);
+
+            // =========================================================================
+            // 9. TWO-BOT QA REPORT MODAL
+            // =========================================================================
+            BuildQAReportModal(root);
         }
 
         private void BuildRecipeBookModal(Transform root)
@@ -825,6 +858,91 @@ namespace TwoLadles.UI
             shopCloseButton = CreateButton("ShopCloseBtn", upgradeShopModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(115f, 16f), new Vector2(210f, 36f), "LEVEL SELECT / CLOSE", new Color(0.26f, 0.38f, 0.54f, 1f), out _, 12);
 
             upgradeShopModal.SetActive(false);
+        }
+
+        private void BuildQAReportModal(Transform root)
+        {
+            qaReportModal = new GameObject("QAReportModal", typeof(RectTransform));
+            qaReportModal.transform.SetParent(root, false);
+            var rect = qaReportModal.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(580f, 380f);
+            var img = qaReportModal.AddComponent<Image>();
+            img.color = new Color(0.06f, 0.08f, 0.13f, 0.98f);
+
+            qaReportTitleText = CreateLabel("QATitle", qaReportModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(540f, 32f), "🤖 TWO-BOT QA AUTOPLAY REPORT", 17, new Color(0.2f, 0.9f, 1.0f), TextAnchor.MiddleCenter);
+
+            qaReportDetailsText = CreateLabel("QADetails", qaReportModal.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 10f), new Vector2(540f, 240f), "Running simulation...", 12, Color.white, TextAnchor.MiddleLeft);
+
+            qaReportCloseButton = CreateButton("QACloseBtn", qaReportModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-120f, 24f), new Vector2(210f, 38f), "RETURN TO LOBBY", new Color(0.24f, 0.40f, 0.58f, 1f), out _, 12);
+            qaReportCloseButton.onClick.AddListener(() =>
+            {
+                qaReportModal.SetActive(false);
+                var lobby = FindObjectOfType<LobbyUI>(true);
+                if (lobby != null)
+                {
+                    lobby.gameObject.SetActive(true);
+                }
+            });
+
+            qaReportRerunButton = CreateButton("QARerunBtn", qaReportModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(120f, 24f), new Vector2(210f, 38f), "▶ RERUN 2-BOT TEST", new Color(0.18f, 0.58f, 0.42f, 1f), out _, 12);
+            qaReportRerunButton.onClick.AddListener(() =>
+            {
+                qaReportModal.SetActive(false);
+                if (TwoLadles.AI.TwoBotQAManager.Instance != null)
+                {
+                    TwoLadles.AI.TwoBotQAManager.Instance.StartAutoplayRun(1, 5, UnityEngine.Random.Range(100, 9999), 2.0f);
+                }
+            });
+
+            qaReportModal.SetActive(false);
+        }
+
+        public void ShowQAReport(TwoLadles.AI.QARunReport report)
+        {
+            if (qaReportModal == null) return;
+            qaReportModal.SetActive(true);
+
+            if (qaModeBannerObj != null)
+                qaModeBannerObj.SetActive(false);
+
+            if (qaReportTitleText != null)
+            {
+                bool allCleared = report.daysCleared == report.daysAttempted && report.daysCleared > 0;
+                qaReportTitleText.text = allCleared ? "★ 2-BOT QA REPORT: ALL DAYS CLEARED! ★" : "⚠ 2-BOT QA REPORT: TEST INCOMPLETE ⚠";
+                qaReportTitleText.color = allCleared ? new Color(0.3f, 1.0f, 0.55f) : new Color(1.0f, 0.45f, 0.45f);
+            }
+
+            if (qaReportDetailsText != null)
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"Timestamp:  {report.timestamp}   |   Seed: #{report.seed}");
+                sb.AppendLine($"Result:     {report.daysCleared}/{report.daysAttempted} Days Cleared   |   Total Score: {report.totalScore} pts");
+                sb.AppendLine($"Orders:     {report.totalOrdersServed} served / {report.totalOrdersFailed} failed ({report.overallSuccessRate * 100f:F1}% accuracy)\n");
+                sb.AppendLine("DAY-BY-DAY PERFORMANCE:");
+                foreach (var d in report.dayResults)
+                {
+                    string tag = d.cleared ? "[CLEARED]" : "[FAILED] ";
+                    sb.AppendLine($"  • Day {d.day}: {tag} Score: {d.score,4} pts | {d.ordersServed} served | Rep: {d.remainingReputation:F0}/100 | Time: {d.durationSeconds:F1}s");
+                }
+                sb.AppendLine("\nAudit logs saved to: qa_reports/latest_results.json & latest_summary.txt");
+                qaReportDetailsText.text = sb.ToString();
+            }
+        }
+
+        public void SetQAModeBanner(bool active, int day, int totalDays, float speed)
+        {
+            if (qaModeBannerObj != null)
+            {
+                qaModeBannerObj.SetActive(active);
+                if (qaModeBannerText != null && active)
+                {
+                    qaModeBannerText.text = $"🤖 TWO-BOT QA TEST MODE — DAY {day} OF {totalDays} — {speed:F1}x SPEED";
+                }
+            }
         }
 
         private void SetupDraggableJoystick(GameObject joyPadObj)

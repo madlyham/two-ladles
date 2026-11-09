@@ -49,6 +49,7 @@ namespace TwoLadles.UI
         public Toggle endlessToggle;
         public Button readyButton;
         public Button startShiftButton;
+        public Button twoBotTestButton;
         public Button playTutorialButton;
         public Button endlessModeButton;
         public Button openShopButton;
@@ -57,6 +58,7 @@ namespace TwoLadles.UI
         public Image[] levelSelectBgs = new Image[5];
         public Text readyButtonText;
         public Text startShiftButtonText;
+        public Text twoBotTestButtonText;
         public Text playersListText;
         public Text controlsGuideText;
 
@@ -71,11 +73,14 @@ namespace TwoLadles.UI
         public Button toggleMenuButton;
         public Text toggleMenuButtonText;
 
+        public static LobbyUI Instance { get; private set; }
+
         private int selectedLevelId = 1;
         private bool isEndlessSelected = false;
 
         private void Awake()
         {
+            Instance = this;
             if (hostButton == null)
             {
                 AutoBuildUI();
@@ -287,9 +292,10 @@ namespace TwoLadles.UI
             endlessModeButton = CreateButton("EndlessBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -288f), new Vector2(205f, 36f), "∞ ENDLESS MODE", new Color(0.48f, 0.25f, 0.58f, 1f), out endlessModeButtonLabel, 12);
             openShopButton = CreateButton("OpenShopBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(225f, -288f), new Vector2(205f, 36f), "★ UPGRADE SHOP ★", new Color(0.75f, 0.52f, 0.12f, 1f), out openShopButtonLabel, 12);
 
-            // Primary Launch Row: Ready & Start Selected Level
-            readyButton = CreateButton("ReadyBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-155f, -342f), new Vector2(220f, 42f), "READY: YES", new Color(0.25f, 0.45f, 0.68f, 1f), out readyButtonText, 13);
-            startShiftButton = CreateButton("StartShiftBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(125f, -342f), new Vector2(310f, 42f), "▶ START LEVEL 1 (3 WAVES)", new Color(0.88f, 0.42f, 0.14f, 1f), out startShiftButtonText, 14);
+            // Primary Launch Row: Ready, Start Selected Level, and 2-Bot QA Testing Mode
+            readyButton = CreateButton("ReadyBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-225f, -342f), new Vector2(145f, 42f), "READY: YES", new Color(0.25f, 0.45f, 0.68f, 1f), out readyButtonText, 12);
+            startShiftButton = CreateButton("StartShiftBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-25f, -342f), new Vector2(230f, 42f), "▶ START LEVEL 1 (3 WAVES)", new Color(0.88f, 0.42f, 0.14f, 1f), out startShiftButtonText, 13);
+            twoBotTestButton = CreateButton("TwoBotTestBtn", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(185f, -342f), new Vector2(170f, 42f), "🤖 2-BOT TEST RUN", new Color(0.18f, 0.50f, 0.64f, 1f), out twoBotTestButtonText, 12);
 
             playersListText = CreateLabel("PlayersList", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -396f), new Vector2(680f, 20f), "Chefs: Linh (West) & Jiwon (East)", 11, new Color(0.8f, 0.85f, 0.9f), TextAnchor.MiddleCenter);
             controlsGuideText = CreateLabel("ControlsGuide", mRoot, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -420f), new Vector2(680f, 20f), "[WASD] Move  •  [TAB] Ingredient Wheel  •  [E] Use  •  [F] Chop/Wash  •  [C] Switch Chef  •  [R] Recipe Book", 11, new Color(0.70f, 0.85f, 0.98f), TextAnchor.MiddleCenter);
@@ -332,6 +338,7 @@ namespace TwoLadles.UI
             if (endlessModeButton != null) endlessModeButton.onClick.AddListener(OnSelectEndlessClicked);
             if (openShopButton != null) openShopButton.onClick.AddListener(OnOpenShopClicked);
             if (startShiftButton != null) startShiftButton.onClick.AddListener(OnStartShiftClicked);
+            if (twoBotTestButton != null) twoBotTestButton.onClick.AddListener(OnTwoBotTestClicked);
             if (buyKnivesButton != null) buyKnivesButton.onClick.AddListener(() => OnBuyUpgrade("sharp_santoku_knives"));
             if (buyStockpotButton != null) buyStockpotButton.onClick.AddListener(() => OnBuyUpgrade("insulated_broth_pot"));
 
@@ -503,6 +510,19 @@ namespace TwoLadles.UI
             gameObject.SetActive(false);
         }
 
+        private void OnTwoBotTestClicked()
+        {
+            if (TwoLadles.AI.TwoBotQAManager.Instance == null)
+            {
+                var qaObj = new GameObject("TwoBotQAManager");
+                qaObj.AddComponent<TwoLadles.AI.TwoBotQAManager>();
+            }
+
+            int endLvl = isEndlessSelected ? 1 : 5;
+            TwoLadles.AI.TwoBotQAManager.Instance.StartAutoplayRun(1, endLvl, UnityEngine.Random.Range(10, 9999), 2.0f);
+            gameObject.SetActive(false);
+        }
+
         private void OnBuyUpgrade(string upgradeId)
         {
             if (ProgressionManager.Instance != null)
@@ -587,6 +607,7 @@ namespace TwoLadles.UI
             if (playTutorialButtonLabel != null) playTutorialButtonLabel.text = lm.Get("menu.play_tutorial");
             if (endlessModeButtonLabel != null) endlessModeButtonLabel.text = lm.Get("menu.endless_mode");
             if (openShopButtonLabel != null) openShopButtonLabel.text = lm.Get("menu.upgrade_shop");
+            if (twoBotTestButtonText != null) twoBotTestButtonText.text = lm.Get("menu.two_bot_test");
             if (controlsGuideText != null) controlsGuideText.text = lm.Get("menu.controls_guide");
             if (toggleMenuButtonText != null)
             {

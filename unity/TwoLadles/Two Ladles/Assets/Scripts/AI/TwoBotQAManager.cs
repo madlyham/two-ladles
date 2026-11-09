@@ -177,6 +177,12 @@ namespace TwoLadles.AI
             // Configure BOTH Linh (Peer 1) and Jiwon (Peer 2) with active BotControllers
             ConfigureTwoBots();
 
+            // Show Live QA Banner on HUD
+            if (KitchenHUD.Instance != null)
+            {
+                KitchenHUD.Instance.SetQAModeBanner(true, dayId, targetDay, simTimeScale);
+            }
+
             // Start the shift
             if (ShiftManager.Instance != null)
             {
@@ -264,6 +270,13 @@ namespace TwoLadles.AI
             currentReport.overallSuccessRate = totalOrders > 0 ? (float)currentReport.totalOrdersServed / totalOrders : 0.0f;
 
             SaveReportsToDisk(currentReport, GetReportsDirectory());
+
+            // Report results back to user on-screen
+            if (KitchenHUD.Instance != null)
+            {
+                KitchenHUD.Instance.SetQAModeBanner(false, 0, 0, 1.0f);
+                KitchenHUD.Instance.ShowQAReport(currentReport);
+            }
 
             Debug.Log("============================================================");
             Debug.Log($"  TWO-BOT QA AUTOPLAY FINISHED: {currentReport.daysCleared}/{currentReport.daysAttempted} Days Cleared");

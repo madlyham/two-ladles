@@ -106,7 +106,11 @@ namespace TwoLadles.AI
             if (workerHireCooldown > 0.0f) workerHireCooldown -= dt;
 
             // Anti-Stuck Watchdog: Catches bot standing still or unable to reach/interact
-            if (Vector3.Distance(transform.position, lastRecordedPosition) < 0.08f)
+            // Check stationary duration (excluding intentional standby or cooking monitoring)
+            bool isIntentionalWait = !string.IsNullOrEmpty(currentGoalName) && 
+                (currentGoalName.StartsWith("Standby") || currentGoalName.StartsWith("Monitor"));
+
+            if (!isIntentionalWait && Vector3.Distance(transform.position, lastRecordedPosition) < 0.08f)
             {
                 stuckTimer += dt;
                 if (stuckTimer > 3.0f)
@@ -204,9 +208,25 @@ namespace TwoLadles.AI
                         SetTarget(dropCounter, "Drop Item for Pan Rescue");
                         return;
                     }
+                    PassCounter passCounter = GetStation("pass_counter") as PassCounter;
+                    if (passCounter != null)
+                    {
+                        for (int s = 0; s < passCounter.slots.Length; s++)
+                        {
+                            if (passCounter.slots[s] == null || passCounter.slots[s].item == null)
+                            {
+                                SetTarget(passCounter, "Pass Item to Free Hands for Pan Rescue");
+                                return;
+                            }
+                        }
+                    }
+                    // Cannot rescue pan directly while hands are full and no drop counter is available.
                 }
-                SetTarget(urgentPan, $"Rescue Pan: {urgentPan.stationId}");
-                return;
+                else
+                {
+                    SetTarget(urgentPan, $"Rescue Pan: {urgentPan.stationId}");
+                    return;
+                }
             }
 
             // 2. DELIVER / PASS COMPLETED DISH (Score: 260)
@@ -344,7 +364,7 @@ namespace TwoLadles.AI
                 CrateStation shelf = GetStation("shelf_east") as CrateStation;
                 if (wok == null) return;
 
-                // 1. Holding Completed Dish
+                // 1. Holding Completed Dish -> Pass to Linh
                 if (playerController.carriedItem != null && playerController.carriedItem.itemId == "tteokbokki")
                 {
                     SetTarget(pass, "Pass Completed Tteokbokki to Linh");
@@ -359,9 +379,20 @@ namespace TwoLadles.AI
                         SetTarget(wok, "Place Rice Cakes in Pan");
                         return;
                     }
-                    else if (counter != null && counter.heldItem == null)
+
+                    // If wok is busy, check if a table has Gochujang to assemble right on table!
+                    CounterStation tableWithSauce = FindItemOnCounters("gochujang");
+                    if (tableWithSauce != null)
                     {
-                        SetTarget(counter, "Place Rice Cakes on Table");
+                        SetTarget(tableWithSauce, "Assemble Tteokbokki on Table");
+                        return;
+                    }
+
+                    // Otherwise place on an empty table
+                    StationBase dropCounter = FindNearestHoldingCounter();
+                    if (dropCounter != null)
+                    {
+                        SetTarget(dropCounter, "Place Rice Cakes on Table");
                         return;
                     }
                 }
@@ -369,18 +400,30 @@ namespace TwoLadles.AI
                 // 3. Holding Gochujang
                 if (playerController.carriedItem != null && playerController.carriedItem.itemId == "gochujang")
                 {
-                    // If wok has rice cakes (raw, cooking, or already simmered), add gochujang directly to wok!
+                    // Check table first if table has rice cakes waiting for assembly!
+                    CounterStation tableWithRiceCakes = FindItemOnCounters("tteok_portioned") ?? 
+                                                         FindItemOnCounters("tteok_raw") ?? 
+                                                         FindItemOnCounters("tteokbokki_simmered") ?? 
+                                                         FindItemOnCounters("tteok_cooked");
+                    if (tableWithRiceCakes != null)
+                    {
+                        SetTarget(tableWithRiceCakes, "Assemble Tteokbokki on Table");
+                        return;
+                    }
+
+                    // If wok has rice cakes (raw or simmered, but NOT already tteokbokki_raw or tteokbokki!), add gochujang directly to wok!
                     if (wok.heldItem != null && (wok.heldItem.itemId == "tteok_portioned" || wok.heldItem.itemId == "tteok_raw" ||
-                        wok.heldItem.itemId == "tteokbokki_simmered" || wok.heldItem.itemId == "tteok_cooked" || wok.heldItem.itemId == "tteokbokki_raw"))
+                        wok.heldItem.itemId == "tteokbokki_simmered" || wok.heldItem.itemId == "tteok_cooked"))
                     {
                         SetTarget(wok, "Add Gochujang to Wok");
                         return;
                     }
-                    // If table has rice cakes, assemble on table!
-                    if (counter != null && counter.heldItem != null && (counter.heldItem.itemId == "tteok_portioned" || counter.heldItem.itemId == "tteok_raw" ||
-                        counter.heldItem.itemId == "tteokbokki_simmered" || counter.heldItem.itemId == "tteok_cooked"))
+
+                    // Otherwise place Gochujang on counter so hands are free
+                    StationBase dropCounter = FindNearestHoldingCounter();
+                    if (dropCounter != null)
                     {
-                        SetTarget(counter, "Assemble Tteokbokki on Table");
+                        SetTarget(dropCounter, "Place Gochujang on Table");
                         return;
                     }
                 }
@@ -388,9 +431,17 @@ namespace TwoLadles.AI
                 // 4. Holding Simmered/Cooked Rice Cakes (e.g. taken out of pan)
                 if (playerController.carriedItem != null && (playerController.carriedItem.itemId == "tteokbokki_simmered" || playerController.carriedItem.itemId == "tteok_cooked"))
                 {
-                    if (counter != null && counter.heldItem == null)
+                    CounterStation tableWithSauce = FindItemOnCounters("gochujang");
+                    if (tableWithSauce != null)
                     {
-                        SetTarget(counter, "Place Simmered Toboki on Table");
+                        SetTarget(tableWithSauce, "Assemble Tteokbokki on Table");
+                        return;
+                    }
+
+                    StationBase dropCounter = FindNearestHoldingCounter();
+                    if (dropCounter != null)
+                    {
+                        SetTarget(dropCounter, "Place Simmered Toboki on Table");
                         return;
                     }
                 }
@@ -403,23 +454,33 @@ namespace TwoLadles.AI
                         SetTarget(wok, "Cook Tteokbokki in Wok");
                         return;
                     }
+                    else
+                    {
+                        StationBase dropCounter = FindNearestHoldingCounter();
+                        if (dropCounter != null)
+                        {
+                            SetTarget(dropCounter, "Place Raw Tteokbokki on Table");
+                            return;
+                        }
+                    }
                 }
 
                 // 6. Empty Hands (playerController.carriedItem == null)
                 if (playerController.carriedItem == null)
                 {
-                    // Check if table has completed Tteokbokki
-                    if (counter != null && counter.heldItem != null && counter.heldItem.itemId == "tteokbokki")
+                    // Check if table has completed Tteokbokki -> pick up!
+                    CounterStation tableWithDish = FindItemOnCounters("tteokbokki");
+                    if (tableWithDish != null)
                     {
-                        SetTarget(counter, "Pick Up Completed Tteokbokki");
+                        SetTarget(tableWithDish, "Pick Up Completed Tteokbokki");
                         return;
                     }
 
-                    // Check if table has simmered rice cakes waiting for Gochujang
-                    if (counter != null && counter.heldItem != null && (counter.heldItem.itemId == "tteokbokki_simmered" || counter.heldItem.itemId == "tteok_portioned" || counter.heldItem.itemId == "tteok_cooked"))
+                    // Check if table has raw prepped Tteokbokki and wok is free -> pick up for wok!
+                    CounterStation tableWithRaw = FindItemOnCounters("tteokbokki_raw");
+                    if (tableWithRaw != null && wok.heldItem == null)
                     {
-                        desiredItemId = "gochujang";
-                        SetTarget(shelf, "Get Gochujang for Table Assembly");
+                        SetTarget(tableWithRaw, "Pick Up Raw Tteokbokki for Wok");
                         return;
                     }
 
@@ -433,9 +494,25 @@ namespace TwoLadles.AI
                             return;
                         }
 
-                        // Case B: Raw Tteokbokki actively cooking in wok -> monitor!
+                        // Case B: Raw Tteokbokki actively cooking in wok
                         if (wok.heldItem.itemId == "tteokbokki_raw")
                         {
+                            // If a table has rice cakes waiting for sauce, assemble on table while wok simmers!
+                            CounterStation tableWaitingSauce = FindItemOnCounters("tteok_portioned") ?? FindItemOnCounters("tteok_raw") ?? FindItemOnCounters("tteokbokki_simmered") ?? FindItemOnCounters("tteok_cooked");
+                            if (tableWaitingSauce != null)
+                            {
+                                CounterStation sauceOnTable = FindItemOnCounters("gochujang");
+                                if (sauceOnTable != null)
+                                {
+                                    SetTarget(sauceOnTable, "Pick Up Gochujang from Table");
+                                    return;
+                                }
+                                desiredItemId = "gochujang";
+                                SetTarget(shelf, "Get Gochujang for Table Assembly");
+                                return;
+                            }
+
+                            // Otherwise monitor the cooking wok!
                             SetTarget(wok, "Monitor Tteokbokki Simmering in Wok");
                             return;
                         }
@@ -444,10 +521,31 @@ namespace TwoLadles.AI
                         if (wok.heldItem.itemId == "tteok_portioned" || wok.heldItem.itemId == "tteok_raw" ||
                             wok.heldItem.itemId == "tteokbokki_simmered" || wok.heldItem.itemId == "tteok_cooked")
                         {
+                            CounterStation sauceOnTable = FindItemOnCounters("gochujang");
+                            if (sauceOnTable != null)
+                            {
+                                SetTarget(sauceOnTable, "Pick Up Gochujang from Table");
+                                return;
+                            }
                             desiredItemId = "gochujang";
                             SetTarget(shelf, "Get Gochujang for Wok");
                             return;
                         }
+                    }
+
+                    // Check if table has simmered rice cakes waiting for Gochujang
+                    CounterStation tableWithRice = FindItemOnCounters("tteok_portioned") ?? FindItemOnCounters("tteok_raw") ?? FindItemOnCounters("tteokbokki_simmered") ?? FindItemOnCounters("tteok_cooked");
+                    if (tableWithRice != null)
+                    {
+                        CounterStation sauceOnTable = FindItemOnCounters("gochujang");
+                        if (sauceOnTable != null)
+                        {
+                            SetTarget(sauceOnTable, "Pick Up Gochujang from Table");
+                            return;
+                        }
+                        desiredItemId = "gochujang";
+                        SetTarget(shelf, "Get Gochujang for Table Assembly");
+                        return;
                     }
 
                     // Case D: Wok is empty. Check Pass Counter for rice cakes from Linh:
@@ -463,6 +561,14 @@ namespace TwoLadles.AI
                                     return;
                                 }
                             }
+                        }
+
+                        // Check if a table has rice cakes:
+                        CounterStation tableWithCakes = FindItemOnCounters("tteok_portioned") ?? FindItemOnCounters("tteok_raw");
+                        if (tableWithCakes != null)
+                        {
+                            SetTarget(tableWithCakes, "Pick Up Rice Cakes from Table");
+                            return;
                         }
 
                         // Otherwise get rice cakes from fridge
@@ -481,7 +587,8 @@ namespace TwoLadles.AI
                     PassCounter pass = GetStation("pass_counter") as PassCounter;
                     bool passHasItem = pass != null && pass.slots[0].item != null;
 
-                    if (eastWok != null && eastWok.heldItem == null && !passHasItem)
+                    CounterStation eastRice = FindItemOnCounters("tteok_portioned") ?? FindItemOnCounters("tteok_raw") ?? FindItemOnCounters("tteokbokki_raw");
+                    if (!passHasItem && eastRice == null && eastWok != null && eastWok.heldItem == null)
                     {
                         desiredItemId = "tteok_portioned";
                         SetTarget(GetStation("shelf_west"), "Get Rice Cakes to Pass to Jiwon");
@@ -1049,10 +1156,7 @@ namespace TwoLadles.AI
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
                     BotLogger.LogAction(characterId, $"Place '{playerController.carriedItem?.itemId}' on Prep", targetStation.stationId, res.ok, res.reason);
-                    if (res.ok)
-                    {
-                        interactCooldown = INTERACTION_DELAY;
-                    }
+                    interactCooldown = INTERACTION_DELAY;
                 }
                 else if (prep.heldItem != null)
                 {
@@ -1083,10 +1187,7 @@ namespace TwoLadles.AI
                         {
                             var res = playerController.TryInteractPrimary(targetStation);
                             BotLogger.LogAction(characterId, "Pick up Prepped Item", targetStation.stationId, res.ok, res.reason);
-                            if (res.ok)
-                            {
-                                interactCooldown = INTERACTION_DELAY;
-                            }
+                            interactCooldown = INTERACTION_DELAY;
                         }
                     }
                 }
@@ -1099,30 +1200,28 @@ namespace TwoLadles.AI
                     {
                         var res = playerController.TryInteractPrimary(targetStation);
                         BotLogger.LogAction(characterId, $"Pick up Cooked '{cook.heldItem?.itemId}'", targetStation.stationId, res.ok, res.reason);
-                        if (res.ok)
-                        {
-                            interactCooldown = INTERACTION_DELAY;
-                        }
+                        interactCooldown = INTERACTION_DELAY;
+                    }
+                    else
+                    {
+                        interactCooldown = INTERACTION_DELAY;
                     }
                 }
                 else if (cook.heldItem == null && playerController.carriedItem != null)
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
                     BotLogger.LogAction(characterId, $"Place '{playerController.carriedItem?.itemId}' into Cooker", targetStation.stationId, res.ok, res.reason);
+                    interactCooldown = INTERACTION_DELAY;
                     if (res.ok)
                     {
                         recentlyPlacedCooldowns[targetStation] = PLACED_ITEM_COOLDOWN;
-                        interactCooldown = INTERACTION_DELAY;
                     }
                 }
                 else if (cook.heldItem != null && playerController.carriedItem != null)
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
                     BotLogger.LogAction(characterId, $"Add '{playerController.carriedItem?.itemId}' to Cooker", targetStation.stationId, res.ok, res.reason);
-                    if (res.ok)
-                    {
-                        interactCooldown = INTERACTION_DELAY;
-                    }
+                    interactCooldown = INTERACTION_DELAY;
                 }
             }
             else if (targetStation is PassCounter pass)
@@ -1132,9 +1231,9 @@ namespace TwoLadles.AI
                     string passedItemId = playerController.carriedItem.itemId;
                     var res = playerController.TryInteractPrimary(targetStation);
                     BotLogger.LogAction(characterId, $"Pass '{passedItemId}'", targetStation.stationId, res.ok, res.reason);
+                    interactCooldown = INTERACTION_DELAY;
                     if (res.ok)
                     {
-                        interactCooldown = INTERACTION_DELAY;
                         for (int s = 0; s < pass.slots.Length; s++)
                         {
                             if (pass.slots[s] != null && pass.slots[s].item != null && pass.slots[s].placedByPeer == peerId)
@@ -1164,13 +1263,10 @@ namespace TwoLadles.AI
                         int slotToClaim = handoff != null ? handoff.slotIndex : -1;
                         var res = playerController.TryInteractPrimary(targetStation);
                         BotLogger.LogAction(characterId, "Retrieve from Pass Counter", targetStation.stationId, res.ok, res.reason);
-                        if (res.ok)
+                        interactCooldown = INTERACTION_DELAY;
+                        if (res.ok && slotToClaim >= 0)
                         {
-                            interactCooldown = INTERACTION_DELAY;
-                            if (slotToClaim >= 0)
-                            {
-                                BotCommunicationHub.ClaimHandoff(slotToClaim, peerId);
-                            }
+                            BotCommunicationHub.ClaimHandoff(slotToClaim, peerId);
                         }
                     }
                 }
@@ -1181,10 +1277,10 @@ namespace TwoLadles.AI
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
                     BotLogger.LogAction(characterId, $"Place '{playerController.carriedItem?.itemId}' on Table", targetStation.stationId, res.ok, res.reason);
+                    interactCooldown = INTERACTION_DELAY;
                     if (res.ok)
                     {
                         recentlyPlacedCooldowns[targetStation] = PLACED_ITEM_COOLDOWN;
-                        interactCooldown = INTERACTION_DELAY;
                     }
                 }
                 else
@@ -1193,10 +1289,7 @@ namespace TwoLadles.AI
                     {
                         var res = playerController.TryInteractPrimary(targetStation);
                         BotLogger.LogAction(characterId, "Pick up from Table", targetStation.stationId, res.ok, res.reason);
-                        if (res.ok)
-                        {
-                            interactCooldown = INTERACTION_DELAY;
-                        }
+                        interactCooldown = INTERACTION_DELAY;
                     }
                 }
             }
@@ -1215,10 +1308,7 @@ namespace TwoLadles.AI
             {
                 var res = playerController.TryInteractPrimary(targetStation);
                 BotLogger.LogAction(characterId, $"Interact [{targetStation.stationId}]", targetStation.stationId, res.ok, res.reason);
-                if (res.ok)
-                {
-                    interactCooldown = INTERACTION_DELAY;
-                }
+                interactCooldown = INTERACTION_DELAY;
             }
         }
 
@@ -1264,6 +1354,22 @@ namespace TwoLadles.AI
                 }
             }
             return best;
+        }
+
+        private CounterStation FindItemOnCounters(string itemId)
+        {
+            if (KitchenController.Instance == null || string.IsNullOrEmpty(itemId)) return null;
+            foreach (var st in KitchenController.Instance.stations.Values)
+            {
+                if (st is CounterStation c && c.heldItem != null && c.heldItem.itemId == itemId)
+                {
+                    // Prefer counter on bot's own side
+                    if (peerId == 1 && st.transform.position.x > 0f) continue;
+                    if (peerId == 2 && st.transform.position.x < 0f) continue;
+                    return c;
+                }
+            }
+            return null;
         }
 
         private StationBase GetStation(string stationId)

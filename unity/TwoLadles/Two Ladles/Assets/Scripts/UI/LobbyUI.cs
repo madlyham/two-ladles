@@ -496,6 +496,8 @@ namespace TwoLadles.UI
             }
             if (ShiftManager.Instance != null)
             {
+                ShiftManager.Instance.isSoloMode = isSoloMode;
+                ShiftManager.Instance.humanChefPeerId = humanChefPeerId;
                 ShiftManager.Instance.StartShift(stage, mode);
             }
             gameObject.SetActive(false);

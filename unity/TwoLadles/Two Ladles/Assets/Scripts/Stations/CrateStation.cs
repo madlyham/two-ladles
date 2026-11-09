@@ -2,6 +2,7 @@ using UnityEngine;
 using TwoLadles.Data;
 using TwoLadles.Core;
 using TwoLadles.Kitchen;
+using TwoLadles.Networking;
 using TwoLadles.UI;
 
 namespace TwoLadles.Stations
@@ -61,8 +62,11 @@ namespace TwoLadles.Stations
         {
             bool isFridgeStation = isFridge || (stationId != null && stationId.Contains("fridge"));
 
-            // In interactive gameplay with HUD active, interacting with Fridge or Shelf opens the Select Wheel!
-            if (QuickSelectWheelUI.Instance != null)
+            int localPeer = NetworkManager.Instance != null ? NetworkManager.Instance.localPeerId : 1;
+            bool isHuman = (peerId == localPeer);
+
+            // In interactive gameplay with HUD active, human chef interacting with Fridge or Shelf opens the Select Wheel!
+            if (isHuman && QuickSelectWheelUI.Instance != null)
             {
                 if (playerItem != null)
                 {
@@ -93,6 +97,20 @@ namespace TwoLadles.Stations
             }
 
             return (false, "Hands full.");
+        }
+
+        public (bool ok, string reason) DispenseItemDirect(ref KitchenItem playerItem, string requestedItemId)
+        {
+            if (playerItem != null) return (false, "Hands full.");
+            if (string.IsNullOrEmpty(requestedItemId)) return (false, "Invalid item requested.");
+
+            string dName = requestedItemId;
+            if (GameData.Instance != null && GameData.Instance.ingredients.TryGetValue(requestedItemId, out var ing))
+            {
+                dName = ing.displayName;
+            }
+            playerItem = new KitchenItem(requestedItemId, dName, "none", QualityTier.STANDARD);
+            return (true, $"Grabbed {playerItem.displayName}.");
         }
 
         public override (bool ok, string reason) InteractSecondary(ref KitchenItem playerItem, int peerId, string characterId)

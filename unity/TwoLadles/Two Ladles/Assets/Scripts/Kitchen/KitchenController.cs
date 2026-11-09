@@ -1005,6 +1005,38 @@ namespace TwoLadles.Kitchen
             return playerComp;
         }
 
+        public void ConfigureSoloAndAIMode(bool isSolo, int humanPeer, BotDifficulty diff)
+        {
+            foreach (var kvp in playersByPeer)
+            {
+                int peer = kvp.Key;
+                var chef = kvp.Value;
+                if (chef == null) continue;
+
+                var existingBot = chef.GetComponent<AI.BotController>();
+                if (isSolo && peer != humanPeer)
+                {
+                    chef.isLocalPlayer = false;
+                    if (existingBot == null)
+                    {
+                        existingBot = chef.gameObject.AddComponent<AI.BotController>();
+                    }
+                    existingBot.botActive = true;
+                    existingBot.peerId = peer;
+                    existingBot.characterId = chef.characterId;
+                    existingBot.ConfigureDifficulty(diff);
+                }
+                else
+                {
+                    chef.isLocalPlayer = (peer == humanPeer || !isSolo);
+                    if (existingBot != null)
+                    {
+                        existingBot.botActive = false;
+                    }
+                }
+            }
+        }
+
         public (bool ok, string reason, string workerId) RequestHireWorker(int peerId, string roleId)
         {
             if (!playersByPeer.TryGetValue(peerId, out var p))

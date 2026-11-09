@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using TwoLadles.Data;
+using TwoLadles.Kitchen;
 
 namespace TwoLadles.Core
 {
@@ -9,6 +10,13 @@ namespace TwoLadles.Core
     {
         CAMPAIGN = 0,
         ENDLESS_RUSH = 1
+    }
+
+    public enum BotDifficulty
+    {
+        Assistive = 0,
+        Standard = 1,
+        Challenge = 2
     }
 
     [Serializable]
@@ -52,6 +60,11 @@ namespace TwoLadles.Core
         public const int INITIAL_CLEAN_PLATES = 4;
         public const float DEFAULT_SHIFT_DURATION = 180.0f;
         public const int MAX_ACTIVE_ORDERS = 4;
+
+        [Header("Single Player & AI Partner Mode")]
+        public bool isSoloMode = false;
+        public int humanChefPeerId = 1;
+        public BotDifficulty botDifficulty = BotDifficulty.Standard;
 
         public event Action<float, bool, float> OnFlowUpdated;
         public event Action<bool> OnRushRhythmChanged;
@@ -365,6 +378,11 @@ namespace TwoLadles.Core
             levelVictory = false;
             lastGoldEarned = 0;
             currentShiftSessionToken = $"shift_{stageId}_{DateTime.UtcNow.Ticks}_{UnityEngine.Random.Range(1000, 9999)}";
+
+            if (KitchenController.Instance != null)
+            {
+                KitchenController.Instance.ConfigureSoloAndAIMode(isSoloMode, humanChefPeerId, botDifficulty);
+            }
 
             totalScore = 0;
             ordersServed = 0;

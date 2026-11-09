@@ -82,6 +82,7 @@ namespace TwoLadles.Tests
             Test13_EndlessRushMode();
             Test14_HoldingCounterAndThrowMechanics();
             Test15_WaveProgressionReputationAndGoldEconomy();
+            Test16_SoloModeAndAIPartner();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -758,6 +759,62 @@ namespace TwoLadles.Tests
             ShiftManager.Instance.ApplyReputationDamage(120.0f, "Massive kitchen failure");
             Assert(Mathf.Approximately(ShiftManager.Instance.reputation, 0.0f), "Reputation clamps cleanly at 0 and never goes negative");
             Assert(!ShiftManager.Instance.shiftActive && !ShiftManager.Instance.levelVictory, "Reaching 0 Reputation immediately ends level in Defeat");
+        }
+
+        // Suite 16: Solo Mode & AI Partner Architecture (6 assertions)
+        private void Test16_SoloModeAndAIPartner()
+        {
+            Debug.Log("\n[Suite 16] Solo Mode & Deterministic AI Partner");
+
+            // Setup mock kitchen controller with 2 chefs
+            var kcObj = new GameObject("TestKitchen_SoloAI");
+            var kc = kcObj.AddComponent<KitchenController>();
+            KitchenController.Instance = kc;
+
+            var linhGo = new GameObject("Chef_Linh");
+            var linhPlayer = linhGo.AddComponent<PlayerController>();
+            linhPlayer.peerId = 1;
+            linhPlayer.characterId = "linh";
+            kc.playersByPeer[1] = linhPlayer;
+
+            var jiwonGo = new GameObject("Chef_Jiwon");
+            var jiwonPlayer = jiwonGo.AddComponent<PlayerController>();
+            jiwonPlayer.peerId = 2;
+            jiwonPlayer.characterId = "jiwon";
+            kc.playersByPeer[2] = jiwonPlayer;
+
+            // 1. Solo Mode Configuration with Human Linh & AI Jiwon
+            kc.ConfigureSoloAndAIMode(true, 1, BotDifficulty.Standard);
+            Assert(linhPlayer.isLocalPlayer == true, "Human chef (Linh, Peer 1) is flagged as isLocalPlayer");
+            Assert(jiwonPlayer.isLocalPlayer == false, "AI chef (Jiwon, Peer 2) is flagged as !isLocalPlayer");
+
+            var bot = jiwonGo.GetComponent<AI.BotController>();
+            Assert(bot != null && bot.botActive == true && bot.characterId == "jiwon", "BotController successfully attached and activated on Jiwon");
+
+            // 2. Difficulty Tiers Verification
+            bot.ConfigureDifficulty(BotDifficulty.Assistive);
+            Assert(bot.difficulty == BotDifficulty.Assistive, "Bot difficulty successfully reconfigures to Assistive");
+
+            // 3. Direct Item Dispense to Bot Hands without Opening Human UI
+            var crateGo = new GameObject("TestCrate");
+            var crate = crateGo.AddComponent<CrateStation>();
+            crate.dispensedItemId = "tteok_portioned";
+            KitchenItem botItem = null;
+            var dispenseRes = crate.DispenseItemDirect(ref botItem, "tteok_portioned");
+            Assert(dispenseRes.ok && botItem != null && botItem.itemId == "tteok_portioned", "CrateStation directly dispenses requested ingredient to bot hands");
+
+            // 4. Clean Switch to Human Jiwon & AI Linh
+            kc.ConfigureSoloAndAIMode(true, 2, BotDifficulty.Challenge);
+            Assert(jiwonPlayer.isLocalPlayer == true, "Switching solo role sets Jiwon as isLocalPlayer");
+            Assert(linhPlayer.isLocalPlayer == false, "Switching solo role sets Linh as !isLocalPlayer");
+            var linhBot = linhGo.GetComponent<AI.BotController>();
+            Assert(linhBot != null && linhBot.botActive == true && linhBot.difficulty == BotDifficulty.Challenge, "BotController attaches to Linh with Challenge difficulty");
+
+            // Cleanup test objects
+            DestroyImmediate(crateGo);
+            DestroyImmediate(linhGo);
+            DestroyImmediate(jiwonGo);
+            DestroyImmediate(kcObj);
         }
     }
 }

@@ -70,7 +70,7 @@ After building in Unity (see below), the game files are created here:
 - Windows: `unity/TwoLadles/Two Ladles/Builds/Windows/TwoLadles.exe`
 - Android: `unity/TwoLadles/Two Ladles/Builds/Android/TwoLadles.apk`
 
-A zipped Windows copy is also kept at [`web/downloads/TwoLadles-Windows-x64.zip`](web/downloads/TwoLadles-Windows-x64.zip) for the project web page.
+Download copies for the project web page are kept at [`web/downloads/TwoLadles-Windows-x64.zip`](web/downloads/TwoLadles-Windows-x64.zip) and [`web/downloads/TwoLadles.apk`](web/downloads/TwoLadles.apk).
 
 ## For developers
 

@@ -5,11 +5,11 @@ Desktop.ini
 __pycache__/
 *.pyc
 
-# Godot 4+ specific ignores
-.godot/
-.import/
-*.import
-*.translation
+# Local-only AI / agent documentation (kept on disk, not published)
+AGENTS.md
+GLOSSARY.md
+docs/designs/
+scripts/serve_downloads.py
 
 # Build outputs and artifacts
 build/

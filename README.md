@@ -5,7 +5,7 @@
 It is being built for **Korea Game Week 2026** in **Unity 2022.3.62f3** (C#).
 
 > [!NOTE]
-> An early prototype was made in Godot. That version is **archived** on the `godot` branch and is no longer developed. Everything on this branch is the Unity game.
+> An early prototype was made in Godot. That prototype has been retired and removed from this repository (it remains only in old git history). Everything here is the Unity game.
 
 ---
 
@@ -86,9 +86,7 @@ Open the folder `unity/TwoLadles/Two Ladles/` in **Unity Hub** with Unity **2022
 ### Project layout
 ```
 two-ladles/
-├── AGENTS.md                 # Engineering rules for all contributors
 ├── CHANGELOG.md
-├── GLOSSARY.md
 ├── docs/                     # Design, architecture, networking, testing, build guides
 ├── web/                      # Project web page + downloads/ zip mirror
 └── unity/TwoLadles/Two Ladles/
@@ -104,7 +102,7 @@ two-ladles/
     │   │   ├── Kitchen/      # KitchenController, PartTimeWorker
     │   │   ├── Networking/   # NetworkManager (LAN UDP)
     │   │   ├── Player/       # PlayerController
-    │   │   ├── Stations/     # Prep, cooking, assembly, pass, serving, crates, trash (WashingStation is legacy/unused)
+    │   │   ├── Stations/     # Prep, cooking, assembly, pass, serving, crates, trash
     │   │   ├── Story/        # StoryScript (day-start phone chats)
     │   │   ├── UI/           # LobbyUI, KitchenHUD, PhoneStoryUI, QuickSelectWheelUI
     │   │   └── Visuals/      # DayNightCycleManager
@@ -121,4 +119,4 @@ two-ladles/
 - [Android build](docs/ANDROID_BUILD.md)
 - [Art pipeline](docs/ART_PIPELINE.md)
 - [Roadmap](docs/DEVELOPMENT_ROADMAP.md)
-- [Glossary](GLOSSARY.md) · [Changelog](CHANGELOG.md) · [Asset licenses](docs/ASSET_LICENSES.md)
+- [Changelog](CHANGELOG.md) · [Asset licenses](docs/ASSET_LICENSES.md)

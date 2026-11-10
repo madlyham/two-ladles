@@ -13,7 +13,6 @@ All external art assets used in **Two Ladles: A Vietnam–Korea Kitchen Story** 
   - `unity/TwoLadles/Two Ladles/Assets/Sprites/Kitchen/professional_kitchen.png`
   - `unity/TwoLadles/Two Ladles/Assets/Sprites/Kitchen/professional_kitchen_room_door_tiles.png`
   - `unity/TwoLadles/Two Ladles/Assets/Sprites/Kitchen/professional_kitchen_withshadows.png`
-  - `assets/sprites/kitchen/` (Godot equivalent)
 - **Game Usage:** Stainless steel modular counters, pass counter window, sinks, prep surfaces, stoves, floors, and room walls.
 
 ---
@@ -25,7 +24,6 @@ All external art assets used in **Two Ladles: A Vietnam–Korea Kitchen Story** 
 - **License:** Free to download, commercial use permitted.
 - **Used In:**
   - `unity/TwoLadles/Two Ladles/Assets/Sprites/Items/`
-  - `assets/sprites/items/` (Godot equivalent)
 - **Game Usage:**
   - **Proteins:** Pork belly (`pork_belly_raw.png`, `pork_portioned.png`), Beef bulgogi (`beef_bulgogi_raw.png`, `bulgogi_portioned.png`), Fish cake (`fish_cake_raw.png`, `eomuk_prepared.png`).
   - **Starches & Produce:** Baguette bread (`baguette_bread.png`), Fresh cabbage (`cabbage_fresh.png`), Kimchi slaw (`kimchi_slaw.png`), Pickled daikon & carrot (`pickled_veg.png`), Rice cakes (`tteok_portioned.png`).

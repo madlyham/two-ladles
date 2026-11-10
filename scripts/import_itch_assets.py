@@ -16,12 +16,10 @@ def main():
         if os.path.exists(zip_pixel):
             zipfile.ZipFile(zip_pixel).extractall(os.path.join(temp, 'pixel_mart'))
 
-    unity_kitchen = 'unity/TwoLadles/Assets/Sprites/Kitchen'
-    unity_items = 'unity/TwoLadles/Assets/Sprites/Items'
-    godot_kitchen = 'assets/sprites/kitchen'
-    godot_items = 'assets/sprites/items'
+    unity_kitchen = 'unity/TwoLadles/Two Ladles/Assets/Sprites/Kitchen'
+    unity_items = 'unity/TwoLadles/Two Ladles/Assets/Sprites/Items'
 
-    for d in [unity_kitchen, unity_items, godot_kitchen, godot_items]:
+    for d in [unity_kitchen, unity_items]:
         os.makedirs(d, exist_ok=True)
 
     # 1. Kitchen Tilesets (0_mem0ry)
@@ -34,7 +32,6 @@ def main():
         src = os.path.join(pro_src, ts)
         if os.path.exists(src):
             shutil.copy2(src, os.path.join(unity_kitchen, ts))
-            shutil.copy2(src, os.path.join(godot_kitchen, ts))
             print(f"Copied tileset: {ts}")
 
     # 2. Food Ingredients & Utensils (ghostpixxells Pixel Mart)
@@ -73,11 +70,10 @@ def main():
         src_path = os.path.join(pixel_src, src_name)
         if os.path.exists(src_path):
             shutil.copy2(src_path, os.path.join(unity_items, target_name))
-            shutil.copy2(src_path, os.path.join(godot_items, target_name))
             item_count += 1
             print(f"Copied item: {src_name} -> {target_name}")
 
-    print(f"Successfully imported {len(tilesets)} tilesets and {item_count} items into Unity & Godot!")
+    print(f"Successfully imported {len(tilesets)} tilesets and {item_count} items into Unity!")
 
 if __name__ == '__main__':
     main()

@@ -1,7 +1,7 @@
 # Game Design Document — Two Ladles
 
 > [!NOTE]
-> This document describes the **Unity 2022.3.62f3** build at `unity/TwoLadles/Two Ladles/`. The Godot prototype is archived on the `godot` branch and is not described here. Numbers below are taken from `Assets/Scripts/Core/GameData.cs`, `CampaignLevelSpec.cs`, and `ShiftManager.cs`.
+> This document describes the **Unity 2022.3.62f3** build at `unity/TwoLadles/Two Ladles/`. The retired Godot prototype is not described here. Numbers below are taken from `Assets/Scripts/Core/GameData.cs`, `CampaignLevelSpec.cs`, and `ShiftManager.cs`.
 
 ## 1. Core Identity & Narrative
 
@@ -88,7 +88,7 @@ The mechanical third arm is visual and thematic; it does not act on its own.
 - **Tier 3 — Business Operator (unlocks after Day 5):** 2 part-timer slots.
 
 #### Part-Time Workers (`PartTimeWorker`)
-Hiring costs **20 coins** for a **20-second** contract with a **45-second** cooldown. Roles: **Prep Assistant** (automated chopping at the prep counter) and **Kitchen Helper** (second part-timer slot; there is no washing chore in the game). Hiring is host-authoritative: the host checks coins, cooldown, and slot capacity before spawning the worker.
+Hiring costs **20 coins** for a **20-second** contract with a **45-second** cooldown. Part-timers are **Prep Assistants** (automated chopping at the prep counter). One **Part-Timer [H]** button hires every free slot at once (1 slot at Tier 2, 2 slots at Tier 3); there is no washing chore and no separate dishwasher button. Hiring is host-authoritative: the host checks coins, cooldown, and slot capacity before spawning the worker.
 
 ---
 

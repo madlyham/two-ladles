@@ -1,7 +1,7 @@
 # Architecture Overview — Two Ladles
 
 > [!IMPORTANT]
-> **Active engine:** Unity **2022.3.62f3** (C#). The Unity project lives at `unity/TwoLadles/Two Ladles/` (note the space). The earlier Godot 4.7.2 prototype is **archived** on the `godot` branch and is not developed.
+> **Active engine:** Unity **2022.3.62f3** (C#). The Unity project lives at `unity/TwoLadles/Two Ladles/` (note the space). The earlier Godot 4.7.2 prototype has been retired and removed from the repository.
 
 ## 1. Project Structure (`unity/TwoLadles/Two Ladles/`)
 
@@ -103,7 +103,7 @@ Two Ladles/
 
 ## 7. Part-Time Workers
 
-- Jiwon presses `H` to hire `prep_assistant` or `dishwasher` (20 coins, 20 s contract, 45 s cooldown).
+- Jiwon presses `H` (or the single **Part-Timer [H]** HUD button) to call `RequestHireAvailableCrew`, which fills **every free part-timer slot at once** with prep assistants (20 coins each, 20 s contract, 45 s shared cooldown). There is no separate dishwasher button because washing was removed.
 - State machine `WALKING_IN → WORKING → WALKING_OUT → EXPIRED`. Only the host spawns workers, advances timers and deducts coins.
 
 ## 8. Presentation Extras

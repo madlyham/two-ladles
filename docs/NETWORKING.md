@@ -1,7 +1,7 @@
 # Networking Architecture — Two Ladles
 
 > [!IMPORTANT]
-> Networking is implemented in Unity C# at `unity/TwoLadles/Two Ladles/Assets/Scripts/Networking/NetworkManager.cs`. The archived Godot prototype (ENet) on the `godot` branch is not used.
+> Networking is implemented in Unity C# at `unity/TwoLadles/Two Ladles/Assets/Scripts/Networking/NetworkManager.cs`. The retired Godot prototype (ENet) is no longer part of the repository.
 
 ## 1. Transport & Topology
 

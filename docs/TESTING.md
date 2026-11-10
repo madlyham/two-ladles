@@ -1,7 +1,7 @@
 # Testing Guide — Two Ladles (`docs/TESTING.md`)
 
 > [!IMPORTANT]
-> All active testing targets the **Unity 2022.3.62f3** project at `unity/TwoLadles/Two Ladles/`. The Godot prototype and its headless test runner are archived on the `godot` branch and are no longer maintained.
+> All active testing targets the **Unity 2022.3.62f3** project at `unity/TwoLadles/Two Ladles/`. The retired Godot prototype and its headless test runner have been removed from the repository.
 
 ## 1. Automated C# Test Suite
 

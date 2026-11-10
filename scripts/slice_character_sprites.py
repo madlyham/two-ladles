@@ -10,7 +10,7 @@ from collections import deque
 
 def extract_sprites():
     src_path = "SPRITES/idea.jpg"
-    out_dir = "unity/TwoLadles/Assets/Sprites/Characters"
+    out_dir = "unity/TwoLadles/Two Ladles/Assets/Resources/Sprites/Characters"
     os.makedirs(out_dir, exist_ok=True)
     
     im = Image.open(src_path).convert("RGB")

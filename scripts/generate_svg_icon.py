@@ -8,7 +8,7 @@ PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC_IMAGE = os.path.join(PROJECT_DIR, "TWO_LADLES.jpg")
 PNG_TRANSPARENT = os.path.join(PROJECT_DIR, "web", "assets", "icon_transparent.png")
 ICON_PNG = os.path.join(PROJECT_DIR, "icon.png")
-ICON_SVG = os.path.join(PROJECT_DIR, "icon.svg")
+
 WEB_ICON_SVG = os.path.join(PROJECT_DIR, "web", "assets", "icon.svg")
 WEB_FAVICON_SVG = os.path.join(PROJECT_DIR, "web", "favicon.svg")
 WEB_FAVICON_ICO = os.path.join(PROJECT_DIR, "web", "favicon.ico")
@@ -81,7 +81,7 @@ def generate():
   <image width="1024" height="1024" filter="url(#icon-shadow)" xlink:href="data:image/png;base64,{b64_data}" href="data:image/png;base64,{b64_data}"/>
 </svg>'''
 
-    for path in [ICON_SVG, WEB_ICON_SVG, WEB_FAVICON_SVG]:
+    for path in [WEB_ICON_SVG, WEB_FAVICON_SVG]:
         with open(path, "w", encoding="utf-8") as f:
             f.write(svg_content)
 

@@ -131,8 +131,7 @@ def main():
 
     dest_dirs = [
         os.path.join(repo_root, 'unity', 'TwoLadles', 'Two Ladles', 'Assets', 'Resources', 'Sprites', 'Items'),
-        os.path.join(repo_root, 'unity', 'TwoLadles', 'Two Ladles', 'Assets', 'Sprites', 'Items'),
-        os.path.join(repo_root, 'assets', 'sprites', 'items')
+        os.path.join(repo_root, 'unity', 'TwoLadles', 'Two Ladles', 'Assets', 'Sprites', 'Items')
     ]
 
     for d in dest_dirs:

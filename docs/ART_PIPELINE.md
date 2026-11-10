@@ -1,7 +1,7 @@
 # Art Pipeline & 2.5D Visual Style Guide
 
 > [!NOTE]
-> Applies to the Unity 2022.3.62f3 project at `unity/TwoLadles/Two Ladles/`. The earlier Godot 3D-capsule style is archived on the `godot` branch.
+> Applies to the Unity 2022.3.62f3 project at `unity/TwoLadles/Two Ladles/`. The earlier Godot 3D-capsule prototype has been retired.
 
 ## 1. Visual Direction: Readable Pixel-Art 2.5D
 

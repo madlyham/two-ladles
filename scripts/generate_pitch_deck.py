@@ -154,7 +154,7 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         [
             "\"Easy to play badly. Difficult to play efficiently. Extremely satisfying to master.\"",
             "True 2-Player Local Co-Op: Two human chefs working together over local Wi-Fi / LAN.",
-            "No AI Teammates in Play: both chefs are human; our two QA bots are internal testing tools only.",
+            "Solo Mode: play alone with an AI partner chef (Assistive / Standard / Challenge difficulty).",
             "Cross-Kitchen Reliance: Linh and Jiwon are dependent on each other to fulfill orders.",
             "Tactile & Satisfying: Rhythm chops, heat timing, and rapid pass counter handoffs."
         ],
@@ -354,7 +354,7 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         ("docs/bot_gameplay_frame4.png", "4. Assemble & Serve", [
             "Parts combined at a holding table with [E], any order.",
             "100 Kitchen Flow activates 15s RUSH RHYTHM (1.5x score).",
-            "Bot QA run: 5/5 days, 34/34 orders (seed 42)."
+            "Bots replay any day with all upgrades for QA."
         ], C_GOLD)
     ]
 
@@ -383,7 +383,7 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
             "Asymmetric West/East Layout: Linh runs the stoves (flour, rice, toboki, egg); Jiwon runs prep, grill and wok.",
             "3-Slot Pass Counter: Central stainless steel relay counter with trash disposal bin.",
             "Exterior Dining Patio: Customer tables with placemats and real-time waiting diners.",
-            "2-Bot QA Autoplay: latest run cleared 5/5 days, 34/34 orders served (seed 42, 2026-11-09)."
+            "2-Bot QA Autoplay: bots can replay any day with all upgrades unlocked."
         ],
         C_GOLD,
         title_size=15,
@@ -456,7 +456,7 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         [
             "Signature Ability: Spends restaurant coins to hire part-time prep helpers.",
             "Tier 1 (Burnt-out Exec): casual clothes + kitchen apron, 0 helpers.",
-            "Tier 2 (Manager): rolled-sleeve shirt, 1 helper | Tier 3 (Business Operator): suit & tie, 2 helpers.",
+            "Tier 2 (Manager): rolled-sleeve shirt, 1 helper | Tier 3 (Business Operator): suit & tie, 2 helpers. One Part-Timer button [H] hires every free slot at once.",
             "Balancing: 20 coins hire cost, 20s contract, 45s agency cooldown."
         ],
         C_TERRA
@@ -517,7 +517,7 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         "Unity Engine Architecture",
         [
             "Engine: Unity 2022.3.62f3 LTS, statically typed C#. Pixel-art sprites on a flat 2D floor with a 2.5D orthographic camera.",
-            "Cross-Platform: Landscape Android (1280x720 base viewport) + Windows/Linux PC.",
+            "Cross-Platform: Landscape Android APK + Windows PC (Windows host and Android client can play together).",
             "Authoritative Host Topology: Peer 1 governs order timers, cooking transitions, pass counter handoffs, flow, and scoring.",
             "Dual Input Schemes: Responsive Android touch D-pad & action buttons + PC WASD/Arrow & Space/E/F keyboard controls.",
             "Persistent Storage: JSON save/load (Application.persistentDataPath)."
@@ -528,12 +528,12 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
     add_card(s12, Inches(6.8), Inches(1.8), Inches(5.6), Inches(5.0),
         "LAN Multiplayer & Netcode",
         [
-            "Multiplayer Transport: Local UDP port 24567.",
-            "High-Level Networking: Unity Netcode for GameObjects (NGO) / Unity Transport (UTP).",
+            "Transport: raw .NET UdpClient sockets, no third-party networking library.",
+            "Ports: UDP 24567 gameplay sync (30Hz movement, 4Hz host state) + UDP 24568 LAN room discovery.",
             "Character Exclusivity: Mutual exclusion enforced in lobby (Linh vs Jiwon).",
             "Readiness Reset: Changing character or perks resets Ready state to prevent race conditions.",
-            "Unit tests (14 suites): last recorded run 123/123 assertions passed (2026-11-08). Suite has since grown; re-run pending.",
-            "Full-gameplay QA (separate): 2-bot autoplay cleared 5/5 days, 34/34 orders (seed 42, 2026-11-09)."
+            "Unit tests: 19 suites, 233/233 assertions passed (2026-11-10).",
+            "Full-gameplay QA (separate): 2-bot autoplay with selectable test day and all upgrades."
         ],
         C_TERRA
     )
@@ -554,8 +554,8 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
             "✔ Rush Rhythm (15s, 1.5x score).",
             "✔ Linh Tiers 1-3 & Jiwon Crew Hiring.",
             "✔ 5-Day Campaign & Endless Mode.",
-            "✔ Unit tests: 123/123 on last run (11-08); re-run pending.",
-            "✔ 2-Bot Autoplay QA: 5/5 days, 34/34 orders."
+            "✔ Unit tests: 19 suites, 233/233 passed.",
+            "✔ 2-Bot Autoplay QA + Solo AI partner."
         ],
         C_TEAL,
         title_size=15,
@@ -568,9 +568,9 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
             "✔ 2D pixel-art chef & food sprites integrated (beef, noodles, flour added).",
             "✔ Flat 2D kitchen floor, depth-sorted chefs, 15° walk sway.",
             "✔ Lobby, cleaned-up HUD & station prompts.",
-            "• Sizzle, chopping & cooking particle effects.",
-            "• Vietnamese Dan Bau & Korean Gayageum fusion soundtrack.",
-            "• Interactive touch tutorial overlay."
+            "✔ Story phone chats & day-night lighting.",
+            "✔ Upbeat bistro music & kitchen SFX (code-synthesized).",
+            "✔ Touch controls for Android."
         ],
         C_GOLD,
         title_size=15,
@@ -580,11 +580,11 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
     add_card(s13, Inches(8.8), Inches(1.8), Inches(3.7), Inches(5.0),
         "Milestone 5 (Competition)",
         [
-            "• Android APK build package for judges.",
-            "✔ Windows Standalone PC build (builds via BuildScript; rebuild pending).",
+            "✔ Android APK build (TwoLadles.apk).",
+            "✔ Windows Standalone PC build (TwoLadles.exe).",
             "✔ Two-Bot Autoplay QA Test Runner & Metrics.",
             "• Gameplay demo video capture.",
-            "• Wi-Fi packet jitter stress testing.",
+            "• Final LAN + Windows/Android cross-play check.",
             "• Final submission to Korea Game Week 2026."
         ],
         C_TERRA,
@@ -625,7 +625,7 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
         [
             "Professional Kitchen Set (32x32) by 0_mem0ry — 0-mem0ry.itch.io/professional-kitchen-set-free (free, commercial use & modification allowed).",
             "Pixel Mart by ghostpixxells — ghostpixxells.itch.io/pixel-mart (free, commercial use permitted).",
-            "Additional food sprites (beef, noodles, flour) and customer sprites — source & license being verified before final submission."
+            "Additional food and customer sprites: see docs/ASSET_LICENSES.md for sources and licenses."
         ],
         C_TEAL,
         body_size=12

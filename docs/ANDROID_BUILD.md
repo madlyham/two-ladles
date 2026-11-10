@@ -1,7 +1,7 @@
 # Android Build Guide — Two Ladles (`docs/ANDROID_BUILD.md`)
 
 > [!IMPORTANT]
-> The competition APK (`TwoLadles.apk`) is built only with **Unity 2022.3.62f3** from `unity/TwoLadles/Two Ladles/`. The old Godot export and its GitHub Actions workflow are archived on the `godot` branch and are not used.
+> The competition APK (`TwoLadles.apk`) is built only with **Unity 2022.3.62f3** from `unity/TwoLadles/Two Ladles/`. The old Godot export and its GitHub Actions workflows have been removed.
 
 ## 1. Prerequisites
 - Unity `2022.3.62f3` with the **Android Build Support** module, including **Android SDK & NDK Tools** and **OpenJDK** (add them in Unity Hub → Installs → ⚙ → Add modules).

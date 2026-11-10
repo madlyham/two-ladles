@@ -168,6 +168,7 @@ public class BuildScript
     public static void BuildAndroid()
     {
         Debug.Log("[BuildScript] Starting Android Standalone APK Build...");
+        ConfigureAndroidTools();
         GenerateMainScene();
 
         string buildDir = "Builds/Android";
@@ -201,6 +202,55 @@ public class BuildScript
         {
             Debug.LogError($"[BuildScript] ANDROID BUILD FAILED! Errors: {summary.totalErrors}, Result: {summary.result}");
             EditorApplication.Exit(1);
+        }
+    }
+
+    // Points Unity at the locally installed JDK/SDK/NDK (only when those folders exist).
+    private static void ConfigureAndroidTools()
+    {
+        try
+        {
+            string toolsRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "two-ladles-tools");
+            // Unity 2022.3 requires JDK 11 (JDK 17 is rejected as incompatible).
+            string jdk = "";
+            string jdkParent = Path.Combine(toolsRoot, "jdk");
+            if (Directory.Exists(jdkParent))
+            {
+                string[] found = Directory.GetDirectories(jdkParent, "jdk-11*");
+                if (found.Length > 0) jdk = found[0];
+            }
+            string sdk = Path.Combine(toolsRoot, "android-sdk");
+            string ndk = Path.Combine(sdk, "ndk", "23.1.7779620");
+            if (Directory.Exists(jdk)) { EditorPrefs.SetBool("JdkUseEmbedded", false); EditorPrefs.SetString("JdkPath", jdk); }
+            if (Directory.Exists(sdk)) { EditorPrefs.SetBool("SdkUseEmbedded", false); EditorPrefs.SetString("AndroidSdkRoot", sdk); }
+            if (Directory.Exists(ndk)) { EditorPrefs.SetBool("NdkUseEmbedded", false); EditorPrefs.SetString("AndroidNdkRoot", ndk); EditorPrefs.SetString("AndroidNdkRootR23b", ndk); }
+            // Official API (UnityEditor.Android.AndroidExternalToolsSettings), via reflection so this
+            // file still compiles when the Android module is not installed.
+            Type ext = Type.GetType("UnityEditor.Android.AndroidExternalToolsSettings, UnityEditor.Android.Extensions");
+            if (ext != null)
+            {
+                void SetProp(string name, string value)
+                {
+                    var p = ext.GetProperty(name, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                    if (p != null && p.CanWrite && Directory.Exists(value))
+                    {
+                        try { p.SetValue(null, value); }
+                        catch (Exception ex) { Debug.LogWarning($"[BuildScript] Could not set {name}: {(ex.InnerException ?? ex).Message}"); }
+                    }
+                }
+                SetProp("jdkRootPath", jdk);
+                SetProp("sdkRootPath", sdk);
+                SetProp("ndkRootPath", ndk);
+            }
+            else
+            {
+                Debug.LogWarning("[BuildScript] AndroidExternalToolsSettings not found (Android module missing?).");
+            }
+            Debug.Log($"[BuildScript] Android tools: JDK={Directory.Exists(jdk)} SDK={Directory.Exists(sdk)} NDK={Directory.Exists(ndk)}");
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[BuildScript] Could not configure Android tools: {e.Message}");
         }
     }
 

@@ -130,12 +130,7 @@ namespace TwoLadles.Player
             {
                 if (characterId == "jiwon" && KitchenController.Instance != null)
                 {
-                    var res = KitchenController.Instance.RequestHireWorker(peerId, "prep_assistant");
-                    if (!res.ok)
-                    {
-                        // If prep assistant already hired or on CD, try second slot (dishwasher / kitchen assistant)
-                        KitchenController.Instance.RequestHireWorker(peerId, "dishwasher");
-                    }
+                    KitchenController.Instance.RequestHireAvailableCrew(peerId);
                 }
             }
         }

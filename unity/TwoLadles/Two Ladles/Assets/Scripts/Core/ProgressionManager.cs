@@ -474,6 +474,8 @@ namespace TwoLadles.Core
 
         public bool SaveProgression()
         {
+            // QA bot test runs in a temporary sandbox: never write sandbox gold/upgrades to the real save.
+            if (qaSandboxActive) return true;
             try
             {
                 var data = new ProgressionData
@@ -631,6 +633,75 @@ namespace TwoLadles.Core
             }
 
             SaveProgression();
+            OnProgressionUpdated?.Invoke();
+        }
+
+        // --- QA SANDBOX (Settings > 2-Bot Test) ---
+        // Snapshot real progress, optionally grant every upgrade + Tier 3 for the bot run, restore afterwards.
+        public bool qaSandboxActive { get; private set; }
+        private ProgressionData qaSnapshot;
+        private Dictionary<string, (bool purchased, int level)> qaUpgradeSnapshot;
+        private Dictionary<int, StageRecord> qaStageSnapshot;
+        private HashSet<string> qaRewardSnapshot;
+
+        public void BeginQASandbox(bool allUpgrades)
+        {
+            if (qaSandboxActive) EndQASandbox();
+
+            qaSnapshot = new ProgressionData
+            {
+                coins = coins, totalCareerScore = totalCareerScore, highestUnlockedStage = highestUnlockedStage,
+                selectedStage = selectedStage, linhTier = linhTier, jiwonTier = jiwonTier,
+                endlessBestScore = endlessBestScore, endlessBestOrders = endlessBestOrders, endlessBestDuration = endlessBestDuration
+            };
+            qaUpgradeSnapshot = new Dictionary<string, (bool, int)>();
+            foreach (var kvp in catalogUpgrades) qaUpgradeSnapshot[kvp.Key] = (kvp.Value.purchased, kvp.Value.level);
+            qaStageSnapshot = new Dictionary<int, StageRecord>();
+            foreach (var kvp in stageRecords)
+                qaStageSnapshot[kvp.Key] = new StageRecord { stars = kvp.Value.stars, bestScore = kvp.Value.bestScore, bestReputation = kvp.Value.bestReputation, completed = kvp.Value.completed };
+            qaRewardSnapshot = new HashSet<string>(claimedRewardTokens);
+            qaSandboxActive = true;
+
+            if (allUpgrades)
+            {
+                foreach (var up in catalogUpgrades.Values) { up.purchased = true; up.level = up.maxLevel; }
+                linhTier = 3;
+                jiwonTier = 3;
+                highestUnlockedStage = Math.Max(highestUnlockedStage, 5);
+                coins = Math.Max(coins, 9999);
+            }
+
+            UpdateLiveChefsTiers();
+            OnProgressionUpdated?.Invoke();
+        }
+
+        public void EndQASandbox()
+        {
+            if (!qaSandboxActive) return;
+
+            coins = qaSnapshot.coins;
+            totalCareerScore = qaSnapshot.totalCareerScore;
+            highestUnlockedStage = qaSnapshot.highestUnlockedStage;
+            selectedStage = qaSnapshot.selectedStage;
+            linhTier = qaSnapshot.linhTier;
+            jiwonTier = qaSnapshot.jiwonTier;
+            endlessBestScore = qaSnapshot.endlessBestScore;
+            endlessBestOrders = qaSnapshot.endlessBestOrders;
+            endlessBestDuration = qaSnapshot.endlessBestDuration;
+            foreach (var kvp in qaUpgradeSnapshot)
+            {
+                if (catalogUpgrades.TryGetValue(kvp.Key, out var up)) { up.purchased = kvp.Value.purchased; up.level = kvp.Value.level; }
+            }
+            stageRecords = qaStageSnapshot;
+            claimedRewardTokens = qaRewardSnapshot;
+
+            qaSandboxActive = false;
+            qaSnapshot = null;
+            qaUpgradeSnapshot = null;
+            qaStageSnapshot = null;
+            qaRewardSnapshot = null;
+
+            UpdateLiveChefsTiers();
             OnProgressionUpdated?.Invoke();
         }
     }

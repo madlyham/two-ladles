@@ -177,7 +177,8 @@ namespace TwoLadles.AI
                         stuckRepeatCount = 0;
                         lastStuckGoal = null;
                         currentGoalName = "";
-                        SetTarget(FindDropStation() ?? GetStation("trash_bin"), "Unstick: Drop Item");
+                        if (!TrashIfWrongBaguette())
+                            SetTarget(FindDropStation() ?? GetStation("trash_bin"), "Unstick: Drop Item");
                         unstickTimer = UNSTICK_HOLD_TIME;
                     }
                     else
@@ -347,6 +348,7 @@ namespace TwoLadles.AI
                     {
                         // Dish is completed but no active ticket needs it right now!
                         // Store on an empty holding table for incoming orders, or discard in trash.
+                        if (TrashIfWrongBaguette()) return;
                         StationBase dropStation = FindDropStation();
                         if (dropStation != null)
                         {
@@ -388,6 +390,7 @@ namespace TwoLadles.AI
                     }
                     else
                     {
+                        if (TrashIfWrongBaguette()) return;
                         StationBase dropStation = FindDropStation();
                         if (dropStation != null)
                         {
@@ -480,7 +483,7 @@ namespace TwoLadles.AI
             {
                 if (ShiftManager.Instance.activeOrders != null && ShiftManager.Instance.activeOrders.Count >= 2)
                 {
-                    var res = KitchenController.Instance.RequestHireWorker(peerId, "prep_assistant");
+                    var res = KitchenController.Instance.RequestHireAvailableCrew(peerId);
                     if (res.ok)
                     {
                         workerHireCooldown = 18.0f;
@@ -507,7 +510,8 @@ namespace TwoLadles.AI
             if (playerController.carriedItem != null && !string.IsNullOrEmpty(currentGoalName) &&
                 currentGoalName.StartsWith("Rescue Pan"))
             {
-                SetTarget(FindDropStation() ?? GetStation("trash_bin"), "Drop Unneeded Item");
+                if (!TrashIfWrongBaguette())
+                    SetTarget(FindDropStation() ?? GetStation("trash_bin"), "Drop Unneeded Item");
             }
 
             // Broadcast Intent to partner chef
@@ -829,6 +833,7 @@ namespace TwoLadles.AI
         // Drop carried item on a free table; trash it if every table is full (never leave bot target-less).
         private void DropOrTrash(string goal)
         {
+            if (TrashIfWrongBaguette()) return;
             StationBase drop = FindDropStation();
             if (drop != null) SetTarget(drop, goal);
             else SetTarget(GetStation("trash_bin"), "Trash Item (Tables Full)");
@@ -1965,6 +1970,39 @@ namespace TwoLadles.AI
         private bool IsCompletedDish(string itemId)
         {
             return GameData.IsCompletedDish(itemId);
+        }
+
+        // --- BAGUETTE TRASH RULE ---
+        // Wrong/unneeded baguette-family items go straight to the trash bin (they clog tables);
+        // any other unneeded food is parked on a holding table instead.
+        public static bool IsBaguetteItem(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId)) return false;
+            return itemId.StartsWith("baguette") || itemId.StartsWith("banh_mi") || itemId == "bulgogi_banh_mi";
+        }
+
+        public static bool ShouldTrashInsteadOfHold(string itemId, bool neededByOrder)
+        {
+            return !neededByOrder && IsBaguetteItem(itemId);
+        }
+
+        // Baguette is "needed" only while working a bánh mì recipe or when it is an ordered finished dish.
+        private bool IsCarriedBaguetteNeeded(string itemId)
+        {
+            if (IsDishCurrentlyOrdered(itemId)) return true;
+            if (IsCompletedDish(itemId)) return false;
+            return activeRecipeId == "bulgogi_banh_mi" || activeRecipeId == "banh_mi_thit";
+        }
+
+        private bool TrashIfWrongBaguette()
+        {
+            if (playerController == null || playerController.carriedItem == null) return false;
+            string id = playerController.carriedItem.itemId;
+            if (!ShouldTrashInsteadOfHold(id, IsCarriedBaguetteNeeded(id))) return false;
+            StationBase trash = GetStation("trash_bin");
+            if (trash == null) return false;
+            SetTarget(trash, "Trash Wrong Baguette");
+            return true;
         }
 
         private bool IsDishCurrentlyOrdered(string itemId)

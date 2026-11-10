@@ -1119,7 +1119,68 @@ namespace TwoLadles.Kitchen
             }
         }
 
-        public (bool ok, string reason, string workerId) RequestHireWorker(int peerId, string roleId)
+        public bool IsStationOccupiedByWorker(StationBase st)
+        {
+            if (st == null) return false;
+            foreach (var w in activeWorkers.Values)
+            {
+                if (w != null && w.targetStation == st && w.currentState != WorkerState.WALKING_OUT && w.currentState != WorkerState.EXPIRED)
+                    return true;
+            }
+            return false;
+        }
+
+        public (bool ok, string reason, int hiredCount) RequestHireAvailableCrew(int peerId)
+        {
+            if (!playersByPeer.TryGetValue(peerId, out var p))
+                return (false, "Unknown chef.", 0);
+
+            if (p.characterId != "jiwon")
+                return (false, "Only Jiwon has the delegation authority to hire part-time crew!", 0);
+
+            int tierSlots = 0;
+            if (GameData.Instance != null && GameData.Instance.jiwonTiers.TryGetValue(p.characterTier, out var jTier))
+            {
+                tierSlots = jTier.partTimerSlots;
+            }
+
+            if (tierSlots <= 0)
+                return (false, "Jiwon is Tier 1 (Burnt-out Executive). Complete Level 3 to unlock Part-Timer hiring!", 0);
+
+            int freeSlots = tierSlots - activeWorkers.Count;
+            if (freeSlots <= 0)
+                return (false, $"Maximum part-timer capacity reached ({activeWorkers.Count}/{tierSlots} slots active)!", 0);
+
+            if (workerCooldowns.TryGetValue("prep_assistant", out float cd) && cd > 0.0f)
+                return (false, $"Part-timer agency is on cooldown ({cd:F0}s left)!", 0);
+
+            int hired = 0;
+            for (int i = 0; i < freeSlots; i++)
+            {
+                var hireRes = RequestHireWorker(peerId, "prep_assistant", false);
+                if (hireRes.ok)
+                {
+                    hired++;
+                }
+                else
+                {
+                    if (hired == 0) return (false, hireRes.reason, 0);
+                    break;
+                }
+            }
+
+            if (hired > 0)
+            {
+                float cooldown = 45.0f;
+                if (GameData.Instance != null && GameData.Instance.workerCatalog.TryGetValue("prep_assistant", out var spec))
+                    cooldown = spec.cooldownDuration;
+                workerCooldowns["prep_assistant"] = cooldown;
+            }
+
+            return (hired > 0, hired > 0 ? "" : "Failed to hire crew.", hired);
+        }
+
+        public (bool ok, string reason, string workerId) RequestHireWorker(int peerId, string roleId, bool applyCooldown = true)
         {
             if (!playersByPeer.TryGetValue(peerId, out var p))
                 return (false, "Unknown chef.", "");
@@ -1142,7 +1203,7 @@ namespace TwoLadles.Kitchen
             if (GameData.Instance == null || !GameData.Instance.workerCatalog.TryGetValue(roleId, out var spec))
                 return (false, $"Unknown worker role: {roleId}", "");
 
-            if (workerCooldowns.TryGetValue(roleId, out float cd) && cd > 0.0f)
+            if (applyCooldown && workerCooldowns.TryGetValue(roleId, out float cd) && cd > 0.0f)
                 return (false, $"{spec.displayName} contract agency is on cooldown ({cd:F0}s left)!", "");
 
             if (ProgressionManager.Instance == null || ProgressionManager.Instance.coins < spec.hireCost)
@@ -1151,12 +1212,34 @@ namespace TwoLadles.Kitchen
             StationBase targetStation = null;
             if (roleId == "prep_assistant")
             {
-                stations.TryGetValue("prep_east", out targetStation);
-                if (targetStation == null) stations.TryGetValue("prep_west", out targetStation);
+                stations.TryGetValue("prep_east", out var east);
+                stations.TryGetValue("prep_west", out var west);
+
+                bool eastOccupied = IsStationOccupiedByWorker(east);
+                bool westOccupied = IsStationOccupiedByWorker(west);
+
+                if (east != null && !eastOccupied)
+                {
+                    targetStation = east;
+                }
+                else if (west != null && !westOccupied)
+                {
+                    targetStation = west;
+                }
+                else
+                {
+                    targetStation = east ?? west;
+                }
             }
             else if (roleId == "dishwasher")
             {
                 stations.TryGetValue("washing_station", out targetStation);
+                if (targetStation == null)
+                {
+                    stations.TryGetValue("prep_west", out var west);
+                    stations.TryGetValue("prep_east", out var east);
+                    targetStation = (!IsStationOccupiedByWorker(west) ? west : east) ?? west ?? east;
+                }
             }
 
             if (targetStation == null)
@@ -1164,7 +1247,10 @@ namespace TwoLadles.Kitchen
 
             // Deduct coins & apply cooldown
             ProgressionManager.Instance.coins -= spec.hireCost;
-            workerCooldowns[roleId] = spec.cooldownDuration;
+            if (applyCooldown)
+            {
+                workerCooldowns[roleId] = spec.cooldownDuration;
+            }
             ProgressionManager.Instance.SaveProgression();
 
             workerUidCounter++;

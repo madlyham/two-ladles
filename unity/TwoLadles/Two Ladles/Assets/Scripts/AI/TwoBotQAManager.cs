@@ -54,6 +54,15 @@ namespace TwoLadles.AI
         public int targetDay = 5;
         public float simTimeScale = 1.0f;
         public bool exitOnCompletion = false;
+        public bool qaAllUpgrades = true; // Settings toggle: give both bots Tier 3 + every upgrade for the run
+
+        // Settings day option: 0 = All days (1-5), otherwise a single day (clamped 1-5).
+        public static (int start, int end) ResolveDayRange(int option)
+        {
+            if (option <= 0) return (1, 5);
+            int d = Mathf.Clamp(option, 1, 5);
+            return (d, d);
+        }
 
         [Header("Runtime State")]
         public int currentDayRunning = 1;
@@ -156,6 +165,9 @@ namespace TwoLadles.AI
             }
             BotCommunicationHub.Reset();
 
+            // QA always runs in a progression sandbox so bot gold/progress never touches the real save.
+            ProgressionManager.Instance?.BeginQASandbox(qaAllUpgrades);
+
             currentDayRunning = startDay;
             LaunchDay(currentDayRunning);
         }
@@ -181,6 +193,7 @@ namespace TwoLadles.AI
 
             // Configure BOTH Linh (Peer 1) and Jiwon (Peer 2) with active BotControllers
             ConfigureTwoBots();
+            ProgressionManager.Instance?.UpdateLiveChefsTiers();
 
             // Show Live QA Banner on HUD
             if (KitchenHUD.Instance != null)
@@ -314,6 +327,7 @@ namespace TwoLadles.AI
         {
             isQARunning = false;
             Time.timeScale = 1.0f;
+            ProgressionManager.Instance?.EndQASandbox(); // restore real save state
 
             if (ShiftManager.Instance != null)
             {

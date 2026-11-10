@@ -7,6 +7,7 @@ using TwoLadles.Stations;
 using TwoLadles.Kitchen;
 using TwoLadles.Player;
 using TwoLadles.Networking;
+using TwoLadles.AI;
 
 namespace TwoLadles.Tests
 {
@@ -498,6 +499,13 @@ namespace TwoLadles.Tests
             prepEast.stationId = "prep_east";
             kc.stations["prep_east"] = prepEast;
 
+            // Setup West prep station
+            var prepWestObj = new GameObject("PrepWest");
+            prepWestObj.transform.SetParent(kcObj.transform);
+            var prepWest = prepWestObj.AddComponent<PrepStation>();
+            prepWest.stationId = "prep_west";
+            kc.stations["prep_west"] = prepWest;
+
             // Setup Washing station
             var wsObj = new GameObject("WashingStation");
             wsObj.transform.SetParent(kcObj.transform);
@@ -560,6 +568,26 @@ namespace TwoLadles.Tests
             var hire2 = kc.RequestHireWorker(2, "dishwasher");
             Assert(hire1.ok && hire2.ok, "Jiwon Tier 3 can hire 2 simultaneous part-timers");
             Assert(kc.activeWorkers.Count == 2, "Kitchen manages 2 simultaneous part-time workers at Tier 3");
+
+            // Tier 3 Unified Single-Button Hire: spawns all available part-timers as prep assistants on free stations
+            kc.activeWorkers.Clear();
+            kc.workerCooldowns.Clear();
+            ProgressionManager.Instance.coins = 100;
+            var unifiedHire = kc.RequestHireAvailableCrew(2);
+            Assert(unifiedHire.ok, "Jiwon Tier 3 unified single-button hire triggers crew deployment");
+            Assert(unifiedHire.hiredCount == 2, "Unified single-button hire deploys both available part-timers (2 workers)");
+            Assert(kc.activeWorkers.Count == 2, "Kitchen has 2 active workers after unified single-button hire");
+            Assert(ProgressionManager.Instance.coins == 60, "40 coins deducted for hiring both part-timers at Tier 3 (Balance: 60)");
+
+            PartTimeWorker w1 = null;
+            PartTimeWorker w2 = null;
+            foreach (var w in kc.activeWorkers.Values)
+            {
+                if (w1 == null) w1 = w;
+                else w2 = w;
+            }
+            Assert(w1 != null && w2 != null && w1.targetStation != w2.targetStation, "Part-timers are assigned distinct preparation stations (East and West)");
+            Assert(w1.targetStation is PrepStation && w2.targetStation is PrepStation, "Both part-timers are prep/chopping assistants (washing eliminated)");
 
             DestroyImmediate(kcObj);
         }
@@ -997,6 +1025,40 @@ namespace TwoLadles.Tests
             }
             Assert(ShiftManager.DecodeNetworkState("ORDERS|garbage") == null, "Malformed sync packet rejected safely");
             Assert(ShiftManager.DecodeNetworkState(null) == null, "Null sync packet rejected safely");
+
+            // 5. Bots trash wrong/unneeded baguettes; other unneeded food is parked on a holding table
+            Assert(BotController.IsBaguetteItem("baguette") && BotController.IsBaguetteItem("banh_mi_partial_bp") && BotController.IsBaguetteItem("baguette_dough"), "Baguette-family items recognised");
+            Assert(!BotController.IsBaguetteItem("cooked_flour") && !BotController.IsBaguetteItem("bbq_beef"), "Non-baguette items not treated as baguette");
+            Assert(BotController.ShouldTrashInsteadOfHold("baguette", false), "Unneeded baguette goes to trash");
+            Assert(BotController.ShouldTrashInsteadOfHold("banh_mi_partial_bb", false), "Wrong partial bánh mì goes to trash");
+            Assert(!BotController.ShouldTrashInsteadOfHold("baguette", true), "Baguette still needed by an order is kept");
+            Assert(!BotController.ShouldTrashInsteadOfHold("cooked_flour", false), "Other unneeded food is kept on a holding table");
+
+            // 6. Settings QA test: day selection + temporary all-upgrades sandbox that never touches the real save
+            var r0 = TwoBotQAManager.ResolveDayRange(0);
+            var r3 = TwoBotQAManager.ResolveDayRange(3);
+            var r9 = TwoBotQAManager.ResolveDayRange(9);
+            Assert(r0.start == 1 && r0.end == 5, "QA day option 'All' runs Days 1-5");
+            Assert(r3.start == 3 && r3.end == 3, "QA day option 3 runs only Day 3");
+            Assert(r9.start == 5 && r9.end == 5, "QA day option clamps to Day 5");
+
+            var pmQA = ProgressionManager.Instance;
+            pmQA.ResetProgressionForTesting();
+            string savePath = System.IO.Path.Combine(Application.persistentDataPath, "progression.json");
+            string saveBefore = System.IO.File.Exists(savePath) ? System.IO.File.ReadAllText(savePath) : "";
+            pmQA.BeginQASandbox(true);
+            Assert(pmQA.qaSandboxActive, "QA sandbox active during bot test");
+            Assert(pmQA.linhTier == 3 && pmQA.jiwonTier == 3, "QA all-upgrades gives both chefs Tier 3");
+            Assert(pmQA.IsUpgradeOwned("specialist_tier_3") && pmQA.IsUpgradeOwned("specialist_tier_2"), "QA all-upgrades owns specialist tiers");
+            Assert(pmQA.coins >= 1000, "QA all-upgrades has gold to hire part-timers");
+            pmQA.coins += 5;
+            pmQA.SaveProgression();
+            string saveDuring = System.IO.File.Exists(savePath) ? System.IO.File.ReadAllText(savePath) : "";
+            Assert(saveDuring == saveBefore, "Saving during QA sandbox does not overwrite the real save file");
+            pmQA.EndQASandbox();
+            Assert(!pmQA.qaSandboxActive, "QA sandbox ends after bot test");
+            Assert(pmQA.coins == 150 && pmQA.linhTier == 1 && pmQA.jiwonTier == 1, "Real gold and tiers restored after QA");
+            Assert(!pmQA.IsUpgradeOwned("specialist_tier_3"), "QA upgrades removed after bot test");
         }
     }
 }

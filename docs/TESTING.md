@@ -7,7 +7,7 @@
 
 File: [`Assets/Tests/TwoLadlesTestSuite.cs`](../unity/TwoLadles/Two%20Ladles/Assets/Tests/TwoLadlesTestSuite.cs)
 
-### What it covers (19 suites)
+### What it covers (19 suites, 233 assertions as of 2026-11-10)
 1. Recipes & Cross-Prep Architecture
 2. Prep Station Rhythm Cadence (0.45 s sweet spot)
 3. Cooking State Machine & Phở Separation
@@ -52,7 +52,11 @@ Open PowerShell in the repository folder. This only reads the project and writes
 ### From the Editor
 - **Two Ladles → 🤖 Run Two-Bot QA Test** — run the bot QA from the default day.
 - **Two Ladles → QA Test From Day → Day 1…Day 5** — choose the starting day (stored in EditorPrefs key `TwoLadles_QADay`).
-- In a desktop build, the **🤖 2-BOT TEST RUN** button sits at the bottom of the **Settings** popup (20% opacity, hidden on mobile). It runs from the currently selected day through Day 5 (or one Endless run if Endless is selected) at 2x speed with a random seed.
+- In a desktop build, the **🤖 2-BOT TEST RUN** button sits at the bottom of the **Settings** popup (20% opacity, hidden on mobile). It runs at 2x speed with a random seed. Two buttons next to it set up the run:
+  - **TEST DAY: ALL (1-5)** — click to cycle All → Day 1 → … → Day 5. A single day tests only that day.
+  - **ALL UPGRADES: ON/OFF** (default ON) — gives both bots every kitchen upgrade and Tier 3, so part-timers and the third arm are tested together.
+  - The run uses a temporary sandbox; your real save (coins, upgrades, unlocked days) is restored when the run ends and is never overwritten.
+- Bot rule: a wrong or unneeded baguette / bánh mì goes in the trash; other unneeded food is parked on a holding table.
 
 ### From the command line
 ```powershell

@@ -612,9 +612,7 @@ namespace TwoLadles.UI
             cbRect.anchoredPosition = new Vector2(0f, 38f);
             cbRect.sizeDelta = new Vector2(360f, 30f);
 
-            hirePrepButton = CreateButton("HirePrepBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(180f, 26f), "Prep Helper (20g)", new Color(0.24f, 0.44f, 0.38f, 0.85f), out hirePrepCooldownText, 11);
-            hireDishwasherButton = CreateButton("HireDishwasherBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(88f, 0f), new Vector2(168f, 26f), "Dishwasher (20g)", new Color(0.22f, 0.38f, 0.52f, 0.85f), out hireDishwasherCooldownText, 11);
-            hireDishwasherButton.gameObject.SetActive(false);
+            hirePrepButton = CreateButton("HireCrewBtn", jiwonCrewBar.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(200f, 26f), "Part-Timer [H] (20g)", new Color(0.24f, 0.44f, 0.38f, 0.85f), out hirePrepCooldownText, 11);
 
             GameObject promptBar = new GameObject("PromptBar", typeof(RectTransform));
             promptBar.transform.SetParent(root, false);
@@ -1057,10 +1055,7 @@ namespace TwoLadles.UI
             }
 
             if (hirePrepButton != null)
-                hirePrepButton.onClick.AddListener(() => OnHireWorker("prep_assistant"));
-
-            if (hireDishwasherButton != null)
-                hireDishwasherButton.onClick.AddListener(() => OnHireWorker("dishwasher"));
+                hirePrepButton.onClick.AddListener(OnHireCrewClicked);
 
             if (returnToLobbyButton != null)
                 returnToLobbyButton.onClick.AddListener(OnReturnToLobbyClicked);
@@ -1457,12 +1452,9 @@ namespace TwoLadles.UI
                 if (hirePrepCooldownText != null)
                 {
                     float cd = KitchenController.Instance.workerCooldowns.TryGetValue("prep_assistant", out float val) ? val : 0.0f;
-                    hirePrepCooldownText.text = cd > 0.0f ? $"Crew ({cd:F0}s)" : "Part-Timer 1 [H] (20g)";
-                }
-                if (hireDishwasherCooldownText != null)
-                {
-                    float cd = KitchenController.Instance.workerCooldowns.TryGetValue("dishwasher", out float val) ? val : 0.0f;
-                    hireDishwasherCooldownText.text = cd > 0.0f ? $"Crew 2 ({cd:F0}s)" : "Part-Timer 2 [H] (20g)";
+                    int tier = (ProgressionManager.Instance != null) ? ProgressionManager.Instance.jiwonTier : 1;
+                    string costStr = (tier >= 3) ? "40g" : "20g";
+                    hirePrepCooldownText.text = cd > 0.0f ? $"Crew ({cd:F0}s)" : $"Part-Timer [H] ({costStr})";
                 }
             }
 
@@ -1673,12 +1665,12 @@ namespace TwoLadles.UI
             }
         }
 
-        private void OnHireWorker(string roleId)
+        private void OnHireCrewClicked()
         {
             if (KitchenController.Instance != null)
             {
                 int peerId = 2;
-                var res = KitchenController.Instance.RequestHireWorker(peerId, roleId);
+                var res = KitchenController.Instance.RequestHireAvailableCrew(peerId);
                 if (!res.ok)
                 {
                     ShowFeedback(res.reason, Color.red);

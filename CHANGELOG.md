@@ -10,12 +10,16 @@ All notable changes to **Two Ladles** are documented in this file.
 - **LAN order sync** (`ORDERS` packet): the host streams orders, patience timers, score, reputation, Kitchen Flow and Rush Rhythm to the client every 0.25 s; the client no longer spawns or expires orders on its own.
 - **Recipe timing variety:** Day 3 Korean BBQ on Rice and Day 4 Broken Rice orders get +2 s patience (`ShiftManager.GetRecipePatienceBonus`).
 - Test suite 19: LAN Order Sync, Recipe Timing & Bot Safety.
+- **QA test options in Settings** (desktop only): `TEST DAY` button (All 1–5 or one day) and `ALL UPGRADES: ON/OFF` toggle (default ON). The QA run uses a temporary sandbox (`ProgressionManager.BeginQASandbox` / `EndQASandbox`), so the real save file is never changed.
+- **Bot baguette rule:** a wrong or unneeded baguette / bánh mì item is thrown in the trash; other unneeded food is parked on a holding table.
+- `BuildScript.BuildAndroid` points Unity at the local JDK 11 / Android SDK (cmdline-tools 6.0) / NDK r23b in `%LOCALAPPDATA%\Programs\two-ladles-tools\` when present. Unity 2022.3 rejects JDK 17, and the newest SDK command-line tools need JDK 17, so cmdline-tools 6.0 is used.
 
 ### Changed
 - On-screen mobile controls now appear only on phones/tablets (`Application.isMobilePlatform`); on desktop they can be toggled with `F3`.
 - Web mirror `web/downloads/TwoLadles-Windows-x64.zip` refreshed.
 - Documentation updated to match the current Unity code (project path `unity/TwoLadles/Two Ladles/`, 19 test suites, raw-UDP networking, 5-day menu).
 - Part-timer crew are bigger (height 1.75) so they are easier to see.
+- One part-timer button (`[H]`) hires every free part-timer slot for Jiwon's tier at once (`RequestHireAvailableCrew`).
 - Holding counters reject an item when they already hold the same item.
 - **No washing chore:** plates and bowls are unlimited (taken from the quick-select wheel); serving never creates dirty plates. Test suite 7 is now "No Washing Chore" and the docs no longer describe washing.
 - Day 5 Vietnamese story dialogue uses friendly `tớ / cậu` instead of `anh / em` (warm and light-hearted, not romantic). Day 5's first Korean line fixed (it contained Vietnamese).

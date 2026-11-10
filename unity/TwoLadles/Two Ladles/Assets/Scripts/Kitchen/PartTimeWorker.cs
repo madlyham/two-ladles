@@ -129,8 +129,8 @@ namespace TwoLadles.Kitchen
             }
         }
 
-        // Prep assistant brain: chop what's on the board, hand finished food to a free East
-        // table, then load the next raw ingredient for today's dish. Keeps max 2 waiting on tables.
+        // Prep assistant brain: chop what's on the board, hand finished food to a free counter,
+        // then load the next raw ingredient for today's dish. Keeps max 2 waiting on tables.
         private void ExecutePrepTask(PrepStation prep)
         {
             int day = ShiftManager.Instance != null ? ShiftManager.Instance.currentStageId : 1;
@@ -147,7 +147,7 @@ namespace TwoLadles.Kitchen
                     return;
                 }
 
-                CounterStation free = FindFreeEastCounter();
+                CounterStation free = FindFreeCounterNear(prep);
                 if (free == null) return; // all tables full: wait
                 free.heldItem = prep.heldItem;
                 prep.heldItem = null;
@@ -159,27 +159,43 @@ namespace TwoLadles.Kitchen
 
             if (!Application.isPlaying) return;
 
-            string rawId = (day <= 2) ? "tteok_raw" : "unprocessed_raw_meat";
-            string[] outputs = (day <= 2)
-                ? new[] { "tteok_portioned" }
-                : new[] { "korean_bbq_raw", "bulgogi_portioned" };
+            // Determine raw ingredient depending on whether this prep station is West (Linh's side) or East (Jiwon's side)
+            bool isWest = prep.transform.position.x < 0f;
+            string rawId;
+            string[] outputs;
+
+            if (isWest)
+            {
+                rawId = (day == 1 || day == 4) ? "pork_raw" : (day == 2 ? "beef_raw" : (day == 3 ? "tteok_raw" : "unprocessed_raw_meat"));
+                outputs = (day == 1 || day == 4) ? new[] { "pork_portioned" } : (day == 2 ? new[] { "beef_sliced" } : (day == 3 ? new[] { "tteok_portioned" } : new[] { "bulgogi_portioned" }));
+            }
+            else
+            {
+                rawId = (day <= 2) ? "tteok_raw" : "unprocessed_raw_meat";
+                outputs = (day <= 2) ? new[] { "tteok_portioned" } : new[] { "korean_bbq_raw", "bulgogi_portioned" };
+            }
+
             if (CountOnCounters(outputs) >= 2) return;
 
             prep.PlaceRawItem(new KitchenItem(rawId, GameData.GetItemDisplayName(rawId)));
         }
 
-        private static CounterStation FindFreeEastCounter()
+        private static CounterStation FindFreeCounterNear(PrepStation prep)
         {
             if (KitchenController.Instance == null) return null;
             CounterStation best = null;
-            float bestX = float.MaxValue;
+            float bestDist = float.MaxValue;
+            Vector3 origin = prep != null ? prep.transform.position : Vector3.zero;
             foreach (var st in KitchenController.Instance.stations.Values)
             {
-                if (st is CounterStation c && c.heldItem == null && c.transform.position.x > 0.5f)
+                if (st is CounterStation c && c.heldItem == null && !(st is TrashStation))
                 {
-                    // Prefer tables closest to the kitchen centre (shortest walk for Jiwon)
-                    float x = c.transform.position.x;
-                    if (x < bestX) { bestX = x; best = c; }
+                    float d = Vector3.Distance(c.transform.position, origin);
+                    if (d < bestDist)
+                    {
+                        bestDist = d;
+                        best = c;
+                    }
                 }
             }
             return best;

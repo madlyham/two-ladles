@@ -449,6 +449,15 @@ namespace TwoLadles.UI
             twoBotTestButton.onClick.AddListener(OnTwoBotTestClicked);
             twoBotTestButton.gameObject.SetActive(!Application.isMobilePlatform);
 
+            // QA options: which day(s) the bots play, and whether they get every upgrade (temporary, never saved).
+            qaDayButton = CreateButton("QADayBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-110f, -325f), new Vector2(200f, 32f), QADayLabel(), new Color(0.15f, 0.18f, 0.24f, 0.9f), out qaDayText, 11);
+            qaDayButton.onClick.AddListener(() => { qaDayOption = (qaDayOption + 1) % 6; qaDayText.text = QADayLabel(); });
+            qaDayButton.gameObject.SetActive(!Application.isMobilePlatform);
+
+            qaUpgradesButton = CreateButton("QAUpgradesBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(110f, -325f), new Vector2(200f, 32f), QAUpgradesLabel(), new Color(0.15f, 0.18f, 0.24f, 0.9f), out qaUpgradesText, 11);
+            qaUpgradesButton.onClick.AddListener(() => { qaAllUpgrades = !qaAllUpgrades; qaUpgradesText.text = QAUpgradesLabel(); });
+            qaUpgradesButton.gameObject.SetActive(!Application.isMobilePlatform);
+
             var closeSettingsBtn = CreateButton("CloseSettingsBtn", settingsPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 35f), new Vector2(150f, 36f), "CLOSE", new Color(0.25f, 0.28f, 0.36f, 1f), out _, 12);
             closeSettingsBtn.onClick.AddListener(ShowMainMenu);
 
@@ -732,6 +741,16 @@ namespace TwoLadles.UI
             gameObject.SetActive(false);
         }
 
+        // QA test options (Settings popup)
+        private Button qaDayButton;
+        private Text qaDayText;
+        private Button qaUpgradesButton;
+        private Text qaUpgradesText;
+        private int qaDayOption = 0; // 0 = All days, 1-5 = single day
+        private bool qaAllUpgrades = true;
+        private string QADayLabel() => qaDayOption == 0 ? "TEST DAY: ALL (1-5)" : "TEST DAY: " + qaDayOption;
+        private string QAUpgradesLabel() => qaAllUpgrades ? "ALL UPGRADES: ON" : "ALL UPGRADES: OFF";
+
         private void OnTwoBotTestClicked()
         {
             if (TwoLadles.AI.TwoBotQAManager.Instance == null)
@@ -740,9 +759,9 @@ namespace TwoLadles.UI
                 qaObj.AddComponent<TwoLadles.AI.TwoBotQAManager>();
             }
 
-            int startLvl = isEndlessSelected ? 1 : Mathf.Clamp(selectedLevelId, 1, 5);
-            int endLvl = isEndlessSelected ? 1 : 5;
-            TwoLadles.AI.TwoBotQAManager.Instance.StartAutoplayRun(startLvl, endLvl, UnityEngine.Random.Range(10, 9999), 2.0f);
+            var range = TwoLadles.AI.TwoBotQAManager.ResolveDayRange(qaDayOption);
+            TwoLadles.AI.TwoBotQAManager.Instance.qaAllUpgrades = qaAllUpgrades;
+            TwoLadles.AI.TwoBotQAManager.Instance.StartAutoplayRun(range.start, range.end, UnityEngine.Random.Range(10, 9999), 2.0f);
             gameObject.SetActive(false);
         }
 

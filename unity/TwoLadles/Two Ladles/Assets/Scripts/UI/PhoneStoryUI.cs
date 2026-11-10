@@ -32,6 +32,10 @@ namespace TwoLadles.UI
         /// <summary>Swipe-card portrait frame size (square headshot).</summary>
         public const float PORTRAIT_FRAME_W = 220f;
         public const float PORTRAIT_FRAME_H = 220f;
+        /// <summary>Portrait draw width inside the frame (wider = more zoomed in = bigger head).</summary>
+        public const float PORTRAIT_ZOOM_W = 230f;
+        /// <summary>Vertical offset of the portrait in its frame (negative = lower).</summary>
+        public static float PortraitDrop(bool mobile) => mobile ? -18f : -4f;
 
         /// <summary>
         /// Dating-app match scene: Day 1, first time only (solo). In LAN co-op both host and guest
@@ -531,10 +535,10 @@ namespace TwoLadles.UI
             pic.preserveAspect = true;
             pic.raycastTarget = false;
             if (pic.sprite == null) pic.color = Color.clear;
-            const float portraitW = 270f; // wider than the frame = zoomed in
+            const float portraitW = PORTRAIT_ZOOM_W; // wider than the frame = zoomed in (smaller = smaller head)
             float portraitH = pic.sprite != null ? portraitW * pic.sprite.rect.height / pic.sprite.rect.width : 600f;
-            // Mobile screens showed the head too close to the top edge, so drop it further there.
-            float portraitDrop = Application.isMobilePlatform ? -35f : -4f; // raised to fit the square frame
+            // Mobile drops the sprite a little lower than desktop so the head clears the top edge.
+            float portraitDrop = PortraitDrop(Application.isMobilePlatform);
             Place(pic.rectTransform, 0, portraitDrop, portraitW, portraitH, true); // negative = sits lower in the card
             var name = MakeText(card.transform, () => L("jiwon"), 26, Ink, TextAnchor.MiddleCenter);
             name.fontStyle = FontStyle.Bold;

@@ -36,7 +36,9 @@ namespace TwoLadles.Player
         public CharacterController characterController;
 
         [Header("Carried Item Hover & Tilt Animation")]
-        public Vector3 carriedItemBaseOffset = new Vector3(0.0f, 1.85f, 0.0f);
+        /// <summary>Height of the carried item above the chef's feet (raised so the face stays visible).</summary>
+        public const float CARRIED_ITEM_HEIGHT = 2.3f;
+        public Vector3 carriedItemBaseOffset = new Vector3(0.0f, CARRIED_ITEM_HEIGHT, 0.0f);
         public float carriedHoverBobSpeed = 4.5f;
         public float carriedHoverBobHeight = 0.08f;
         public float carriedHoverTiltSpeed = 3.5f;

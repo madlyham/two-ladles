@@ -1053,7 +1053,7 @@ namespace TwoLadles.Kitchen
             // Carried Item SpriteRenderer (hovering directly above chef's head with tilt & bobbing)
             GameObject itemChild = new GameObject("CarriedItemSprite");
             itemChild.transform.SetParent(chefObj.transform);
-            itemChild.transform.localPosition = new Vector3(0.0f, 1.85f, 0.0f);
+            itemChild.transform.localPosition = new Vector3(0.0f, PlayerController.CARRIED_ITEM_HEIGHT, 0.0f);
             itemChild.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
             var itemSr = itemChild.AddComponent<SpriteRenderer>();
             itemChild.transform.localScale = Vector3.one * 0.55f;

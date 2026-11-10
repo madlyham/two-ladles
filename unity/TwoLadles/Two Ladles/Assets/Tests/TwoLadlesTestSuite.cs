@@ -1013,6 +1013,9 @@ namespace TwoLadles.Tests
             Assert(!UI.PhoneStoryUI.ShouldShowMatchScene(1, false, false), "Match scene not repeated once seen");
             Assert(!UI.PhoneStoryUI.ShouldShowMatchScene(2, true, false), "Match scene only on Day 1");
             Assert(Mathf.Approximately(UI.PhoneStoryUI.PORTRAIT_FRAME_W, UI.PhoneStoryUI.PORTRAIT_FRAME_H), "Jiwon swipe-card portrait frame is square");
+            Assert(UI.PhoneStoryUI.PORTRAIT_ZOOM_W < 270f, "Jiwon swipe-card head drawn smaller (less zoom) on all platforms");
+            Assert(UI.PhoneStoryUI.PortraitDrop(true) > -35f, "Jiwon swipe-card sprite sits higher on mobile than before");
+            Assert(Player.PlayerController.CARRIED_ITEM_HEIGHT >= 2.2f, "Carried item floats high enough to keep the chef's face visible");
 
             // Lighting changes in one stage per wave
             Assert(Visuals.DayNightCycleManager.StageForWave(1, 3) == 0, "3 waves: wave 1 = day");

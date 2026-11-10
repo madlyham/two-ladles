@@ -2,6 +2,12 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-11 — v1.4.7: Face-Friendly Carry & Smaller Portrait
+
+- **Carried item floats higher** (1.85 → 2.3) so the chef's face stays visible.
+- **Jiwon dating-app portrait:** head smaller on both platforms (zoom width 270 → 230); on mobile the sprite sits higher (offset -35 → -18).
+- Tests: Test18 +3 — 356 total.
+
 ## 2026-11-11 — v1.4.6: Pause Settings & Storage Split
 
 - **Pause button is bright yellow** so it stands out in the top bar.

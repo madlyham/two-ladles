@@ -1003,6 +1003,13 @@ namespace TwoLadles.Tests
             Assert(!UI.PhoneStoryUI.ShouldShowStory(3, GameMode.CAMPAIGN, true), "Story never shows in QA autoplay");
             Assert(!UI.PhoneStoryUI.ShouldShowStory(3, GameMode.ENDLESS_RUSH, false), "Story never shows in endless mode");
 
+            // Dating-app match scene: host / solo see it first time; LAN client always skips it
+            Assert(UI.PhoneStoryUI.ShouldShowMatchScene(1, true, false), "Match scene shows on Day 1 first time for host/solo");
+            Assert(!UI.PhoneStoryUI.ShouldShowMatchScene(1, true, true), "LAN client skips the match scene");
+            Assert(!UI.PhoneStoryUI.ShouldShowMatchScene(1, false, false), "Match scene not repeated once seen");
+            Assert(!UI.PhoneStoryUI.ShouldShowMatchScene(2, true, false), "Match scene only on Day 1");
+            Assert(Mathf.Approximately(UI.PhoneStoryUI.PORTRAIT_FRAME_W, UI.PhoneStoryUI.PORTRAIT_FRAME_H), "Jiwon swipe-card portrait frame is square");
+
             // Lighting changes in one stage per wave
             Assert(Visuals.DayNightCycleManager.StageForWave(1, 3) == 0, "3 waves: wave 1 = day");
             Assert(Visuals.DayNightCycleManager.StageForWave(2, 3) == 1, "3 waves: wave 2 = red noon");

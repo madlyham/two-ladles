@@ -301,7 +301,7 @@ namespace TwoLadles.UI
             // Bottom bar on main menu
             statusText = CreateLabel("StatusText", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(680f, 20f), "Ready to play on Local Wi-Fi.", 11, new Color(0.85f, 0.9f, 0.95f), TextAnchor.MiddleCenter);
             controlsGuideText = CreateLabel("ControlsGuide", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(680f, 20f), "[WASD] Walk  •  [E] Pick / Place  •  [F] Chop / Cook  •  [Q] Throw  •  [R] Recipes", 11, new Color(0.68f, 0.78f, 0.92f), TextAnchor.MiddleCenter);
-            CreateLabel("VersionBadge", mainMenuPanel.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-15f, 15f), new Vector2(120f, 18f), "v1.4.1", 11, new Color(1f, 1f, 1f, 0.5f), TextAnchor.MiddleRight);
+            CreateLabel("VersionBadge", mainMenuPanel.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-15f, 15f), new Vector2(120f, 18f), "v1.4.2", 11, new Color(1f, 1f, 1f, 0.5f), TextAnchor.MiddleRight);
 
             // -------------------------------------------------------------
             // SUB-PANEL B: HOST POPUP MODAL (Clean, asks for name & creates room)
@@ -520,7 +520,7 @@ namespace TwoLadles.UI
             openingBtn.onClick.AddListener(() =>
             {
                 PlayerPrefs.DeleteKey(PhoneStoryUI.OPENING_SEEN_PREF);
-                PhoneStoryUI.Show(1, null, false);
+                PlayStoryFromMenu(1);
             });
 
             string[] dayTitles = new string[] {
@@ -538,7 +538,7 @@ namespace TwoLadles.UI
                 var dayBtn = CreateButton($"StoryDayBtn_{dayNum}", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, yPos), new Vector2(360f, 32f), $"📖  {dayTitles[i]}", new Color(0.18f, 0.25f, 0.38f, 0.95f), out var dayT, 11); Reg(dayT, $"story.day{dayNum}", "📖  ");
                 dayBtn.onClick.AddListener(() =>
                 {
-                    PhoneStoryUI.Show(dayNum, null, false);
+                    PlayStoryFromMenu(dayNum);
                 });
             }
 
@@ -618,6 +618,18 @@ namespace TwoLadles.UI
             if (storyPopupPanel != null) storyPopupPanel.SetActive(false);
         }
 
+        /// <summary>Plays a story replay over the menu, then brings the Stories list back when it closes.</summary>
+        private void PlayStoryFromMenu(int day)
+        {
+            if (PhoneStoryUI.IsShowing) return;
+            if (modalPanel != null) modalPanel.SetActive(false);
+            PhoneStoryUI.Show(day, () =>
+            {
+                if (modalPanel != null) modalPanel.SetActive(true);
+                ShowStoryPopup();
+            }, false);
+        }
+
         public void ShowStoryPopup()
         {
             if (mainMenuPanel != null) mainMenuPanel.SetActive(false);
@@ -630,7 +642,8 @@ namespace TwoLadles.UI
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.M))
+            // Esc belongs to the story phone (skip) while it is open; don't also toggle the menu.
+            if (!PhoneStoryUI.IsShowing && (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.M)))
             {
                 ToggleMenuVisibility();
             }
@@ -721,6 +734,8 @@ namespace TwoLadles.UI
             var hud = FindObjectOfType<KitchenHUD>(true);
             if (hud != null)
             {
+                // Close the menu window; the shop's close button brings the main menu back.
+                if (modalPanel != null) modalPanel.SetActive(false);
                 hud.OpenUpgradeShopModal();
             }
         }

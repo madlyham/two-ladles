@@ -29,6 +29,19 @@ namespace TwoLadles.UI
             return mode == GameMode.CAMPAIGN && !isQA && day >= 1 && day <= 5;
         }
 
+        /// <summary>Swipe-card portrait frame size (square headshot).</summary>
+        public const float PORTRAIT_FRAME_W = 220f;
+        public const float PORTRAIT_FRAME_H = 220f;
+
+        /// <summary>
+        /// Dating-app match scene: Day 1, first time only, and never on the LAN client
+        /// (the host plays the full cutscene; the joining player skips straight to the notification).
+        /// </summary>
+        public static bool ShouldShowMatchScene(int day, bool openingUnseen, bool isLanClient)
+        {
+            return day == 1 && openingUnseen && !isLanClient;
+        }
+
         private bool broadcastOnFinish = true;
 
         public static void Show(int day, Action onDone, bool broadcastOnFinish = true)
@@ -122,7 +135,8 @@ namespace TwoLadles.UI
         private void Start()
         {
             font = KitchenHUD.GetDefaultFont();
-            openingShown = day == 1 && PlayerPrefs.GetInt(OPENING_SEEN_PREF, 0) == 0;
+            bool isLanClient = NetworkManager.Instance != null && !NetworkManager.Instance.IsHost();
+            openingShown = ShouldShowMatchScene(day, PlayerPrefs.GetInt(OPENING_SEEN_PREF, 0) == 0, isLanClient);
             BuildSprites();
             BuildUI();
             if (LocalizationManager.Instance != null) LocalizationManager.Instance.OnLanguageChanged += Refresh;
@@ -501,9 +515,12 @@ namespace TwoLadles.UI
             swipeCard = card.rectTransform;
             // Card is centre-pivoted: y -60 put its top edge ~130px above the screen top (head cut off).
             // Lower the whole card so its top sits below the phone's top edge (a bit more on mobile).
-            swipeCardY = Application.isMobilePlatform ? -250f : -230f;
-            Place(swipeCard, 0, swipeCardY, 260, 380);
-            // Head-and-shoulders crop: a masked frame shows only the top of the full-body sprite (legs cut off).
+            swipeCardY = Application.isMobilePlatform ? -215f : -195f;
+            // Card = 20px border + square portrait frame + 70px name strip (top edge stays where it was).
+            const float cardW = PORTRAIT_FRAME_W + 40f;
+            const float cardH = PORTRAIT_FRAME_H + 90f;
+            Place(swipeCard, 0, swipeCardY, cardW, cardH);
+            // Head-and-shoulders crop: a masked square frame shows only the top of the full-body sprite (legs cut off).
             var frame = new GameObject("PortraitFrame", typeof(RectTransform), typeof(RectMask2D));
             frame.transform.SetParent(card.transform, false);
             Stretch((RectTransform)frame.transform, 20, 20, 20, 70);
@@ -527,10 +544,10 @@ namespace TwoLadles.UI
             swipe.owner = this;
 
             var hint = MakeText(bg.transform, () => L("swipe"), 18, Ink, TextAnchor.MiddleCenter);
-            Place(hint.rectTransform, 0, swipeCardY - 215f, 300, 30);
+            Place(hint.rectTransform, 0, swipeCardY - cardH * 0.5f - 25f, 300, 30);
 
             var go = MakeButton(bg.transform, () => ">>", HeartRed, () => swiped = true);
-            Place((RectTransform)go.transform, 0, swipeCardY - 272f, 90, 50);
+            Place((RectTransform)go.transform, 0, swipeCardY - cardH * 0.5f - 82f, 90, 50);
 
             // Shown after swipe.
             var match = new GameObject("MatchText", typeof(RectTransform));

@@ -1781,6 +1781,7 @@ namespace TwoLadles.UI
             {
                 lobby.gameObject.SetActive(true);
                 if (lobby.modalPanel != null) lobby.modalPanel.SetActive(true);
+                lobby.ShowMainMenu();
                 lobby.RefreshProgressionDisplay();
             }
         }

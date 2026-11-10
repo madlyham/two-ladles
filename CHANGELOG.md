@@ -2,6 +2,14 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-10 — v1.4.2: Menu Flow & Story Polish
+
+- **Upgrades Shop**: opening it from the main menu now closes the menu window; closing the shop returns to the main menu.
+- **Stories menu**: replaying a story hides the menu only while the phone plays, then returns to the Stories list. Esc no longer toggles the menu while the phone is open.
+- **Jiwon swipe card**: portrait frame is now a square headshot (`PhoneStoryUI.PORTRAIT_FRAME_W/H` = 220); card top edge unchanged.
+- **LAN co-op**: the host sees the full opening cutscene; the joining player skips the dating-app match (swipe) scene (`PhoneStoryUI.ShouldShowMatchScene`).
+- Tests: +5 assertions in Test18 (321 total).
+
 ## 2026-11-10 — v1.4.1: Joystick Placement & Mobile 2-Bot QA Test
 
 - **Mobile joystick moved up and right** (`KitchenHUD.MOBILE_JOYSTICK_POS` = 150,140; was 92,92) so it sits clear of the screen corner.

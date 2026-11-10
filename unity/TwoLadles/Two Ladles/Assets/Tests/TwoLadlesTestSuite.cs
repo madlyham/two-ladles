@@ -1005,7 +1005,9 @@ namespace TwoLadles.Tests
 
             // Dating-app match scene: host / solo see it first time; LAN client always skips it
             Assert(UI.PhoneStoryUI.ShouldShowMatchScene(1, true, false), "Match scene shows on Day 1 first time for host/solo");
-            Assert(!UI.PhoneStoryUI.ShouldShowMatchScene(1, true, true), "LAN client skips the match scene");
+            Assert(UI.PhoneStoryUI.ShouldShowMatchScene(1, true, true), "LAN guest also sees the match scene");
+            Assert(UI.PhoneStoryUI.ShouldShowMatchScene(1, false, true), "LAN co-op: both phones show the match scene on Day 1 even if already seen (stay in sync)");
+            Assert(!UI.PhoneStoryUI.ShouldShowMatchScene(2, true, true), "LAN co-op: match scene still only on Day 1");
             Assert(!UI.PhoneStoryUI.ShouldShowMatchScene(1, false, false), "Match scene not repeated once seen");
             Assert(!UI.PhoneStoryUI.ShouldShowMatchScene(2, true, false), "Match scene only on Day 1");
             Assert(Mathf.Approximately(UI.PhoneStoryUI.PORTRAIT_FRAME_W, UI.PhoneStoryUI.PORTRAIT_FRAME_H), "Jiwon swipe-card portrait frame is square");

@@ -2,6 +2,12 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-10 — v1.4.3: LAN Story Sync & Portrait Fit
+
+- **LAN co-op**: the joining player now sees the dating-app match (swipe) scene too. On Day 1 in LAN both phones always play it, so neither jumps ahead to the notification (`PhoneStoryUI.ShouldShowMatchScene`).
+- **Jiwon swipe card**: sprite raised inside the square frame (mobile -70 → -35, desktop -24 → -4). Frame and card unchanged.
+- Tests: Test18 LAN assertion flipped (user-approved requirement change) + 2 new (323 total).
+
 ## 2026-11-10 — v1.4.2: Menu Flow & Story Polish
 
 - **Upgrades Shop**: opening it from the main menu now closes the menu window; closing the shop returns to the main menu.

@@ -34,12 +34,13 @@ namespace TwoLadles.UI
         public const float PORTRAIT_FRAME_H = 220f;
 
         /// <summary>
-        /// Dating-app match scene: Day 1, first time only, and never on the LAN client
-        /// (the host plays the full cutscene; the joining player skips straight to the notification).
+        /// Dating-app match scene: Day 1, first time only (solo). In LAN co-op both host and guest
+        /// always see it on Day 1, so neither phone jumps ahead to the notification.
         /// </summary>
-        public static bool ShouldShowMatchScene(int day, bool openingUnseen, bool isLanClient)
+        public static bool ShouldShowMatchScene(int day, bool openingUnseen, bool isLanCoop)
         {
-            return day == 1 && openingUnseen && !isLanClient;
+            // LAN co-op: both phones always play it on Day 1 so host and guest stay in sync.
+            return day == 1 && (openingUnseen || isLanCoop);
         }
 
         private bool broadcastOnFinish = true;
@@ -135,8 +136,8 @@ namespace TwoLadles.UI
         private void Start()
         {
             font = KitchenHUD.GetDefaultFont();
-            bool isLanClient = NetworkManager.Instance != null && !NetworkManager.Instance.IsHost();
-            openingShown = ShouldShowMatchScene(day, PlayerPrefs.GetInt(OPENING_SEEN_PREF, 0) == 0, isLanClient);
+            bool isLanCoop = NetworkManager.Instance != null && NetworkManager.Instance.isLanActive;
+            openingShown = ShouldShowMatchScene(day, PlayerPrefs.GetInt(OPENING_SEEN_PREF, 0) == 0, isLanCoop);
             BuildSprites();
             BuildUI();
             if (LocalizationManager.Instance != null) LocalizationManager.Instance.OnLanguageChanged += Refresh;
@@ -533,7 +534,7 @@ namespace TwoLadles.UI
             const float portraitW = 270f; // wider than the frame = zoomed in
             float portraitH = pic.sprite != null ? portraitW * pic.sprite.rect.height / pic.sprite.rect.width : 600f;
             // Mobile screens showed the head too close to the top edge, so drop it further there.
-            float portraitDrop = Application.isMobilePlatform ? -70f : -24f;
+            float portraitDrop = Application.isMobilePlatform ? -35f : -4f; // raised to fit the square frame
             Place(pic.rectTransform, 0, portraitDrop, portraitW, portraitH, true); // negative = sits lower in the card
             var name = MakeText(card.transform, () => L("jiwon"), 26, Ink, TextAnchor.MiddleCenter);
             name.fontStyle = FontStyle.Bold;

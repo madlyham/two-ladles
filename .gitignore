@@ -72,3 +72,8 @@ unity/**/[Uu]ser[Ss]ettings/
 .vs/
 .idea/
 
+
+# Retired Godot editor cache (never commit)
+.godot/
+*.import
+*.translation

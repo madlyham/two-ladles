@@ -9,6 +9,7 @@ using System.Threading;
 using UnityEngine;
 using TwoLadles.Data;
 using TwoLadles.Core;
+using TwoLadles.Stations;
 
 namespace TwoLadles.Networking
 {
@@ -88,6 +89,8 @@ namespace TwoLadles.Networking
         private const float POS_SYNC_INTERVAL = 0.033f; // 30Hz network sync
         private float orderSyncTimer = 0.0f;
         private const float ORDER_SYNC_INTERVAL = 0.25f; // 4Hz host -> client order/score sync
+        private float stationSyncTimer = 0.0f;
+        private const float STATION_SYNC_INTERVAL = 0.1f; // 10Hz host -> client station items + chef hands
 
         private void Awake()
         {
@@ -114,7 +117,9 @@ namespace TwoLadles.Networking
             {
                 while (mainThreadQueue.Count > 0)
                 {
-                    mainThreadQueue.Dequeue()?.Invoke();
+                    var job = mainThreadQueue.Dequeue();
+                    try { job?.Invoke(); }
+                    catch (Exception ex) { Debug.LogWarning($"[NetworkManager] Dropped bad packet: {ex.Message}"); }
                 }
             }
 
@@ -188,6 +193,19 @@ namespace TwoLadles.Networking
                 {
                     orderSyncTimer = 0.0f;
                     SendPacket(ShiftManager.EncodeNetworkState(ShiftManager.Instance.CaptureNetworkState()), partnerEndPoint);
+                }
+            }
+
+            // 6. Host sends authoritative station items, cook/chop progress, pass slots and chef hands at 10Hz
+            if (isLanActive && IsHost() && partnerEndPoint != null && Kitchen.KitchenController.Instance != null
+                && ShiftManager.Instance != null && ShiftManager.Instance.shiftActive)
+            {
+                stationSyncTimer += Time.unscaledDeltaTime;
+                if (stationSyncTimer >= STATION_SYNC_INTERVAL)
+                {
+                    stationSyncTimer = 0.0f;
+                    var kc = Kitchen.KitchenController.Instance;
+                    SendPacket(EncodeStationSnapshot(kc.stations.Values, kc.playersByPeer), partnerEndPoint);
                 }
             }
         }
@@ -510,6 +528,45 @@ namespace TwoLadles.Networking
                 catch { }
             }
             return bestScore >= 0;
+        }
+
+        /// <summary>
+        /// Cleans an IP the player typed: trims, commas -> dots, drops ":port". Returns "" unless it is a usable LAN IPv4.
+        /// </summary>
+        public static string NormalizeTypedIp(string typed)
+        {
+            if (string.IsNullOrWhiteSpace(typed)) return "";
+            string t = typed.Trim().Replace(',', '.').Replace(" ", "");
+            int colon = t.IndexOf(':');
+            if (colon >= 0) t = t.Substring(0, colon);
+            return IsUsableLanAddress(t) ? t : "";
+        }
+
+        /// <summary>Every usable IPv4 on this device (physical adapters first). Shown on the host screen.</summary>
+        public static List<string> GetAllUsableLanIPv4()
+        {
+            var list = new List<string>();
+            if (TryGetLocalWifiIPv4(out var best, out _) && IsUsableLanAddress(best)) list.Add(best);
+            try
+            {
+                foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                    if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback || ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel) continue;
+                    string n = ((ni.Name ?? "") + " " + (ni.Description ?? "")).ToLowerInvariant();
+                    if (n.Contains("virtual") || n.Contains("vethernet") || n.Contains("vmware") || n.Contains("hyper-v") || n.Contains("vpn") || n.Contains("virtualbox") || n.Contains("wsl") || n.Contains("bluetooth")) continue;
+                    IPInterfaceProperties props;
+                    try { props = ni.GetIPProperties(); } catch { continue; }
+                    foreach (var ua in props.UnicastAddresses)
+                    {
+                        if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                        string c = ua.Address.ToString();
+                        if (IsUsableLanAddress(c) && !list.Contains(c)) list.Add(c);
+                    }
+                }
+            }
+            catch { }
+            return list;
         }
 
         private void RefreshLocalWifiIp(bool force)
@@ -842,6 +899,27 @@ namespace TwoLadles.Networking
                             ShiftManager.Instance.StartShift(stage, mode);
                             ShiftManager.Instance.isNetworkClient = true; // host owns orders/score from here on
                         }
+                        SendLocalUpgrades(); // host simulates our chef with our own tier + upgrades
+                    }
+                    break;
+
+                case "UPGRADES":
+                    // Both sides: partner's chef uses partner's own tier + upgrades.
+                    // Host simulates it; client only uses it for the tier sprite. Host replies once with its own.
+                    if (Kitchen.KitchenController.Instance != null && DecodeUpgrades(msg, out int upTier, out var upVals))
+                    {
+                        foreach (var kv in Kitchen.KitchenController.Instance.playersByPeer)
+                        {
+                            if (kv.Key != localPeerId) { ApplyUpgradesToChef(kv.Value, upTier, upVals); break; }
+                        }
+                        if (IsHost()) SendLocalUpgrades();
+                    }
+                    break;
+
+                case "WORKER":
+                    if (!IsHost() && Kitchen.KitchenController.Instance != null)
+                    {
+                        ApplyWorkerPacket(msg, Kitchen.KitchenController.Instance);
                     }
                     break;
 
@@ -865,50 +943,58 @@ namespace TwoLadles.Networking
                             float fx = float.Parse(parts[5], CultureInfo.InvariantCulture);
                             float fy = float.Parse(parts[6], CultureInfo.InvariantCulture);
                             float wAnim = float.Parse(parts[7], CultureInfo.InvariantCulture);
-                            string carried = parts[8];
 
                             remoteChef.transform.position = new Vector3(x, y, z);
                             remoteChef.facingDirection = new Vector2(fx, fy);
                             remoteChef.walkAnimTime = wAnim;
 
-                            if (string.IsNullOrEmpty(carried) || carried == "none")
-                            {
-                                if (remoteChef.carriedItem != null) remoteChef.ClearCarriedItem();
-                            }
-                            else
-                            {
-                                if (remoteChef.carriedItem == null || remoteChef.carriedItem.itemId != carried)
-                                {
-                                    remoteChef.SetCarriedItem(new KitchenItem(carried, Player.PlayerController.ResolveItemSpriteName(carried)));
-                                }
-                            }
+                            // Held items are host-authoritative and arrive in STATIONS packets,
+                            // so the carried-item field (parts[8]) is informational only.
                         }
                     }
                     break;
 
-                case "INTERACT":
-                    if (IsHost() && parts.Length >= 3 && Kitchen.KitchenController.Instance != null)
+                case "STATIONS":
+                    if (!IsHost() && Kitchen.KitchenController.Instance != null)
                     {
-                        int pId = int.Parse(parts[1]);
+                        var kcs = Kitchen.KitchenController.Instance;
+                        ApplyStationSnapshot(msg, kcs.stations, kcs.playersByPeer);
+                    }
+                    break;
+
+                case "HIRE":
+                    if (IsHost() && parts.Length >= 2 && Kitchen.KitchenController.Instance != null
+                        && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int hirePid) && hirePid != localPeerId)
+                    {
+                        Kitchen.KitchenController.Instance.RequestHireAvailableCrew(hirePid);
+                    }
+                    break;
+
+                case "INTERACT":
+                    if (IsHost() && parts.Length >= 3 && Kitchen.KitchenController.Instance != null
+                        && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int iPid) && iPid != localPeerId)
+                    {
+                        var kci = Kitchen.KitchenController.Instance;
                         bool isSec = parts[2] == "1";
-                        if (Kitchen.KitchenController.Instance.playersByPeer.TryGetValue(pId, out var chef))
+                        if (kci.playersByPeer.TryGetValue(iPid, out var chef))
                         {
-                            if (isSec) chef.TryInteractSecondary();
-                            else chef.TryInteractPrimary();
+                            // Client names the station it aimed at; host still checks the 2.6m reach.
+                            StationBase aimed = null;
+                            if (parts.Length >= 4 && !string.IsNullOrEmpty(parts[3])) kci.stations.TryGetValue(parts[3], out aimed);
+                            if (isSec) chef.TryInteractSecondary(aimed);
+                            else chef.TryInteractPrimary(aimed);
                         }
                     }
                     break;
 
                 case "THROW":
-                    if (parts.Length >= 4 && Kitchen.KitchenController.Instance != null)
+                    if (IsHost() && parts.Length >= 4 && Kitchen.KitchenController.Instance != null
+                        && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int tPid) && tPid != localPeerId
+                        && Kitchen.KitchenController.Instance.playersByPeer.TryGetValue(tPid, out var thrower)
+                        && float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float ax)
+                        && float.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out float ay))
                     {
-                        int pId = int.Parse(parts[1], CultureInfo.InvariantCulture);
-                        if (pId != localPeerId && Kitchen.KitchenController.Instance.playersByPeer.TryGetValue(pId, out var chef))
-                        {
-                            float ax = float.Parse(parts[2], CultureInfo.InvariantCulture);
-                            float ay = float.Parse(parts[3], CultureInfo.InvariantCulture);
-                            chef.ThrowItem(new Vector2(ax, ay));
-                        }
+                        thrower.ThrowItem(new Vector2(ax, ay));
                     }
                     break;
 
@@ -937,12 +1023,345 @@ namespace TwoLadles.Networking
             }
         }
 
-        public void SendClientInteract(bool isSecondary)
+        public void SendClientInteract(bool isSecondary, string stationId = "")
         {
             if (!IsHost() && partnerEndPoint != null)
             {
-                SendPacket($"INTERACT|{localPeerId}|{(isSecondary ? 1 : 0)}", partnerEndPoint);
+                SendPacket($"INTERACT|{localPeerId}|{(isSecondary ? 1 : 0)}|{(stationId ?? "").Replace("|", "")}", partnerEndPoint);
             }
+        }
+
+        public void SendClientHire()
+        {
+            if (!IsHost() && partnerEndPoint != null)
+            {
+                SendPacket($"HIRE|{localPeerId}", partnerEndPoint);
+            }
+        }
+
+        // ---------------- Per-chef upgrades (UPGRADES packet, client -> host at shift start) ----------------
+        // UPGRADES|tier|move_speed=1.2,cook_speed=1.5,...   Values clamped 0.5..3.0, tier 1..3.
+
+        public static readonly string[] UPGRADE_KEYS = { "move_speed", "cook_speed", "stockpot_window", "prep_window" };
+
+        public static string EncodeUpgrades(int tier, Dictionary<string, float> upgrades)
+        {
+            var sb = new StringBuilder();
+            sb.Append("UPGRADES|").Append(Mathf.Clamp(tier, 1, 3).ToString(CultureInfo.InvariantCulture)).Append('|');
+            bool first = true;
+            if (upgrades != null)
+            {
+                foreach (var key in UPGRADE_KEYS)
+                {
+                    if (!upgrades.TryGetValue(key, out float v)) continue;
+                    if (!first) sb.Append(',');
+                    sb.Append(key).Append('=').Append(v.ToString("0.###", CultureInfo.InvariantCulture));
+                    first = false;
+                }
+            }
+            return sb.ToString();
+        }
+
+        public static bool DecodeUpgrades(string msg, out int tier, out Dictionary<string, float> upgrades)
+        {
+            tier = 1;
+            upgrades = new Dictionary<string, float>();
+            try
+            {
+                if (string.IsNullOrEmpty(msg) || !msg.StartsWith("UPGRADES|")) return false;
+                string[] parts = msg.Split('|');
+                if (parts.Length < 3) return false;
+                if (!int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int t)) return false;
+                tier = Mathf.Clamp(t, 1, 3);
+                foreach (string entry in parts[2].Split(','))
+                {
+                    int eq = entry.IndexOf('=');
+                    if (eq <= 0) continue;
+                    string key = entry.Substring(0, eq).Trim();
+                    if (Array.IndexOf(UPGRADE_KEYS, key) < 0) continue;
+                    if (!float.TryParse(entry.Substring(eq + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out float v)) continue;
+                    if (float.IsNaN(v) || float.IsInfinity(v)) continue;
+                    upgrades[key] = Mathf.Clamp(v, 0.5f, 3.0f);
+                }
+                return true;
+            }
+            catch
+            {
+                tier = 1;
+                upgrades = new Dictionary<string, float>();
+                return false;
+            }
+        }
+
+        public static bool ApplyUpgradesToChef(Player.PlayerController chef, int tier, Dictionary<string, float> upgrades)
+        {
+            if (chef == null) return false;
+            chef.characterTier = Mathf.Clamp(tier, 1, 3);
+            chef.upgradeOverrides = upgrades != null ? new Dictionary<string, float>(upgrades) : new Dictionary<string, float>();
+            chef.RefreshVisuals();
+            return true;
+        }
+
+        /// <summary>Sends this device's own tier + upgrade values to the partner (client at shift start, host in reply).</summary>
+        public void SendLocalUpgrades()
+        {
+            if (!isLanActive || partnerEndPoint == null) return;
+            var pm = ProgressionManager.Instance;
+            int tier = 1;
+            var kc = Kitchen.KitchenController.Instance;
+            if (pm != null && kc != null && kc.playersByPeer.TryGetValue(localPeerId, out var me))
+                tier = me.characterId == "jiwon" ? pm.jiwonTier : pm.linhTier;
+            var up = new Dictionary<string, float>();
+            foreach (var key in UPGRADE_KEYS)
+                up[key] = pm != null ? pm.GetUpgradeValue(key, 1.0f) : 1.0f;
+            SendPacket(EncodeUpgrades(tier, up), partnerEndPoint);
+        }
+
+        // ---------------- Part-timer mirror (WORKER packet, host -> client) ----------------
+        // WORKER|wid|roleId|stationId
+
+        public static string EncodeWorker(string wid, string roleId, string stationId)
+        {
+            return $"WORKER|{CleanSyncField(wid)}|{CleanSyncField(roleId)}|{CleanSyncField(stationId)}";
+        }
+
+        public void BroadcastWorker(string wid, string roleId, string stationId)
+        {
+            if (!isLanActive || !IsHost() || partnerEndPoint == null) return;
+            SendPacket(EncodeWorker(wid, roleId, stationId), partnerEndPoint);
+        }
+
+        public static bool ApplyWorkerPacket(string msg, Kitchen.KitchenController kc)
+        {
+            try
+            {
+                if (kc == null || string.IsNullOrEmpty(msg)) return false;
+                string[] parts = msg.Split('|');
+                if (parts.Length < 4 || parts[0] != "WORKER") return false;
+                string wid = CleanSyncField(parts[1]);
+                string role = CleanSyncField(parts[2]);
+                string sid = CleanSyncField(parts[3]);
+                if (wid.Length == 0 || role.Length == 0 || sid.Length == 0) return false;
+                if (!kc.stations.TryGetValue(sid, out var station) || station == null) return false;
+                if (kc.activeWorkers.ContainsKey(wid)) return true;
+
+                int uid = 0;
+                foreach (char c in wid) if (c >= '0' && c <= '9') uid = (uid * 10 + (c - '0')) % 100000;
+
+                int tier = 2;
+                foreach (var p in kc.playersByPeer.Values)
+                    if (p != null && p.characterId == "jiwon") { tier = Mathf.Max(2, p.characterTier); break; }
+
+                return kc.SpawnWorkerVisual(wid, role, station, uid, tier) != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // ---------------- Host-authoritative station snapshot (STATIONS packet) ----------------
+        // STATIONS|S;id;item;quality;vessel;comps;cookState;cookElapsed;strikes;placedComps;passSlots|...|H;peer;item;quality
+        // Empty fields are "-". Lists use ",". Pass slots are "item~peer".
+
+        private static string CleanSyncField(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            var sb = new StringBuilder(s.Length);
+            foreach (char c in s)
+            {
+                if (c != '|' && c != ';' && c != ',' && c != '~') sb.Append(c);
+            }
+            return sb.ToString();
+        }
+
+        private static string OrDash(string s) => string.IsNullOrEmpty(s) ? "-" : s;
+
+        private static string JoinList(List<string> list)
+        {
+            if (list == null || list.Count == 0) return "-";
+            var cleaned = new List<string>();
+            foreach (var s in list)
+            {
+                string c = CleanSyncField(s);
+                if (c.Length > 0) cleaned.Add(c);
+            }
+            return cleaned.Count == 0 ? "-" : string.Join(",", cleaned);
+        }
+
+        private static List<string> SplitList(string s)
+        {
+            var list = new List<string>();
+            if (string.IsNullOrEmpty(s) || s == "-") return list;
+            foreach (var p in s.Split(',')) if (p.Length > 0) list.Add(p);
+            return list;
+        }
+
+        public static string EncodeStationSnapshot(IEnumerable<StationBase> stations, Dictionary<int, Player.PlayerController> chefs)
+        {
+            var sb = new StringBuilder("STATIONS");
+            var seen = new HashSet<string>();
+            if (stations != null)
+            {
+                foreach (var st in stations)
+                {
+                    if (st == null) continue;
+                    string id = CleanSyncField(st.stationId);
+                    if (id.Length == 0 || !seen.Add(id)) continue;
+
+                    var it = st.heldItem;
+                    string cookState = "-", cookElapsed = "-", strikes = "-", placed = "-", slots = "-";
+                    if (st is CookingStation cs)
+                    {
+                        cookState = ((int)cs.currentState).ToString(CultureInfo.InvariantCulture);
+                        cookElapsed = cs.cookingElapsedSeconds.ToString("F2", CultureInfo.InvariantCulture);
+                    }
+                    if (st is PrepStation ps) strikes = ps.strikesCompleted.ToString(CultureInfo.InvariantCulture);
+                    if (st is AssemblyStation asm) placed = JoinList(asm.placedComponents);
+                    if (st is PassCounter pc)
+                    {
+                        pc.InitSlots();
+                        var parts = new List<string>();
+                        foreach (var slot in pc.slots)
+                        {
+                            string sid = slot != null && slot.item != null ? OrDash(CleanSyncField(slot.item.itemId)) : "-";
+                            int peer = slot != null && slot.item != null ? slot.placedByPeer : 0;
+                            parts.Add(sid + "~" + peer.ToString(CultureInfo.InvariantCulture));
+                        }
+                        slots = string.Join(",", parts);
+                    }
+
+                    sb.Append("|S;").Append(id).Append(';')
+                      .Append(it != null ? OrDash(CleanSyncField(it.itemId)) : "-").Append(';')
+                      .Append(it != null ? ((int)it.quality).ToString(CultureInfo.InvariantCulture) : "-").Append(';')
+                      .Append(it != null ? OrDash(CleanSyncField(it.vesselType)) : "-").Append(';')
+                      .Append(it != null ? JoinList(it.assembledComponents) : "-").Append(';')
+                      .Append(cookState).Append(';').Append(cookElapsed).Append(';')
+                      .Append(strikes).Append(';').Append(placed).Append(';').Append(slots);
+                }
+            }
+            if (chefs != null)
+            {
+                foreach (var kv in chefs)
+                {
+                    if (kv.Value == null) continue;
+                    var ci = kv.Value.carriedItem;
+                    sb.Append("|H;").Append(kv.Key.ToString(CultureInfo.InvariantCulture)).Append(';')
+                      .Append(ci != null ? OrDash(CleanSyncField(ci.itemId)) : "-").Append(';')
+                      .Append(ci != null ? ((int)ci.quality).ToString(CultureInfo.InvariantCulture) : "-").Append(';')
+                      .Append(ci != null ? OrDash(CleanSyncField(ci.vesselType)) : "-").Append(';')
+                      .Append(ci != null ? JoinList(ci.assembledComponents) : "-");
+                }
+            }
+            return sb.ToString();
+        }
+
+        private static KitchenItem BuildSyncedItem(string id, string q, string vessel, string comps)
+        {
+            if (string.IsNullOrEmpty(id) || id == "-") return null;
+            QualityTier qt = QualityTier.STANDARD;
+            if (int.TryParse(q, NumberStyles.Integer, CultureInfo.InvariantCulture, out int qi) && Enum.IsDefined(typeof(QualityTier), qi))
+                qt = (QualityTier)qi;
+            string v = string.IsNullOrEmpty(vessel) || vessel == "-" ? "none" : vessel;
+            var item = new KitchenItem(id, Player.PlayerController.ResolveItemSpriteName(id), v, qt);
+            item.assembledComponents.AddRange(SplitList(comps));
+            return item;
+        }
+
+        private static bool SameItem(KitchenItem a, KitchenItem b)
+        {
+            if (a == null || b == null) return a == b;
+            if (a.itemId != b.itemId || a.quality != b.quality || a.vesselType != b.vesselType) return false;
+            int ac = a.assembledComponents?.Count ?? 0, bc = b.assembledComponents?.Count ?? 0;
+            if (ac != bc) return false;
+            for (int i = 0; i < ac; i++) if (a.assembledComponents[i] != b.assembledComponents[i]) return false;
+            return true;
+        }
+
+        public static bool ApplyStationSnapshot(string pkt, Dictionary<string, StationBase> stations, Dictionary<int, Player.PlayerController> chefs)
+        {
+            if (string.IsNullOrEmpty(pkt) || !pkt.StartsWith("STATIONS|")) return false;
+            bool applied = false;
+            try
+            {
+                string[] entries = pkt.Split('|');
+                for (int e = 1; e < entries.Length; e++)
+                {
+                    try
+                    {
+                        string[] f = entries[e].Split(';');
+                        if (f.Length >= 11 && f[0] == "S" && stations != null)
+                        {
+                            if (!stations.TryGetValue(f[1], out var st) || st == null) continue;
+                            st.heldItem = BuildSyncedItem(f[2], f[3], f[4], f[5]);
+
+                            if (st is CookingStation cs)
+                            {
+                                if (int.TryParse(f[6], NumberStyles.Integer, CultureInfo.InvariantCulture, out int cst) && Enum.IsDefined(typeof(CookingState), cst))
+                                    cs.currentState = (CookingState)cst;
+                                if (float.TryParse(f[7], NumberStyles.Float, CultureInfo.InvariantCulture, out float el) && !float.IsNaN(el) && !float.IsInfinity(el))
+                                    cs.cookingElapsedSeconds = Mathf.Max(0f, el);
+                            }
+                            if (st is AssemblyStation asm)
+                            {
+                                asm.placedComponents.Clear();
+                                asm.placedComponents.AddRange(SplitList(f[9]));
+                            }
+                            if (st is PassCounter pc)
+                            {
+                                pc.InitSlots();
+                                string[] sl = f[10] == "-" ? new string[0] : f[10].Split(',');
+                                for (int i = 0; i < PassCounter.NUM_SLOTS; i++)
+                                {
+                                    string sid = "-"; int peer = 0;
+                                    if (i < sl.Length)
+                                    {
+                                        string[] sp = sl[i].Split('~');
+                                        sid = sp[0];
+                                        if (sp.Length > 1) int.TryParse(sp[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out peer);
+                                    }
+                                    var newItem = BuildSyncedItem(sid, "-", "-", "-");
+                                    if (newItem == null) { pc.slots[i].item = null; pc.slots[i].placedByPeer = 0; }
+                                    else if (pc.slots[i].item == null || pc.slots[i].item.itemId != newItem.itemId)
+                                    {
+                                        pc.slots[i].item = newItem; pc.slots[i].placedByPeer = peer;
+                                    }
+                                    else pc.slots[i].placedByPeer = peer;
+                                }
+                            }
+                            if (st is PrepStation ps)
+                            {
+                                if (int.TryParse(f[8], NumberStyles.Integer, CultureInfo.InvariantCulture, out int sk)) ps.strikesCompleted = Mathf.Max(0, sk);
+                                try { ps.UpdateVisuals(); } catch { }
+                            }
+                            else
+                            {
+                                try { st.RefreshStationVisuals(); } catch { }
+                            }
+                            applied = true;
+                        }
+                        else if (f.Length >= 3 && f[0] == "H" && chefs != null)
+                        {
+                            if (!int.TryParse(f[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int peerId)) continue;
+                            if (!chefs.TryGetValue(peerId, out var chef) || chef == null) continue;
+                            var item = BuildSyncedItem(f[2], f.Length > 3 ? f[3] : "-", f.Length > 4 ? f[4] : "-", f.Length > 5 ? f[5] : "-");
+                            if (item == null)
+                            {
+                                if (chef.carriedItem != null) { try { chef.ClearCarriedItem(); } catch { } chef.carriedItem = null; }
+                            }
+                            else if (!SameItem(chef.carriedItem, item))
+                            {
+                                try { chef.SetCarriedItem(item); } catch { }
+                                chef.carriedItem = item;
+                            }
+                            applied = true;
+                        }
+                    }
+                    catch (Exception) { /* skip one bad entry */ }
+                }
+            }
+            catch (Exception) { return false; }
+            return applied;
         }
 
         public void SendClientThrow(Vector2 aim)

@@ -29,13 +29,16 @@ namespace TwoLadles.UI
             return mode == GameMode.CAMPAIGN && !isQA && day >= 1 && day <= 5;
         }
 
-        public static void Show(int day, Action onDone)
+        private bool broadcastOnFinish = true;
+
+        public static void Show(int day, Action onDone, bool broadcastOnFinish = true)
         {
             if (instance != null) return;
             var go = new GameObject("PhoneStoryUI");
             var ui = go.AddComponent<PhoneStoryUI>();
             ui.day = day;
             ui.onDone = onDone;
+            ui.broadcastOnFinish = broadcastOnFinish;
         }
 
         /// <summary>Closes the phone without re-broadcasting (used by LAN STORY_DONE).</summary>
@@ -65,6 +68,7 @@ namespace TwoLadles.UI
             { "vietnam",   new[] { "Vietnam",                 "Việt Nam",                 "베트남" } },
             { "fusion",    new[] { "Vietnam + Korea",         "Việt + Hàn",               "베트남 + 한국" } },
             { "online",    new[] { "online",                  "đang hoạt động",           "온라인" } },
+            { "typemsg",   new[] { "Aa  Type a message...",   "Aa  Nhập tin nhắn...",     "Aa  메시지 입력..." } },
         };
 
         private static string Lang => LocalizationManager.Instance != null ? LocalizationManager.Instance.CurrentLanguage : "en";
@@ -97,8 +101,9 @@ namespace TwoLadles.UI
         private static readonly Color LinhBubble = new Color32(0xFF, 0xD1, 0x8A, 0xFF);
         private static readonly Color Ink = new Color32(0x2A, 0x22, 0x1E, 0xFF);
         private static readonly Color HeartRed = new Color32(0xE8, 0x3F, 0x5B, 0xFF);
+        private static readonly Color MessengerBlue = new Color32(0x00, 0x84, 0xFF, 0xFF);
 
-        private Sprite boxSprite, heartSprite, jiwonHead, linhHead;
+        private Sprite boxSprite, heartSprite, sendSprite, jiwonHead, linhHead;
 
         private RectTransform screen;
         private CanvasGroup blackout;       // "screen off" layer
@@ -148,7 +153,7 @@ namespace TwoLadles.UI
                 PlayerPrefs.SetInt(OPENING_SEEN_PREF, 1);
                 PlayerPrefs.Save();
             }
-            if (broadcast && NetworkManager.Instance != null) NetworkManager.Instance.BroadcastStoryDone();
+            if (broadcast && broadcastOnFinish && NetworkManager.Instance != null) NetworkManager.Instance.BroadcastStoryDone();
             var cb = onDone;
             onDone = null;
             cb?.Invoke();
@@ -208,7 +213,7 @@ namespace TwoLadles.UI
                 bool isLinh = line.speaker == "linh";
                 var typing = AddBubble(isLinh, () => ".", true);
                 var typingText = typing.GetComponentInChildren<Text>();
-                float typeTime = 0.45f + Mathf.Min(line.Get(Lang).Length * 0.015f, 0.9f);
+                float typeTime = 0.3f + Mathf.Min(line.Get(Lang).Length * 0.01f, 0.6f);
                 float t = 0f;
                 while (t < typeTime && !tapRequested)
                 {
@@ -228,11 +233,11 @@ namespace TwoLadles.UI
             }
         }
 
-        /// <summary>Seconds to leave a message on screen before the next one: ~0.05s per character, 2-6s.</summary>
+        /// <summary>Seconds to leave a message on screen before the next one: ~0.035s per character, 1.4-4s.</summary>
         public static float ReadTime(string text)
         {
             int len = text != null ? text.Length : 0;
-            return Mathf.Clamp(1.2f + len * 0.05f, 2f, 6f);
+            return Mathf.Clamp(0.8f + len * 0.035f, 1.4f, 4f);
         }
 
         // Waits for a tap only (no timeout). SKIP / Esc still close the phone.
@@ -342,6 +347,25 @@ namespace TwoLadles.UI
                     h.SetPixel(x, 7 - r, rows[r][x] == 'X' ? Color.white : Color.clear);
             h.Apply();
             heartSprite = Sprite.Create(h, new Rect(0, 0, 9, 8), new Vector2(0.5f, 0.5f), 100f);
+
+            // Pixel "send" arrow (paper-plane triangle pointing right).
+            string[] arrow =
+            {
+                "XX.......",
+                "XXXX.....",
+                "XXXXXX...",
+                ".XXXXXXXX",
+                ".XXXXXXXX",
+                "XXXXXX...",
+                "XXXX.....",
+                "XX.......",
+            };
+            var a = new Texture2D(9, 8, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            for (int r = 0; r < arrow.Length; r++)
+                for (int x = 0; x < 9; x++)
+                    a.SetPixel(x, 7 - r, arrow[r][x] == 'X' ? Color.white : Color.clear);
+            a.Apply();
+            sendSprite = Sprite.Create(a, new Rect(0, 0, 9, 8), new Vector2(0.5f, 0.5f), 100f);
 
             jiwonHead = HeadCrop(Resources.Load<Sprite>("Sprites/Characters/jiwon_tier1"));
             linhHead = HeadCrop(Resources.Load<Sprite>("Sprites/Characters/linh_tier1"));
@@ -484,7 +508,9 @@ namespace TwoLadles.UI
             if (pic.sprite == null) pic.color = Color.clear;
             const float portraitW = 270f; // wider than the frame = zoomed in
             float portraitH = pic.sprite != null ? portraitW * pic.sprite.rect.height / pic.sprite.rect.width : 600f;
-            Place(pic.rectTransform, 0, -24, portraitW, portraitH, true); // -24 = sits a bit lower in the card
+            // Mobile screens showed the head too close to the top edge, so drop it further there.
+            float portraitDrop = Application.isMobilePlatform ? -70f : -24f;
+            Place(pic.rectTransform, 0, portraitDrop, portraitW, portraitH, true); // negative = sits lower in the card
             var name = MakeText(card.transform, () => L("jiwon"), 26, Ink, TextAnchor.MiddleCenter);
             name.fontStyle = FontStyle.Bold;
             name.rectTransform.anchorMin = new Vector2(0, 0); name.rectTransform.anchorMax = new Vector2(1, 0);
@@ -542,7 +568,7 @@ namespace TwoLadles.UI
             var view = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
             view.transform.SetParent(root.transform, false);
             var vrt = (RectTransform)view.transform;
-            Stretch(vrt, 6, 60, 6, 34);
+            Stretch(vrt, 6, 60, 6, 78);
 
             var content = new GameObject("Content", typeof(RectTransform));
             content.transform.SetParent(view.transform, false);
@@ -565,7 +591,25 @@ namespace TwoLadles.UI
             tapHint = tap;
             tap.rectTransform.anchorMin = new Vector2(0, 0); tap.rectTransform.anchorMax = new Vector2(1, 0);
             tap.rectTransform.pivot = new Vector2(0.5f, 0); tap.rectTransform.sizeDelta = new Vector2(0, 28);
-            tap.rectTransform.anchoredPosition = new Vector2(0, 4);
+            tap.rectTransform.anchoredPosition = new Vector2(0, 46);
+
+            // Messenger-style input bar (decorative only): grey "Aa" field + blue send arrow.
+            var inputBar = Panel(root.transform, "InputBar", Color.white);
+            var irt = inputBar.rectTransform;
+            irt.anchorMin = new Vector2(0, 0); irt.anchorMax = new Vector2(1, 0);
+            irt.pivot = new Vector2(0.5f, 0); irt.sizeDelta = new Vector2(0, 44); irt.anchoredPosition = Vector2.zero;
+            inputBar.raycastTarget = false;
+            var field = Box(inputBar.transform, "Field", new Color32(0xEE, 0xEE, 0xF0, 0xFF), 0.5f);
+            field.raycastTarget = false;
+            Stretch(field.rectTransform, 8, 6, 50, 6);
+            var ph = MakeText(field.transform, () => L("typemsg"), 15, new Color(0, 0, 0, 0.4f), TextAnchor.MiddleLeft);
+            Stretch(ph.rectTransform, 12, 0, 8, 0);
+            var send = new GameObject("SendIcon", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            send.transform.SetParent(inputBar.transform, false);
+            send.sprite = sendSprite; send.color = MessengerBlue; send.raycastTarget = false;
+            send.rectTransform.anchorMin = send.rectTransform.anchorMax = new Vector2(1, 0.5f);
+            send.rectTransform.sizeDelta = new Vector2(27, 27);
+            send.rectTransform.anchoredPosition = new Vector2(-25, 0);
 
             chatPanel.SetActive(false);
         }

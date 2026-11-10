@@ -50,7 +50,9 @@ namespace TwoLadles.Stations
             float currentTime,
             string specializationId = "",
             string characterId = "linh",
-            float customSpeedMultiplier = 1.0f)
+            float customSpeedMultiplier = 1.0f,
+            int chefTier = -1,
+            float prepWindowOverride = -1f)
         {
             if (heldItem == null)
                 return (false, "Empty.", CadenceGrade.MISS, QualityTier.STANDARD, false, 0);
@@ -75,7 +77,7 @@ namespace TwoLadles.Stations
             float speedMult = customSpeedMultiplier;
             if (characterId == "linh" && ProgressionManager.Instance != null && GameData.Instance != null)
             {
-                int tier = ProgressionManager.Instance.linhTier;
+                int tier = chefTier > 0 ? chefTier : ProgressionManager.Instance.linhTier;
                 if (GameData.Instance.linhTiers.TryGetValue(tier, out var spec))
                 {
                     speedMult = spec.taskSpeedMultiplier;
@@ -86,8 +88,13 @@ namespace TwoLadles.Stations
             float perfectWindow = CADENCE_PERFECT_WINDOW * speedMult;
             float goodWindow = CADENCE_GOOD_WINDOW * speedMult;
 
-            // Apply knife upgrade
-            if (ProgressionManager.Instance != null)
+            // Apply knife upgrade (striking chef's own value in LAN, else this device's upgrade)
+            if (prepWindowOverride > 0f)
+            {
+                perfectWindow *= prepWindowOverride;
+                goodWindow *= prepWindowOverride;
+            }
+            else if (ProgressionManager.Instance != null)
             {
                 float upVal = ProgressionManager.Instance.GetUpgradeValue("prep_window", 1.0f);
                 perfectWindow *= upVal;
@@ -199,7 +206,17 @@ namespace TwoLadles.Stations
 
         public override (bool ok, string reason) InteractSecondary(ref KitchenItem playerItem, int peerId, string characterId)
         {
-            var res = PerformStrike(Time.time, "", characterId);
+            // LAN: use the striking chef's own tier + knife upgrade (partner may have different upgrades).
+            int chefTier = -1;
+            float chefPrepWindow = -1f;
+            if (TwoLadles.Kitchen.KitchenController.Instance != null &&
+                TwoLadles.Kitchen.KitchenController.Instance.playersByPeer.TryGetValue(peerId, out var chef) &&
+                chef != null && chef.upgradeOverrides != null)
+            {
+                chefTier = chef.characterTier;
+                chefPrepWindow = chef.GetChefUpgradeValue("prep_window", 1.0f);
+            }
+            var res = PerformStrike(Time.time, "", characterId, 1.0f, chefTier, chefPrepWindow);
             return (res.ok, res.reason);
         }
     }

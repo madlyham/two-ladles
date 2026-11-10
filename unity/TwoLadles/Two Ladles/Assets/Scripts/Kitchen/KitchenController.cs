@@ -149,12 +149,13 @@ namespace TwoLadles.Kitchen
                 }
             }
 
-            // 2. Tick cooking stations
+            // 2. Tick cooking stations (LAN client: host owns the timers; delta 0 only refreshes the bar)
+            bool lanClient = PlayerController.IsLanClient();
             foreach (var st in stations.Values)
             {
                 if (st is CookingStation cs)
                 {
-                    cs.TickCooking(dt);
+                    cs.TickCooking(lanClient ? 0f : dt);
                 }
             }
 
@@ -342,6 +343,8 @@ namespace TwoLadles.Kitchen
 
         public void SwitchLocalChef()
         {
+            // Two-device LAN game: each device owns exactly one chef, never swap.
+            if (NetworkManager.Instance != null && NetworkManager.Instance.isLanActive && NetworkManager.Instance.players.Count > 1) return;
             int currentLocal = NetworkManager.Instance != null ? NetworkManager.Instance.localPeerId : 1;
             int nextLocal = (currentLocal == 1) ? 2 : 1;
             if (NetworkManager.Instance != null)
@@ -1110,7 +1113,8 @@ namespace TwoLadles.Kitchen
                 }
                 else
                 {
-                    chef.isLocalPlayer = (peer == humanPeer || !isSolo);
+                    bool lan = NetworkManager.Instance != null && NetworkManager.Instance.isLanActive;
+                    chef.isLocalPlayer = lan ? (peer == NetworkManager.Instance.localPeerId) : (peer == humanPeer || !isSolo);
                     if (existingBot != null)
                     {
                         existingBot.botActive = false;
@@ -1137,6 +1141,13 @@ namespace TwoLadles.Kitchen
 
             if (p.characterId != "jiwon")
                 return (false, "Only Jiwon has the delegation authority to hire part-time crew!", 0);
+
+            // LAN client: host owns the crew; send the request.
+            if (PlayerController.IsLanClient())
+            {
+                NetworkManager.Instance.SendClientHire();
+                return (true, "", 0);
+            }
 
             int tierSlots = 0;
             if (GameData.Instance != null && GameData.Instance.jiwonTiers.TryGetValue(p.characterTier, out var jTier))
@@ -1206,8 +1217,8 @@ namespace TwoLadles.Kitchen
             if (applyCooldown && workerCooldowns.TryGetValue(roleId, out float cd) && cd > 0.0f)
                 return (false, $"{spec.displayName} contract agency is on cooldown ({cd:F0}s left)!", "");
 
-            if (ProgressionManager.Instance == null || ProgressionManager.Instance.coins < spec.hireCost)
-                return (false, $"Not enough restaurant coins! Need {spec.hireCost} coins.", "");
+            if (ShiftManager.Instance == null || ShiftManager.Instance.totalScore < spec.hireCost)
+                return (false, $"Not enough score! Need {spec.hireCost} score to hire.", "");
 
             StationBase targetStation = null;
             if (roleId == "prep_assistant")
@@ -1245,24 +1256,38 @@ namespace TwoLadles.Kitchen
             if (targetStation == null)
                 return (false, $"No station available for {spec.displayName}.", "");
 
-            // Deduct coins & apply cooldown
-            ProgressionManager.Instance.coins -= spec.hireCost;
+            // Deduct shift score (not coins) & apply cooldown
+            ShiftManager.Instance.totalScore -= spec.hireCost;
             if (applyCooldown)
             {
                 workerCooldowns[roleId] = spec.cooldownDuration;
             }
-            ProgressionManager.Instance.SaveProgression();
 
             workerUidCounter++;
             string wid = $"worker_{workerUidCounter}";
 
+            SpawnWorkerVisual(wid, roleId, targetStation, workerUidCounter, p.characterTier);
+
+            // LAN: tell the client which station this worker walks to, so both screens show it
+            NetworkManager.Instance?.BroadcastWorker(wid, roleId, targetStation.stationId);
+
+            OnStatusToast?.Invoke($"Hired {spec.displayName} for {spec.contractDuration:F0}s! (-{spec.hireCost} score)", new Color(0.35f, 1.0f, 0.6f));
+            return (true, "", wid);
+        }
+
+        /// <summary>
+        /// Creates the part-timer sprite + behaviour walking to the target station.
+        /// Used by host hiring and by LAN clients mirroring the host's WORKER packet.
+        /// </summary>
+        public PartTimeWorker SpawnWorkerVisual(string wid, string roleId, StationBase targetStation, int uid, int tier)
+        {
             GameObject workerObj = new GameObject(wid);
             workerObj.transform.SetParent(transform);
 
             // Cute mini part-timer chef: smaller than Jiwon (~1.35m height) with customer sprite styling
             workerObj.transform.rotation = Quaternion.Euler(51.0f, 0.0f, 0.0f);
             var sr = workerObj.AddComponent<SpriteRenderer>();
-            string sprName = (roleId == "dishwasher" || workerUidCounter % 2 == 0) ? "customer_3" : "customer_2";
+            string sprName = (roleId == "dishwasher" || uid % 2 == 0) ? "customer_3" : "customer_2";
             Sprite sp = Resources.Load<Sprite>($"Sprites/Characters/{sprName}");
             if (sp == null)
             {
@@ -1288,7 +1313,7 @@ namespace TwoLadles.Kitchen
             }
 
             var workerComp = workerObj.AddComponent<PartTimeWorker>();
-            workerComp.InitializeWorker(wid, roleId, targetStation);
+            workerComp.InitializeWorker(wid, roleId, targetStation, tier);
 
             workerComp.OnWorkerExpired += (expId) =>
             {
@@ -1297,9 +1322,7 @@ namespace TwoLadles.Kitchen
             };
 
             activeWorkers[wid] = workerComp;
-
-            OnStatusToast?.Invoke($"Hired {spec.displayName} for {spec.contractDuration:F0}s! (-{spec.hireCost} coins)", new Color(0.35f, 1.0f, 0.6f));
-            return (true, "", wid);
+            return workerComp;
         }
 
         public StationBase FindNearestStation(Vector3 pos)

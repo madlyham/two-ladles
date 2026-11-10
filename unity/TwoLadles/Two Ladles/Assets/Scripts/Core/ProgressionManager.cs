@@ -431,12 +431,16 @@ namespace TwoLadles.Core
         public void UpdateLiveChefsTiers()
         {
             var kitchen = TwoLadles.Kitchen.KitchenController.Instance;
+            var net = TwoLadles.Networking.NetworkManager.Instance;
+            bool lan = net != null && net.isLanActive;
             if (kitchen != null)
             {
                 foreach (var p in kitchen.playersByPeer.Values)
                 {
                     if (p != null)
                     {
+                        // LAN: this device's save only owns this device's chef; partner tier comes from their UPGRADES packet.
+                        if (lan && p.peerId != net.localPeerId) continue;
                         p.characterTier = (p.characterId == "linh") ? linhTier : jiwonTier;
                         p.RefreshVisuals();
                     }

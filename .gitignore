@@ -40,6 +40,8 @@ tools/
 downloaded_assets/
 
 # Unity specific ignores
+qa_reports/
+unity/qa_reports/
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/

@@ -2,6 +2,38 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-10 — Per-Chef Upgrades, Score-Based Hiring & Mobile Polish
+
+### Added
+- **Per-chef upgrades over LAN:** At shift start, client sends local purchased upgrade tiers to host via `UPGRADES` packet. Host validates and applies them to client's chef (`move_speed`, `cook_speed`, `prep_window`, and tier abilities like Linh's multi-tier chop cadence).
+- **Synchronized Part-Timers:** Host broadcasts newly hired workers (`WORKER` packet with worker id, role, target station, and tier). Both host and client spawn and render the part-timer walking to their station.
+- **Lobby Story & Cutscenes Replay:** Added `STORIES` button to the Main Menu allowing players to replay the opening swipe/match cutscene and Day 1–5 chef text conversations and recipe introductions at any time.
+- **Messenger-Style Chat UI:** Texting screen updated with a Facebook Messenger-style decorative input field (`Aa  Type a message...`), smiley icon, and paper-plane send button in Messenger blue. Texting and reading animations are snappier.
+- **Tutorial Overhaul:** Updated tutorial text to match active gameplay: Send-Out Window at north door, Pass Counter flow bonus (+15 Flow), throw mechanics ([Q] / right-click), holding counters, and part-timer hiring ([H] key). Removed obsolete dish-washing and submit-table text.
+
+### Changed
+- **Shift Score Hiring:** Hiring part-timers now costs 20 current shift score points instead of gold coins (`ShiftManager.Instance.totalScore`), preventing progression economy stalls.
+- **Mobile Story Framing:** Lowered Jiwon's portrait offset on mobile screens so character art is properly framed below the status bar.
+- **Test Suite:** 303 assertions across all 19 test suites, all passing cleanly.
+
+## 2026-11-10 — LAN gameplay sync
+
+### Fixed
+- **Each device controls only its own chef** (the host laptop used to control both chefs).
+- **Host-authoritative stations:** the client sends only intents (`INTERACT` with station id, `THROW`, `HIRE`); the host streams station contents, cooking state/timers, chop progress, assembly parts, pass slots and both chefs' held items 10×/s (`STATIONS` packet). Client cooking timers are paused so the two copies cannot drift.
+- Part-Timer `[H]` hire now works from the client.
+- Network packet handling wrapped so one bad packet cannot stop processing.
+- Test suite: 286 assertions (was 268), all passing.
+
+## 2026-11-10 — Manual IP Join (primary LAN path)
+
+### Changed
+- **Host shows its IP big and clear:** the room screen shows `YOUR IP: x.x.x.x (partner types this in JOIN)` in bold yellow (other adapters listed as "or a / b"), or a "connect this device to Wi-Fi" warning if none is found.
+- **Join popup redesigned:** the IP box + **CONNECT** button are now at the top with a clear instruction; the auto-scan list is secondary below it. The button was renamed from "AUTO-JOIN LAN" to "CONNECT".
+- Typed IPs are cleaned (spaces trimmed, commas → dots, `:port` removed); loopback/invalid input is rejected with a message.
+- Connection status/errors now show inside the Join popup and room screen (they were hidden behind the popup before).
+- Test suite: 268 assertions (was 261).
+
 ## 2026-11-10 — Recipe Discovery & LAN Wi-Fi Fixes
 
 ### Added

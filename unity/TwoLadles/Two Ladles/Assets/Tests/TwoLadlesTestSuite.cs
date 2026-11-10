@@ -520,7 +520,8 @@ namespace TwoLadles.Tests
             p.ConfigureChef(2, "jiwon", "flame_keeper", 1);
             kc.playersByPeer[2] = p;
 
-            ProgressionManager.Instance.coins = 100;
+            ShiftManager.Instance.totalScore = 100;
+            int coinsBeforeHire = ProgressionManager.Instance.coins;
 
             // Tier 1: 0 slots -> rejected
             var t1 = kc.RequestHireWorker(2, "prep_assistant");
@@ -529,8 +530,9 @@ namespace TwoLadles.Tests
             // Tier 2: 1 slot -> can hire
             p.characterTier = 2;
             var t2 = kc.RequestHireWorker(2, "prep_assistant");
-            Assert(t2.ok, "Jiwon Tier 2 successfully hires Prep Assistant for 20 coins");
-            Assert(ProgressionManager.Instance.coins == 80, "20 coins deducted from restaurant vault (Balance: 80)");
+            Assert(t2.ok, "Jiwon Tier 2 successfully hires Prep Assistant for 20 score");
+            Assert(ShiftManager.Instance.totalScore == 80, "20 score deducted from shift score (Score: 80)");
+            Assert(ProgressionManager.Instance.coins == coinsBeforeHire, "Hiring part-timers never spends coins");
             Assert(kc.activeWorkers.Count == 1, "Exactly 1 active part-time worker in kitchen");
 
             // Tier 2: second hire rejected (slot limit = 1)
@@ -572,12 +574,21 @@ namespace TwoLadles.Tests
             // Tier 3 Unified Single-Button Hire: spawns all available part-timers as prep assistants on free stations
             kc.activeWorkers.Clear();
             kc.workerCooldowns.Clear();
-            ProgressionManager.Instance.coins = 100;
+            ShiftManager.Instance.totalScore = 100;
             var unifiedHire = kc.RequestHireAvailableCrew(2);
             Assert(unifiedHire.ok, "Jiwon Tier 3 unified single-button hire triggers crew deployment");
             Assert(unifiedHire.hiredCount == 2, "Unified single-button hire deploys both available part-timers (2 workers)");
             Assert(kc.activeWorkers.Count == 2, "Kitchen has 2 active workers after unified single-button hire");
-            Assert(ProgressionManager.Instance.coins == 60, "40 coins deducted for hiring both part-timers at Tier 3 (Balance: 60)");
+            Assert(ShiftManager.Instance.totalScore == 60, "40 score deducted for hiring both part-timers at Tier 3 (Score: 60)");
+
+            // Not enough score -> hire rejected, score never goes negative
+            kc.activeWorkers.Clear();
+            kc.workerCooldowns.Clear();
+            ShiftManager.Instance.totalScore = 10;
+            var poorHire = kc.RequestHireWorker(2, "prep_assistant");
+            Assert(!poorHire.ok && ShiftManager.Instance.totalScore == 10, "Hire rejected when shift score is below 20 (score unchanged)");
+            ShiftManager.Instance.totalScore = 100;
+            unifiedHire = kc.RequestHireAvailableCrew(2);
 
             PartTimeWorker w1 = null;
             PartTimeWorker w2 = null;
@@ -1102,6 +1113,175 @@ namespace TwoLadles.Tests
             nmLan.players[2].ready = true;
             Assert(nmLan.CanStartShift(true).ok, "Shift starts once both chefs are Ready");
             nmLan.players.Clear();
+
+            // 9. Manual IP join: host shows its Wi-Fi IP(s), joiner types it in
+            Assert(NetworkManager.NormalizeTypedIp(" 192.168.1.5 ") == "192.168.1.5", "Typed IP is trimmed");
+            Assert(NetworkManager.NormalizeTypedIp("192,168,1,5") == "192.168.1.5", "Commas typed on phone keypads become dots");
+            Assert(NetworkManager.NormalizeTypedIp("192.168.1.5:24567") == "192.168.1.5", "Port suffix is stripped from typed IP");
+            Assert(NetworkManager.NormalizeTypedIp("192.168.1.") == "" && NetworkManager.NormalizeTypedIp("hello") == "" && NetworkManager.NormalizeTypedIp(null) == "", "Incomplete / garbage typed IP rejected");
+            Assert(NetworkManager.NormalizeTypedIp("127.0.0.1") == "", "Typed localhost rejected (partner must use host's Wi-Fi IP)");
+            var allIps = NetworkManager.GetAllUsableLanIPv4();
+            Assert(allIps != null, "Host IP list is never null");
+            bool allUsable = true;
+            foreach (var a in allIps) if (!NetworkManager.IsUsableLanAddress(a)) allUsable = false;
+            Assert(allUsable, "Host IP list never shows localhost / link-local");
+
+            // 10. LAN gameplay sync: each device drives only its own chef; host owns station state
+            var nmSync = NetworkManager.Instance;
+            bool prevQA = ShiftManager.Instance != null && ShiftManager.Instance.isAutoplayQAMode;
+            if (ShiftManager.Instance != null) ShiftManager.Instance.isAutoplayQAMode = false;
+            nmSync.isLanActive = true;
+            nmSync.localPeerId = 2;
+
+            var kcSyncObj = new GameObject("KC_Sync");
+            var kcSync = kcSyncObj.AddComponent<KitchenController>();
+            KitchenController.Instance = kcSync;
+            var sp1 = new GameObject("SyncChef1").AddComponent<PlayerController>();
+            sp1.ConfigureChef(1, "linh", "prep_master", 1);
+            var sp2 = new GameObject("SyncChef2").AddComponent<PlayerController>();
+            sp2.ConfigureChef(2, "jiwon", "flame_keeper", 1);
+            kcSync.playersByPeer[1] = sp1;
+            kcSync.playersByPeer[2] = sp2;
+            kcSync.ConfigureSoloAndAIMode(false, 1, BotDifficulty.Standard);
+            Assert(!sp1.isLocalPlayer && sp2.isLocalPlayer, "LAN client device controls only its own chef (not both)");
+            nmSync.localPeerId = 1;
+            kcSync.ConfigureSoloAndAIMode(false, 1, BotDifficulty.Standard);
+            Assert(sp1.isLocalPlayer && !sp2.isLocalPlayer, "LAN host device controls only its own chef (not both)");
+
+            // Host-side stations
+            var hCounter = new GameObject("H_Counter").AddComponent<CounterStation>(); hCounter.stationId = "counter_sync";
+            hCounter.heldItem = new KitchenItem("bad|id;x,y~z", "Bad");
+            var hCook = new GameObject("H_Cook").AddComponent<CookingStation>(); hCook.stationId = "grill_sync";
+            hCook.heldItem = new KitchenItem("bulgogi_portioned", "Bulgogi");
+            hCook.currentState = CookingState.COOKING; hCook.cookingElapsedSeconds = 3.5f;
+            var hPass = new GameObject("H_Pass").AddComponent<PassCounter>(); hPass.stationId = "pass_sync"; hPass.InitSlots();
+            hPass.slots[1].item = new KitchenItem("rice_portioned", "Rice"); hPass.slots[1].placedByPeer = 2;
+            var hAsm = new GameObject("H_Asm").AddComponent<AssemblyStation>(); hAsm.stationId = "asm_sync";
+            hAsm.heldItem = new KitchenItem("plate", "Plate", "plate", QualityTier.OPTIMAL);
+            hAsm.heldItem.assembledComponents.Add("baguette"); hAsm.heldItem.assembledComponents.Add("bbq_beef");
+            hAsm.placedComponents.Add("baguette"); hAsm.placedComponents.Add("bbq_beef");
+            var hPrep = new GameObject("H_Prep").AddComponent<PrepStation>(); hPrep.stationId = "prep_sync";
+            hPrep.heldItem = new KitchenItem("pork_raw", "Pork"); hPrep.strikesCompleted = 2;
+            sp1.carriedItem = new KitchenItem("tteok_portioned", "Tteok", "none", QualityTier.OPTIMAL);
+            sp2.carriedItem = null;
+
+            string snap = NetworkManager.EncodeStationSnapshot(new StationBase[] { hCounter, hCook, hPass, hAsm, hPrep, hCook }, kcSync.playersByPeer);
+            Assert(snap != null && snap.StartsWith("STATIONS|"), "Host encodes a STATIONS snapshot packet");
+            Assert(snap.Split('|').Length == 1 + 5 + 2, "Snapshot holds each station once plus both chefs' hands");
+
+            // Client-side copies (same ids, different/empty state)
+            var cCounter = new GameObject("C_Counter").AddComponent<CounterStation>(); cCounter.stationId = "counter_sync";
+            var cCook = new GameObject("C_Cook").AddComponent<CookingStation>(); cCook.stationId = "grill_sync";
+            var cPass = new GameObject("C_Pass").AddComponent<PassCounter>(); cPass.stationId = "pass_sync"; cPass.InitSlots();
+            cPass.slots[0].item = new KitchenItem("stale", "Stale");
+            var cAsm = new GameObject("C_Asm").AddComponent<AssemblyStation>(); cAsm.stationId = "asm_sync";
+            var cPrep = new GameObject("C_Prep").AddComponent<PrepStation>(); cPrep.stationId = "prep_sync";
+            var cStations = new Dictionary<string, StationBase>
+            {
+                { "counter_sync", cCounter }, { "grill_sync", cCook }, { "pass_sync", cPass }, { "asm_sync", cAsm }, { "prep_sync", cPrep }
+            };
+            var cc1 = new GameObject("C_Chef1").AddComponent<PlayerController>(); cc1.ConfigureChef(1, "linh", "prep_master", 1);
+            var cc2 = new GameObject("C_Chef2").AddComponent<PlayerController>(); cc2.ConfigureChef(2, "jiwon", "flame_keeper", 1);
+            cc2.carriedItem = new KitchenItem("junk", "Junk");
+            var cChefs = new Dictionary<int, PlayerController> { { 1, cc1 }, { 2, cc2 } };
+
+            Assert(NetworkManager.ApplyStationSnapshot(snap, cStations, cChefs), "Client applies host STATIONS snapshot");
+            Assert(cCounter.heldItem != null && cCounter.heldItem.itemId == "badidxyz", "Counter item synced (separator chars stripped)");
+            Assert(cCook.heldItem != null && cCook.heldItem.itemId == "bulgogi_portioned" && cCook.currentState == CookingState.COOKING && Mathf.Abs(cCook.cookingElapsedSeconds - 3.5f) < 0.02f, "Cooking item, state and timer synced");
+            Assert(cPass.slots[0].item == null && cPass.slots[1].item != null && cPass.slots[1].item.itemId == "rice_portioned" && cPass.slots[1].placedByPeer == 2 && cPass.slots[2].item == null, "Pass Counter slots synced (stale slot cleared)");
+            Assert(cAsm.heldItem != null && cAsm.heldItem.vesselType == "plate" && cAsm.heldItem.quality == QualityTier.OPTIMAL && cAsm.heldItem.assembledComponents.Count == 2 && cAsm.placedComponents.Count == 2 && cAsm.placedComponents[1] == "bbq_beef", "Assembly vessel, quality and components synced");
+            Assert(cPrep.heldItem != null && cPrep.heldItem.itemId == "pork_raw" && cPrep.strikesCompleted == 2, "Prep item and chop progress synced");
+            Assert(cc1.carriedItem != null && cc1.carriedItem.itemId == "tteok_portioned" && cc1.carriedItem.quality == QualityTier.OPTIMAL, "Partner chef's held item synced");
+            Assert(cc2.carriedItem == null, "Own held item follows host (empty hands cleared)");
+
+            hCounter.heldItem = null;
+            string snap2 = NetworkManager.EncodeStationSnapshot(new StationBase[] { hCounter }, kcSync.playersByPeer);
+            NetworkManager.ApplyStationSnapshot(snap2, cStations, cChefs);
+            Assert(cCounter.heldItem == null, "Item removed on host is removed on client");
+
+            bool threw = false;
+            try
+            {
+                Assert(!NetworkManager.ApplyStationSnapshot(null, cStations, cChefs), "Null snapshot rejected");
+                Assert(!NetworkManager.ApplyStationSnapshot("garbage", cStations, cChefs), "Garbage snapshot rejected");
+                NetworkManager.ApplyStationSnapshot("STATIONS|S;x;;|H;abc", cStations, cChefs);
+                NetworkManager.ApplyStationSnapshot("STATIONS|S;grill_sync;a;9;b;c;zz;nan;q;r;p0~x", cStations, null);
+            }
+            catch { threw = true; }
+            Assert(!threw, "Malformed snapshots never crash the client");
+
+            // LAN client never mutates station state locally: it only sends an intent to the host
+            nmSync.localPeerId = 2;
+            var lanCounter = new GameObject("LanCounter").AddComponent<CounterStation>(); lanCounter.stationId = "lan_counter";
+            lanCounter.transform.position = Vector3.zero;
+            lanCounter.heldItem = new KitchenItem("rice_portioned", "Rice");
+            sp2.transform.position = new Vector3(1.0f, 0.0f, 0.0f);
+            sp2.carriedItem = null;
+            kcSync.stations["lan_counter"] = lanCounter;
+            var lanRes = sp2.TryInteractPrimary(lanCounter);
+            Assert(lanRes.ok && lanCounter.heldItem != null && lanCounter.heldItem.itemId == "rice_portioned" && sp2.carriedItem == null, "LAN client interact sends intent only (host decides)");
+            sp2.carriedItem = new KitchenItem("tteok_portioned", "Tteok");
+            sp2.ThrowItem(Vector2.right);
+            Assert(sp2.carriedItem != null, "LAN client throw waits for host result");
+
+            // 11. Per-chef upgrades over LAN (mixed tiers) + part-timer visuals on both devices
+            var upDict = new Dictionary<string, float> { { "move_speed", 1.2f }, { "cook_speed", 1.5f }, { "stockpot_window", 1.0f }, { "prep_window", 1.3f } };
+            string upPkt = NetworkManager.EncodeUpgrades(1, upDict);
+            Assert(upPkt != null && upPkt.StartsWith("UPGRADES|1|"), "Client encodes its tier + upgrades into an UPGRADES packet");
+            Assert(NetworkManager.DecodeUpgrades(upPkt, out int decTier, out var decUp) && decTier == 1 && decUp.Count == 4
+                && Mathf.Abs(decUp["move_speed"] - 1.2f) < 0.001f && Mathf.Abs(decUp["cook_speed"] - 1.5f) < 0.001f, "UPGRADES packet round-trips tier + values");
+            bool upThrew = false;
+            try
+            {
+                Assert(!NetworkManager.DecodeUpgrades(null, out _, out _) && !NetworkManager.DecodeUpgrades("garbage", out _, out _), "Garbage UPGRADES packet rejected");
+                Assert(NetworkManager.DecodeUpgrades("UPGRADES|9|move_speed=99,cook_speed=nan,bad,x=1", out int clampTier, out var clampUp)
+                    && clampTier == 3 && clampUp["move_speed"] <= 3.0f && !clampUp.ContainsKey("cook_speed") && !clampUp.ContainsKey("x"), "Hostile UPGRADES values clamped / dropped");
+            }
+            catch { upThrew = true; }
+            Assert(!upThrew, "Malformed UPGRADES packets never crash the host");
+
+            sp1.characterTier = 2;
+            Assert(NetworkManager.ApplyUpgradesToChef(sp2, decTier, decUp), "Host applies partner's upgrades to partner's chef");
+            Assert(sp1.characterTier == 2 && sp2.characterTier == 1, "Mixed tiers work (Linh T2 host, Jiwon T1 partner)");
+            Assert(Mathf.Abs(sp2.GetEffectiveMoveSpeed() - PlayerController.BASE_MOVE_SPEED * 1.2f) < 0.01f, "Partner walk speed uses partner's own upgrades");
+            nmSync.localPeerId = 1;
+            if (ProgressionManager.Instance != null) ProgressionManager.Instance.UpdateLiveChefsTiers();
+            Assert(sp2.characterTier == 1, "Host's own save never overwrites partner chef tier during LAN");
+
+            var upCookA = new GameObject("UpCookA").AddComponent<CookingStation>();
+            var upCookB = new GameObject("UpCookB").AddComponent<CookingStation>();
+            sp2.transform.position = Vector3.zero; upCookA.transform.position = Vector3.zero; upCookB.transform.position = Vector3.zero;
+            KitchenItem upItemA = new KitchenItem("tteok_portioned", "Tteok");
+            KitchenItem upItemB = new KitchenItem("tteok_portioned", "Tteok");
+            upCookA.InteractPrimary(ref upItemA, 2, "jiwon"); // partner (cook_speed 1.5)
+            upCookB.PlaceIngredient(upItemB);                   // no chef
+            upCookA.TickCooking(1.0f); upCookB.TickCooking(1.0f);
+            Assert(upCookA.cookingElapsedSeconds > upCookB.cookingElapsedSeconds + 0.3f, "Cook speed follows the chef who placed the food");
+
+            // Part-timer: host sends target station; both devices play the walk-in
+            var wkPrep = new GameObject("WkPrep").AddComponent<PrepStation>(); wkPrep.stationId = "prep_east";
+            kcSync.stations["prep_east"] = wkPrep;
+            Assert(NetworkManager.EncodeWorker("worker_7", "prep_assistant", "prep_east") == "WORKER|worker_7|prep_assistant|prep_east", "Host encodes WORKER packet with target station");
+            var wkVis = kcSync.SpawnWorkerVisual("worker_7", "prep_assistant", wkPrep, 7, 2);
+            Assert(wkVis != null && wkVis.targetStation == wkPrep && wkVis.currentState == WorkerState.WALKING_IN && kcSync.activeWorkers.ContainsKey("worker_7"), "Client spawns part-timer walking to the host-chosen station");
+            Assert(Mathf.Abs(wkVis.transform.localScale.y * (wkVis.GetComponent<SpriteRenderer>().sprite != null ? wkVis.GetComponent<SpriteRenderer>().sprite.bounds.size.y : KitchenController.PART_TIMER_HEIGHT / wkVis.transform.localScale.y) - KitchenController.PART_TIMER_HEIGHT) < 0.05f || wkVis.GetComponent<SpriteRenderer>().sprite == null, "Client part-timer uses readable 1.75 height");
+            nmSync.localPeerId = 2;
+            wkPrep.PlaceRawItem(new KitchenItem("daikon_carrot_raw", "Raw Daikon"));
+            wkVis.currentState = WorkerState.WORKING;
+            wkVis.TickWorker(2.0f);
+            Assert(wkPrep.strikesCompleted == 0, "Client part-timer only animates (host owns chopping)");
+            Assert(!NetworkManager.ApplyWorkerPacket("WORKER|w|prep_assistant|no_such_station", kcSync) && !NetworkManager.ApplyWorkerPacket("junk", kcSync), "Bad WORKER packets ignored");
+            nmSync.localPeerId = 1;
+
+            nmSync.isLanActive = false;
+            nmSync.localPeerId = 1;
+            if (ShiftManager.Instance != null) ShiftManager.Instance.isAutoplayQAMode = prevQA;
+            KitchenController.Instance = null;
+            foreach (var o in new GameObject[] { kcSyncObj, sp1.gameObject, sp2.gameObject, hCounter.gameObject, hCook.gameObject, hPass.gameObject, hAsm.gameObject, hPrep.gameObject,
+                cCounter.gameObject, cCook.gameObject, cPass.gameObject, cAsm.gameObject, cPrep.gameObject, cc1.gameObject, cc2.gameObject, lanCounter.gameObject, upCookA.gameObject, upCookB.gameObject, wkPrep.gameObject, wkVis != null ? wkVis.gameObject : null })
+            {
+                if (o != null) UnityEngine.Object.DestroyImmediate(o);
+            }
         }
     }
 }

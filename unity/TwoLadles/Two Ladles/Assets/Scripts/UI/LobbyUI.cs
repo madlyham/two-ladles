@@ -39,6 +39,9 @@ namespace TwoLadles.UI
         public Button hostButton;
         public Button joinButton;
         public Text statusText;
+        private Text joinStatusText; // status mirrored inside Join popup (main-menu statusText is hidden there)
+        private Text roomStatusText; // status mirrored inside Room panel
+        private Text hostIpLabel;    // big "YOUR IP" readout for the host
         public Button[] lanRoomButtons = new Button[2];
         public Text[] lanRoomButtonLabels = new Text[2];
         private List<LanRoomInfo> currentDiscoveredRooms = new List<LanRoomInfo>();
@@ -79,10 +82,13 @@ namespace TwoLadles.UI
         public GameObject joinPopupPanel;
         public GameObject roomPanel;
         public GameObject settingsPopupPanel;
+        public GameObject storyPopupPanel;
 
         public Button openHostPopupButton;
         public Button openJoinPopupButton;
         public Button openSettingsPopupButton;
+        public Button openStoryPopupButton;
+        public Text openStoryButtonLabel;
         public Button leaveRoomButton;
 
         public static LobbyUI Instance { get; private set; }
@@ -286,8 +292,11 @@ namespace TwoLadles.UI
             openShopButton = CreateButton("OpenShopBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(90f, -38f), new Vector2(160f, 42f), "★ UPGRADES ★", new Color(0.75f, 0.52f, 0.12f, 1f), out openShopButtonLabel, 12);
             openShopButton.onClick.AddListener(OnOpenShopClicked);
 
-            openSettingsPopupButton = CreateButton("OpenSettingsBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -95f), new Vector2(340f, 38f), "⚙️  SETTINGS & OPTIONS", new Color(0.22f, 0.25f, 0.34f, 0.95f), out _, 12);
+            openSettingsPopupButton = CreateButton("OpenSettingsBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-90f, -88f), new Vector2(160f, 38f), "⚙️  SETTINGS", new Color(0.22f, 0.25f, 0.34f, 0.95f), out _, 12);
             openSettingsPopupButton.onClick.AddListener(ShowSettingsPopup);
+
+            openStoryPopupButton = CreateButton("OpenStoryBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(90f, -88f), new Vector2(160f, 38f), "📖  STORIES", new Color(0.42f, 0.25f, 0.52f, 1f), out openStoryButtonLabel, 12);
+            openStoryPopupButton.onClick.AddListener(ShowStoryPopup);
 
             // Bottom bar on main menu
             statusText = CreateLabel("StatusText", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(680f, 20f), "Ready to play on Local Wi-Fi.", 11, new Color(0.85f, 0.9f, 0.95f), TextAnchor.MiddleCenter);
@@ -339,30 +348,38 @@ namespace TwoLadles.UI
             jpBg.color = new Color(0.06f, 0.08f, 0.12f, 0.98f);
 
             CreateLabel("JoinTitle", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -45f), new Vector2(600f, 26f), "JOIN A KITCHEN", 16, new Color(0.35f, 0.75f, 0.98f), TextAnchor.MiddleCenter);
-            lanHeaderLabel = CreateLabel("LanHeader", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -72f), new Vector2(600f, 20f), "Open kitchens on your local Wi-Fi network:", 11, new Color(0.75f, 0.85f, 0.95f), TextAnchor.MiddleCenter);
 
-            // Discovered LAN Room Slots
-            for (int i = 0; i < 2; i++)
-            {
-                int slotIdx = i;
-                float yPos = -115f - (i * 38f);
-                lanRoomButtons[i] = CreateButton($"LanRoomBtn_{i}", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, yPos), new Vector2(480f, 32f),
-                    i == 0 ? "[LAN] Scanning for open kitchens..." : "[LAN] Click to refresh scan",
-                    new Color(0.14f, 0.18f, 0.24f, 0.95f), out lanRoomButtonLabels[i], 11);
-                lanRoomButtons[i].onClick.AddListener(() => OnLanRoomSlotClicked(slotIdx));
-            }
-
-            // Direct IP Connect row for cross-network / hotspot
-            CreateLabel("IpPrompt", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-120f, -205f), new Vector2(240f, 22f), "Or Enter Host IP:", 11, new Color(0.7f, 0.75f, 0.85f), TextAnchor.MiddleRight);
+            // PRIMARY PATH: type the IP shown in big yellow numbers on the host's screen
+            CreateLabel("IpPrompt", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -80f), new Vector2(680f, 22f), "Type the IP shown in yellow on the HOST's screen, then press CONNECT:", 13, new Color(1.0f, 0.88f, 0.35f), TextAnchor.MiddleCenter);
             string savedIp = PlayerPrefs.GetString("TwoLadles_LastJoinedIP", "");
             if (!NetworkManager.IsUsableLanAddress(savedIp))
             {
                 savedIp = NetworkManager.GetSubnetPrefix(NetworkManager.Instance != null ? NetworkManager.Instance.LocalWifiIp : "");
             }
-            ipInput = CreateInputField("IpInput", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(50f, -205f), new Vector2(170f, 28f), savedIp, "192.168.1.xxx");
+            ipInput = CreateInputField("IpInput", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-75f, -122f), new Vector2(280f, 42f), savedIp, "e.g. 192.168.1.23");
+            ipInput.textComponent.fontSize = 20;
+            ((Text)ipInput.placeholder).fontSize = 18;
+            ipInput.keyboardType = TouchScreenKeyboardType.NumbersAndPunctuation;
+            ipInput.characterLimit = 21;
 
-            joinButton = CreateButton("DirectJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(185f, -205f), new Vector2(85f, 28f), "CONNECT", new Color(0.20f, 0.48f, 0.78f, 1f), out joinButtonLabel, 11);
+            joinButton = CreateButton("DirectJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(150f, -122f), new Vector2(150f, 42f), "CONNECT", new Color(0.20f, 0.55f, 0.85f, 1f), out joinButtonLabel, 15);
             joinButton.onClick.AddListener(OnJoinClicked);
+
+            joinStatusText = CreateLabel("JoinStatus", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -165f), new Vector2(680f, 36f), "", 12, new Color(0.85f, 0.95f, 1.0f), TextAnchor.MiddleCenter);
+
+            // SECONDARY PATH: kitchens found automatically (some Wi-Fi networks block this)
+            lanHeaderLabel = CreateLabel("LanHeader", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -205f), new Vector2(600f, 20f), "Or tap a kitchen found automatically (may not appear on some Wi-Fi):", 11, new Color(0.65f, 0.72f, 0.82f), TextAnchor.MiddleCenter);
+
+            // Discovered LAN Room Slots
+            for (int i = 0; i < 2; i++)
+            {
+                int slotIdx = i;
+                float yPos = -238f - (i * 36f);
+                lanRoomButtons[i] = CreateButton($"LanRoomBtn_{i}", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, yPos), new Vector2(480f, 30f),
+                    i == 0 ? "[LAN] Scanning for open kitchens..." : "[LAN] Click to refresh scan",
+                    new Color(0.14f, 0.18f, 0.24f, 0.95f), out lanRoomButtonLabels[i], 11);
+                lanRoomButtons[i].onClick.AddListener(() => OnLanRoomSlotClicked(slotIdx));
+            }
 
             var cancelJoinBtn = CreateButton("CancelJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 40f), new Vector2(160f, 38f), "BACK", new Color(0.25f, 0.28f, 0.36f, 1f), out _, 12);
             cancelJoinBtn.onClick.AddListener(ShowMainMenu);
@@ -379,9 +396,12 @@ namespace TwoLadles.UI
             rpRect.anchorMax = Vector2.one;
             rpRect.sizeDelta = Vector2.zero;
 
-            playersListText = CreateLabel("PlayersList", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -48f), new Vector2(680f, 22f), "Room Chefs: Linh (West) & Jiwon (East)", 12, new Color(0.4f, 0.95f, 0.75f), TextAnchor.MiddleCenter);
+            playersListText = CreateLabel("PlayersList", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -44f), new Vector2(680f, 22f), "Room Chefs: Linh (West) & Jiwon (East)", 12, new Color(0.4f, 0.95f, 0.75f), TextAnchor.MiddleCenter);
 
-            levelSelectHeaderLabel = CreateLabel("LevelSelectHeader", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -80f), new Vector2(680f, 18f), "SELECT LEVEL TO PLAY:", 11, new Color(1.0f, 0.85f, 0.35f), TextAnchor.MiddleCenter);
+            hostIpLabel = CreateLabel("HostIpLabel", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -68f), new Vector2(700f, 28f), "", 18, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
+            hostIpLabel.fontStyle = FontStyle.Bold;
+
+            levelSelectHeaderLabel = CreateLabel("LevelSelectHeader", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -100f), new Vector2(680f, 18f), "SELECT LEVEL TO PLAY:", 11, new Color(1.0f, 0.85f, 0.35f), TextAnchor.MiddleCenter);
 
             string[] lvlShortNames = new string[] { "Tteokbokki", "+ Bột Chiên", "+ K-BBQ Rice", "+ Broken Rice", "3m Banh Mi" };
             for (int i = 0; i < 5; i++)
@@ -391,14 +411,14 @@ namespace TwoLadles.UI
                 bool defaultUnlocked = (lvlId == 1);
                 string defaultTag = defaultUnlocked ? "UNLOCKED" : "LOCKED";
                 Color defaultCol = defaultUnlocked ? new Color(0.88f, 0.55f, 0.15f, 1f) : new Color(0.16f, 0.16f, 0.18f, 0.85f);
-                levelSelectButtons[i] = CreateButton($"LevelBtn_{lvlId}", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(xPos, -128f), new Vector2(128f, 54f),
+                levelSelectButtons[i] = CreateButton($"LevelBtn_{lvlId}", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(xPos, -146f), new Vector2(128f, 54f),
                     $"DAY {lvlId}\n{lvlShortNames[i]}\n[{defaultTag}]",
                     defaultCol, out levelSelectLabels[i], 11);
                 levelSelectBgs[i] = levelSelectButtons[i].GetComponent<Image>();
                 levelSelectButtons[i].onClick.AddListener(() => SelectCampaignLevel(lvlId));
             }
 
-            endlessModeButton = CreateButton("EndlessBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -196f), new Vector2(240f, 34f), "∞ ENDLESS SURVIVAL MODE", new Color(0.48f, 0.25f, 0.58f, 1f), out endlessModeButtonLabel, 11);
+            endlessModeButton = CreateButton("EndlessBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -210f), new Vector2(240f, 34f), "∞ ENDLESS SURVIVAL MODE", new Color(0.48f, 0.25f, 0.58f, 1f), out endlessModeButtonLabel, 11);
             endlessModeButton.onClick.AddListener(OnSelectEndlessClicked);
 
             // Room Action Row: Ready, Start Level, Leave
@@ -410,6 +430,8 @@ namespace TwoLadles.UI
 
             leaveRoomButton = CreateButton("LeaveRoomBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(215f, -252f), new Vector2(110f, 44f), "LEAVE", new Color(0.68f, 0.22f, 0.25f, 1f), out _, 12);
             leaveRoomButton.onClick.AddListener(OnLeaveRoomClicked);
+
+            roomStatusText = CreateLabel("RoomStatus", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -312f), new Vector2(680f, 36f), "", 12, new Color(0.85f, 0.95f, 1.0f), TextAnchor.MiddleCenter);
 
             roomPanel.SetActive(false);
 
@@ -467,6 +489,53 @@ namespace TwoLadles.UI
 
             settingsPopupPanel.SetActive(false);
 
+            // -------------------------------------------------------------
+            // SUB-PANEL F: STORY & CUTSCENES MODAL
+            // -------------------------------------------------------------
+            storyPopupPanel = new GameObject("StoryPopupPanel", typeof(RectTransform));
+            storyPopupPanel.transform.SetParent(mRoot, false);
+            var stRect = storyPopupPanel.GetComponent<RectTransform>();
+            stRect.anchorMin = Vector2.zero;
+            stRect.anchorMax = Vector2.one;
+            stRect.sizeDelta = Vector2.zero;
+
+            var stBg = storyPopupPanel.AddComponent<Image>();
+            stBg.color = new Color(0.06f, 0.08f, 0.12f, 0.98f);
+
+            CreateLabel("StoryTitle", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -42f), new Vector2(600f, 26f), "STORY & CUTSCENES", 16, new Color(0.95f, 0.75f, 0.35f), TextAnchor.MiddleCenter);
+            CreateLabel("StoryDesc", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -70f), new Vector2(600f, 20f), "Replay chef conversations, text messages, and recipe intros:", 11, new Color(0.75f, 0.82f, 0.90f), TextAnchor.MiddleCenter);
+
+            var openingBtn = CreateButton("StoryOpeningBtn", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -108f), new Vector2(360f, 34f), "✨ OPENING: FIRST ENCOUNTER", new Color(0.72f, 0.28f, 0.45f, 1f), out _, 11);
+            openingBtn.onClick.AddListener(() =>
+            {
+                PlayerPrefs.DeleteKey(PhoneStoryUI.OPENING_SEEN_PREF);
+                PhoneStoryUI.Show(1, null, false);
+            });
+
+            string[] dayTitles = new string[] {
+                "Day 1: Tteokbokki — First Shift",
+                "Day 2: Bột Chiên — Saigon Heat",
+                "Day 3: K-BBQ Rice — The Rush Begins",
+                "Day 4: Cơm Tấm Broken Rice — Cross-Town Buzz",
+                "Day 5: Bulgogi Bánh Mì — Street Fusion"
+            };
+
+            for (int i = 0; i < 5; i++)
+            {
+                int dayNum = i + 1;
+                float yPos = -152f - (i * 38f);
+                var dayBtn = CreateButton($"StoryDayBtn_{dayNum}", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, yPos), new Vector2(360f, 32f), $"📖  {dayTitles[i]}", new Color(0.18f, 0.25f, 0.38f, 0.95f), out _, 11);
+                dayBtn.onClick.AddListener(() =>
+                {
+                    PhoneStoryUI.Show(dayNum, null, false);
+                });
+            }
+
+            var closeStoryBtn = CreateButton("CloseStoryBtn", storyPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 35f), new Vector2(150f, 36f), "CLOSE", new Color(0.25f, 0.28f, 0.36f, 1f), out _, 12);
+            closeStoryBtn.onClick.AddListener(ShowMainMenu);
+
+            storyPopupPanel.SetActive(false);
+
             RefreshProgressionDisplay();
             RefreshLocalizedText();
         }
@@ -479,6 +548,7 @@ namespace TwoLadles.UI
             if (joinPopupPanel != null) joinPopupPanel.SetActive(false);
             if (roomPanel != null) roomPanel.SetActive(false);
             if (settingsPopupPanel != null) settingsPopupPanel.SetActive(false);
+            if (storyPopupPanel != null) storyPopupPanel.SetActive(false);
         }
 
         public void ShowHostPopup()
@@ -488,6 +558,7 @@ namespace TwoLadles.UI
             if (joinPopupPanel != null) joinPopupPanel.SetActive(false);
             if (roomPanel != null) roomPanel.SetActive(false);
             if (settingsPopupPanel != null) settingsPopupPanel.SetActive(false);
+            if (storyPopupPanel != null) storyPopupPanel.SetActive(false);
         }
 
         public void ShowJoinPopup()
@@ -497,6 +568,7 @@ namespace TwoLadles.UI
             if (joinPopupPanel != null) joinPopupPanel.SetActive(true);
             if (roomPanel != null) roomPanel.SetActive(false);
             if (settingsPopupPanel != null) settingsPopupPanel.SetActive(false);
+            if (storyPopupPanel != null) storyPopupPanel.SetActive(false);
 
             if (NetworkManager.Instance != null)
             {
@@ -516,6 +588,7 @@ namespace TwoLadles.UI
             if (joinPopupPanel != null) joinPopupPanel.SetActive(false);
             if (roomPanel != null) roomPanel.SetActive(true);
             if (settingsPopupPanel != null) settingsPopupPanel.SetActive(false);
+            if (storyPopupPanel != null) storyPopupPanel.SetActive(false);
 
             RefreshProgressionDisplay();
             if (NetworkManager.Instance != null)
@@ -531,6 +604,17 @@ namespace TwoLadles.UI
             if (joinPopupPanel != null) joinPopupPanel.SetActive(false);
             if (roomPanel != null) roomPanel.SetActive(false);
             if (settingsPopupPanel != null) settingsPopupPanel.SetActive(true);
+            if (storyPopupPanel != null) storyPopupPanel.SetActive(false);
+        }
+
+        public void ShowStoryPopup()
+        {
+            if (mainMenuPanel != null) mainMenuPanel.SetActive(false);
+            if (hostPopupPanel != null) hostPopupPanel.SetActive(false);
+            if (joinPopupPanel != null) joinPopupPanel.SetActive(false);
+            if (roomPanel != null) roomPanel.SetActive(false);
+            if (settingsPopupPanel != null) settingsPopupPanel.SetActive(false);
+            if (storyPopupPanel != null) storyPopupPanel.SetActive(true);
         }
 
         private void Update()
@@ -636,11 +720,18 @@ namespace TwoLadles.UI
         private void OnJoinClicked()
         {
             string pName = nameInput != null && !string.IsNullOrEmpty(nameInput.text) ? nameInput.text : "Chef Jiwon";
-            string targetIp = ipInput != null && ipInput.text != null ? ipInput.text.Trim() : "";
-            if (!NetworkManager.IsUsableLanAddress(targetIp) && currentDiscoveredRooms.Count > 0)
+            string typedIp = NetworkManager.NormalizeTypedIp(ipInput != null ? ipInput.text : "");
+            string targetIp = typedIp;
+            if (targetIp.Length == 0 && currentDiscoveredRooms.Count > 0)
             {
                 targetIp = currentDiscoveredRooms[0].hostIp;
             }
+            if (targetIp.Length == 0)
+            {
+                UpdateStatus("Type the full IP from the host's screen (4 numbers with dots, e.g. 192.168.1.23).", true);
+                return;
+            }
+            if (ipInput != null && typedIp.Length > 0) ipInput.text = typedIp;
 
             PlayerPrefs.SetString("TwoLadles_PlayerName_Join", pName);
             PlayerPrefs.Save();
@@ -815,10 +906,12 @@ namespace TwoLadles.UI
 
         private void UpdateStatus(string message, bool isError)
         {
-            if (statusText != null)
+            Color c = isError ? new Color(1.0f, 0.4f, 0.4f) : new Color(0.85f, 0.95f, 1.0f);
+            foreach (var t in new[] { statusText, joinStatusText, roomStatusText })
             {
-                statusText.text = message;
-                statusText.color = isError ? new Color(1.0f, 0.4f, 0.4f) : new Color(0.85f, 0.95f, 1.0f);
+                if (t == null) continue;
+                t.text = message;
+                t.color = c;
             }
         }
 
@@ -858,11 +951,17 @@ namespace TwoLadles.UI
                 {
                     startShiftButton.interactable = !lanCoop || (nm.IsHost() && nm.CanStartShift(true).ok);
                 }
-                if (lanCoop && playersListText != null && nm.IsHost())
+                if (hostIpLabel != null)
                 {
-                    string myIp = nm.LocalWifiIp;
-                    if (NetworkManager.IsUsableLanAddress(myIp))
-                        playersListText.text += $"\nYour Wi-Fi IP: {myIp} (partner can type this)";
+                    string ipText = "";
+                    if (lanCoop && nm.IsHost())
+                    {
+                        var ips = NetworkManager.GetAllUsableLanIPv4();
+                        if (ips.Count == 0) ipText = "No Wi-Fi IP found - connect this device to Wi-Fi";
+                        else if (ips.Count == 1) ipText = $"YOUR IP: {ips[0]}   (partner types this in JOIN)";
+                        else ipText = $"YOUR IP: {ips[0]}   (or {string.Join(" / ", ips.GetRange(1, Mathf.Min(2, ips.Count - 1)))})";
+                    }
+                    hostIpLabel.text = ipText;
                 }
                 if (lanCoop && players != null && players.Count > 0)
                 {
@@ -905,13 +1004,14 @@ namespace TwoLadles.UI
             var lm = LocalizationManager.Instance;
 
             if (titleLabel != null) titleLabel.text = lm.Get("menu.title");
-            if (lanHeaderLabel != null) lanHeaderLabel.text = lm.Get("menu.lan_header");
+            if (lanHeaderLabel != null) lanHeaderLabel.text = "Or tap a kitchen found automatically (may not appear on some Wi-Fi):";
             if (hostButtonLabel != null) hostButtonLabel.text = lm.Get("menu.host_room");
-            if (joinButtonLabel != null) joinButtonLabel.text = lm.Get("menu.auto_join");
+            if (joinButtonLabel != null) joinButtonLabel.text = "CONNECT";
             if (levelSelectHeaderLabel != null) levelSelectHeaderLabel.text = lm.Get("menu.level_select");
             if (playTutorialButtonLabel != null) playTutorialButtonLabel.text = lm.Get("menu.play_tutorial");
             if (endlessModeButtonLabel != null) endlessModeButtonLabel.text = lm.Get("menu.endless_mode");
             if (openShopButtonLabel != null) openShopButtonLabel.text = lm.Get("menu.upgrade_shop");
+            if (openStoryButtonLabel != null) openStoryButtonLabel.text = "📖  STORIES";
             if (twoBotTestButtonText != null) twoBotTestButtonText.text = lm.Get("menu.two_bot_test");
             if (controlsGuideText != null) controlsGuideText.text = lm.Get("menu.controls_guide");
             if (toggleMenuButtonText != null)

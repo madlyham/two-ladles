@@ -3,6 +3,7 @@ using UnityEngine;
 using TwoLadles.Data;
 using TwoLadles.Core;
 using TwoLadles.Stations;
+using TwoLadles.Player;
 
 namespace TwoLadles.Kitchen
 {
@@ -31,7 +32,7 @@ namespace TwoLadles.Kitchen
         public Vector3 exitPosition = new Vector3(8.5f, 0.0f, -4.5f);
         public float walkSpeed = 3.5f;
 
-        public void InitializeWorker(string id, string role, StationBase station)
+        public void InitializeWorker(string id, string role, StationBase station, int tier = -1)
         {
             workerId = id;
             roleId = role;
@@ -39,7 +40,7 @@ namespace TwoLadles.Kitchen
             currentState = WorkerState.WALKING_IN;
             transform.position = entrancePosition;
 
-            int jTier = (ProgressionManager.Instance != null) ? ProgressionManager.Instance.jiwonTier : 2;
+            int jTier = tier > 0 ? tier : ((ProgressionManager.Instance != null) ? ProgressionManager.Instance.jiwonTier : 2);
             if (jTier >= 3)
             {
                 workInterval = 1.0f; // Tier 3: 1.0s per chop cadence
@@ -115,6 +116,8 @@ namespace TwoLadles.Kitchen
         public void ExecuteWorkerTask()
         {
             if (targetStation == null) return;
+            // LAN joining device only plays the animation; the host does the real chopping and syncs results.
+            if (PlayerController.IsLanClient()) return;
 
             if (targetStation is PrepStation prep)
             {

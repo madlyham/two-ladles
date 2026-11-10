@@ -11,6 +11,9 @@ namespace TwoLadles.Stations
         public float cookingElapsedSeconds = 0.0f;
         public CookingState currentState = CookingState.RAW;
         public bool flameKeeperEquipped = false;
+        /// <summary>Cook speed / window of the chef who placed the food (-1 = use this device's global upgrades).</summary>
+        public float chefCookSpeed = -1f;
+        public float chefWindowMult = -1f;
 
         public bool PlaceIngredient(KitchenItem item)
         {
@@ -25,6 +28,8 @@ namespace TwoLadles.Stations
             heldItem = item;
             cookingElapsedSeconds = 0.0f;
             currentState = CookingState.COOKING;
+            chefCookSpeed = -1f;
+            chefWindowMult = -1f;
             RefreshStationVisuals();
             return true;
         }
@@ -40,7 +45,11 @@ namespace TwoLadles.Stations
             }
 
             float speedMult = 1.0f;
-            if (ProgressionManager.Instance != null)
+            if (chefCookSpeed > 0f)
+            {
+                speedMult = chefCookSpeed;
+            }
+            else if (ProgressionManager.Instance != null)
             {
                 speedMult = ProgressionManager.Instance.GetUpgradeValue("cook_speed", 1.0f);
             }
@@ -60,9 +69,9 @@ namespace TwoLadles.Stations
             }
 
             // Apply Double-Walled Stockpot / Appliance Window upgrade
-            if (ProgressionManager.Instance != null)
+            if (chefWindowMult > 0f || ProgressionManager.Instance != null)
             {
-                float winMult = ProgressionManager.Instance.GetUpgradeValue("stockpot_window", 1.0f);
+                float winMult = chefWindowMult > 0f ? chefWindowMult : ProgressionManager.Instance.GetUpgradeValue("stockpot_window", 1.0f);
                 if (winMult > 1.0f)
                 {
                     float extra = (optEnd - optStart) * (winMult - 1.0f);
@@ -148,6 +157,12 @@ namespace TwoLadles.Stations
                     if (PlaceIngredient(playerItem))
                     {
                         playerItem = null;
+                        if (TwoLadles.Kitchen.KitchenController.Instance != null &&
+                            TwoLadles.Kitchen.KitchenController.Instance.playersByPeer.TryGetValue(peerId, out var chef) && chef != null)
+                        {
+                            chefCookSpeed = chef.GetChefUpgradeValue("cook_speed", 1.0f);
+                            chefWindowMult = chef.GetChefUpgradeValue("stockpot_window", 1.0f);
+                        }
 
                         if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial)
                         {

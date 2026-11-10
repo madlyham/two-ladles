@@ -483,12 +483,12 @@ namespace TwoLadles.Core
                 case 7:
                 case 8:
                 case 9:
-                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step6_title") : "STEP 6: SERVE TTEOKBOKKI!";
-                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step6_desc") : "Bring Tteokbokki to the Serving Counter and press [E]!";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step6_title") : "STEP 6: BOWL IT & SEND IT OUT!";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step6_desc") : "Put Tteokbokki in a BOWL (bowls are unlimited - no washing) then press [E] at the Send-Out Window by the north door. Tip: hand food over on the Pass Counter for +15 Flow or throw it with [Q] / right-click.";
                     break;
                 case 10:
                     tutorialStepTitle = lm != null ? lm.Get("tutorial.complete_title") : "★ COMPLETE! ★";
-                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.complete_desc") : "You're ready! Click 'Lobby' to start Day 1: Tteokbokki!";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.complete_desc") : "You're ready! Park items on holding counters. Once Jiwon reaches Tier 2 press [H] to hire a Part-Timer (costs 20 score). Click 'Lobby' to start Day 1: Tteokbokki!";
                     break;
             }
 

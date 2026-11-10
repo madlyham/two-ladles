@@ -1515,10 +1515,16 @@ namespace TwoLadles.UI
             if (dirtyPlatesText != null)
                 dirtyPlatesText.text = $"Dirty: {ShiftManager.Instance.dirtyPlatesAtReturn}";
 
-            // Jiwon crew bar only shown when Jiwon is Tier >= 2
+            // Jiwon crew bar only shown when the live Jiwon chef (own save or LAN partner's) is Tier >= 2
+            int jiwonLiveTier = ProgressionManager.Instance != null ? ProgressionManager.Instance.jiwonTier : 1;
+            if (KitchenController.Instance != null)
+            {
+                foreach (var pc in KitchenController.Instance.playersByPeer.Values)
+                    if (pc != null && pc.characterId == "jiwon") { jiwonLiveTier = pc.characterTier; break; }
+            }
             if (jiwonCrewBar != null)
             {
-                bool showCrew = ProgressionManager.Instance != null && ProgressionManager.Instance.jiwonTier >= 2;
+                bool showCrew = jiwonLiveTier >= 2;
                 if (jiwonCrewBar.activeSelf != showCrew)
                     jiwonCrewBar.SetActive(showCrew);
             }
@@ -1528,9 +1534,8 @@ namespace TwoLadles.UI
                 if (hirePrepCooldownText != null)
                 {
                     float cd = KitchenController.Instance.workerCooldowns.TryGetValue("prep_assistant", out float val) ? val : 0.0f;
-                    int tier = (ProgressionManager.Instance != null) ? ProgressionManager.Instance.jiwonTier : 1;
-                    string costStr = (tier >= 3) ? "40g" : "20g";
-                    hirePrepCooldownText.text = cd > 0.0f ? $"Crew ({cd:F0}s)" : $"Part-Timer [H] ({costStr})";
+                    int cost = (GameData.Instance != null && GameData.Instance.workerCatalog.TryGetValue("prep_assistant", out var wspec)) ? wspec.hireCost : 20;
+                    hirePrepCooldownText.text = cd > 0.0f ? $"Crew ({cd:F0}s)" : $"Part-Timer [H] (-{cost} pts)";
                 }
             }
 

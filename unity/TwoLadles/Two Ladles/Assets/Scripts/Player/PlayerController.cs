@@ -19,6 +19,8 @@ namespace TwoLadles.Player
         public string specializationId = "prep_master";
         public int characterTier = 1;
         public bool isLocalPlayer = true;
+        /// <summary>Partner-sent upgrade values (LAN). Null = use this device's global upgrades.</summary>
+        public System.Collections.Generic.Dictionary<string, float> upgradeOverrides = null;
 
         [Header("Carried Item")]
         public KitchenItem carriedItem = null;
@@ -155,13 +157,16 @@ namespace TwoLadles.Player
 
             if (target == null) return (false, "No station within reach.");
 
+            // LAN client: never change station state locally. Send the intent; host decides and
+            // the result comes back in the next STATIONS snapshot (~0.1s).
+            if (IsLanClient())
+            {
+                NetworkManager.Instance.SendClientInteract(false, target.stationId);
+                return (true, "");
+            }
+
             var res = target.InteractPrimary(ref carriedItem, peerId, characterId);
             RefreshVisuals();
-
-            if (NetworkManager.Instance != null && !NetworkManager.Instance.IsHost())
-            {
-                NetworkManager.Instance.SendClientInteract(false);
-            }
 
             if (!string.IsNullOrEmpty(res.reason))
             {
@@ -192,13 +197,14 @@ namespace TwoLadles.Player
 
             if (target == null) return (false, "No station within reach.");
 
+            if (IsLanClient())
+            {
+                NetworkManager.Instance.SendClientInteract(true, target.stationId);
+                return (true, "");
+            }
+
             var res = target.InteractSecondary(ref carriedItem, peerId, characterId);
             RefreshVisuals();
-
-            if (NetworkManager.Instance != null && !NetworkManager.Instance.IsHost())
-            {
-                NetworkManager.Instance.SendClientInteract(true);
-            }
 
             if (!string.IsNullOrEmpty(res.reason))
             {
@@ -266,11 +272,25 @@ namespace TwoLadles.Player
             {
                 mult = spec.moveSpeedMultiplier;
             }
+            mult *= GetChefUpgradeValue("move_speed", 1.0f);
+            return BASE_MOVE_SPEED * mult;
+        }
+
+        /// <summary>
+        /// Per-chef upgrade lookup. In LAN games the partner's own upgrades (sent at shift start)
+        /// replace this device's global upgrade values for that chef.
+        /// </summary>
+        public float GetChefUpgradeValue(string effect, float defaultValue)
+        {
+            if (upgradeOverrides != null && upgradeOverrides.TryGetValue(effect, out float v))
+            {
+                return v;
+            }
             if (ProgressionManager.Instance != null)
             {
-                mult *= ProgressionManager.Instance.GetUpgradeValue("move_speed", 1.0f);
+                return ProgressionManager.Instance.GetUpgradeValue(effect, defaultValue);
             }
-            return BASE_MOVE_SPEED * mult;
+            return defaultValue;
         }
 
         public void ApplyMovement(Vector2 inputDir, float delta)
@@ -329,6 +349,12 @@ namespace TwoLadles.Player
             }
         }
 
+        /// <summary>True on the joining device during a LAN game (host is authoritative).</summary>
+        public static bool IsLanClient()
+        {
+            return NetworkManager.Instance != null && NetworkManager.Instance.isLanActive && !NetworkManager.Instance.IsHost();
+        }
+
         public void SetCarriedItem(KitchenItem item)
         {
             carriedItem = item?.Clone();
@@ -360,14 +386,16 @@ namespace TwoLadles.Player
             }
             dir.Normalize();
 
+            // LAN client: ask host to throw; the item leaves our hands when the host snapshot says so.
+            if (IsLanClient())
+            {
+                NetworkManager.Instance.SendClientThrow(dir);
+                return true;
+            }
+
             var itemToThrow = ClearCarriedItem();
             if (itemToThrow == null)
                 return false;
-
-            if (isLocalPlayer && NetworkManager.Instance != null && NetworkManager.Instance.isLanActive)
-            {
-                NetworkManager.Instance.SendClientThrow(dir);
-            }
 
             Vector3 landingTarget = transform.position + new Vector3(dir.x * 4.5f, 0.0f, dir.y * 4.5f);
             landingTarget.x = Mathf.Clamp(landingTarget.x, -KITCHEN_BOUNDS_X, KITCHEN_BOUNDS_X);

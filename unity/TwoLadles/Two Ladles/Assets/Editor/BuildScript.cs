@@ -143,7 +143,7 @@ public class BuildScript
 
         PlayerSettings.productName = "Two Ladles";
         PlayerSettings.companyName = "Two Ladles Team";
-        PlayerSettings.bundleVersion = "1.4.4";
+        PlayerSettings.bundleVersion = "1.4.5";
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
 
         BuildPlayerOptions buildPlayerOptions = new BuildPlayerOptions();
@@ -180,11 +180,11 @@ public class BuildScript
 
         PlayerSettings.productName = "Two Ladles";
         PlayerSettings.companyName = "Two Ladles Team";
-        PlayerSettings.bundleVersion = "1.4.4";
+        PlayerSettings.bundleVersion = "1.4.5";
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel34;
-        PlayerSettings.Android.bundleVersionCode = 144;
+        PlayerSettings.Android.bundleVersionCode = 145;
         PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
 

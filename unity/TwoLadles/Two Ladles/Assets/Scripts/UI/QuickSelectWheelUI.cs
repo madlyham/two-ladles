@@ -30,24 +30,31 @@ namespace TwoLadles.UI
             }
         }
 
-        // Fridge holds: Raw Meat, Radish & Carrot, Fresh Egg, Toboki Portion, and Baguette
+        // Balanced storage (4 + 4, no duplicates). Fridge = cold items: Raw Meat, Radish & Carrot, Fresh Egg, Toboki Portion
         private static readonly WheelItem[] FRIDGE_ITEMS = new WheelItem[]
         {
             new WheelItem("unprocessed_raw_meat", "Raw Meat", "unprocessed_raw_meat", new Color(0.95f, 0.45f, 0.45f)),
             new WheelItem("radish_carrot", "Radish & Carrot", "radish_carrot", new Color(0.98f, 0.65f, 0.25f)),
             new WheelItem("egg_raw", "Fresh Egg", "egg_raw", new Color(0.98f, 0.92f, 0.72f)),
-            new WheelItem("tteok_portioned", "Toboki Portion", "tteok_portioned", new Color(0.96f, 0.96f, 0.94f)),
-            new WheelItem("baguette", "Baguette", "baguette", new Color(0.90f, 0.70f, 0.36f))
+            new WheelItem("tteok_portioned", "Toboki Portion", "tteok_portioned", new Color(0.96f, 0.96f, 0.94f))
         };
 
-        // Shelf holds: Gochujang, Flour, Rice Portion, and Toboki Portion (No bowls or plates!)
+        // Shelf = dry goods: Gochujang, Flour, Rice Portion, Baguette (No bowls or plates!)
         private static readonly WheelItem[] SHELF_ITEMS = new WheelItem[]
         {
             new WheelItem("gochujang", "Gochujang", "gochujang", new Color(0.92f, 0.25f, 0.20f)),
             new WheelItem("flour", "Flour", "flour", new Color(0.96f, 0.94f, 0.88f)),
             new WheelItem("rice_portioned", "Rice Portion", "rice_portioned", new Color(0.98f, 0.98f, 0.98f)),
-            new WheelItem("tteok_portioned", "Toboki Portion", "tteok_portioned", new Color(0.96f, 0.96f, 0.94f))
+            new WheelItem("baguette", "Baguette", "baguette", new Color(0.90f, 0.70f, 0.36f))
         };
+
+        public static string[] GetCatalogIds(bool isFridge)
+        {
+            var src = isFridge ? FRIDGE_ITEMS : SHELF_ITEMS;
+            var ids = new string[src.Length];
+            for (int i = 0; i < src.Length; i++) ids[i] = src[i].itemId;
+            return ids;
+        }
 
         private WheelItem[] currentCatalog = FRIDGE_ITEMS;
         private GameObject wheelRoot;
@@ -117,7 +124,7 @@ namespace TwoLadles.UI
         public void OpenWheelForStorage(bool isFridge)
         {
             currentCatalog = isFridge ? FRIDGE_ITEMS : SHELF_ITEMS;
-            RebuildSlices(isFridge ? "FRIDGE (MEAT • VEG • EGG • TOBOKI • BAGUETTE)" : "SHELF (GOCHUJANG • FLOUR • RICE • TOBOKI)");
+            RebuildSlices(isFridge ? "FRIDGE (MEAT • VEG • EGG • TOBOKI)" : "SHELF (GOCHUJANG • FLOUR • RICE • BAGUETTE)");
             if (wheelRoot != null)
             {
                 wheelRoot.SetActive(true);

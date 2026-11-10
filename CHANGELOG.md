@@ -2,6 +2,13 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-10 — v1.4.5: Balanced Storage
+
+- **Fridge and shelf now hold 4 ingredients each, no duplicates** (same on Linh's west and Jiwon's east side).
+  - Fridge: meat, radish/carrot, egg, toboki (rice cakes).
+  - Shelf: gochujang, flour, rice, baguette.
+- Tests: Test20 +3 — 348 total.
+
 ## 2026-11-10 — v1.4.4: Pause Menu & LAN Day Cycle
 
 - **Pause menu**: the HUD "Lobby" button is now ⏸ (or Esc) and opens RESUME / LEAVE GAME. Solo freezes time; LAN keeps the shared kitchen running.

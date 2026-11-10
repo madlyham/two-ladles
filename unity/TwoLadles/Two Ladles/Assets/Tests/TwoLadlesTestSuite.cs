@@ -1404,6 +1404,14 @@ namespace TwoLadles.Tests
             Assert(KitchenHUD.PauseTimeScale(true, true) == 1f, "LAN pause keeps the shared kitchen running");
             Assert(KitchenHUD.PauseTimeScale(true, false) == 0f, "Solo pause freezes the game");
 
+            // Storage balance: fridge and shelf wheels hold an equal number of distinct items
+            var fridgeIds = QuickSelectWheelUI.GetCatalogIds(true);
+            var shelfIds = QuickSelectWheelUI.GetCatalogIds(false);
+            Assert(fridgeIds.Length == shelfIds.Length, "Fridge and shelf hold the same number of ingredients");
+            Assert(Array.TrueForAll(fridgeIds, id => Array.IndexOf(shelfIds, id) < 0), "No ingredient is duplicated across fridge and shelf");
+            var allIds = new List<string>(fridgeIds); allIds.AddRange(shelfIds);
+            Assert(Array.TrueForAll(new[] { "unprocessed_raw_meat", "radish_carrot", "egg_raw", "tteok_portioned", "gochujang", "flour", "rice_portioned", "baguette" }, id => allIds.Contains(id)), "Every base ingredient is still available from storage");
+
             sm.isNetworkClient = false;
             sm.shiftActive = false;
             sm.isAutoplayQAMode = prevQA;

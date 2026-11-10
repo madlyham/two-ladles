@@ -815,7 +815,7 @@ namespace TwoLadles.AI
                     if (!passHasItem && eastRice == null && eastWok != null && eastWok.heldItem == null)
                     {
                         desiredItemId = "tteok_portioned";
-                        SetTarget(GetStation("shelf_west"), "Get Rice Cakes to Pass to Jiwon");
+                        SetTarget(GetStation("fridge_west"), "Get Rice Cakes to Pass to Jiwon");
                     }
                     else
                     {

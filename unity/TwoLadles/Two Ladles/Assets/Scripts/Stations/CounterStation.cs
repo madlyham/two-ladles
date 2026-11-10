@@ -52,6 +52,12 @@ namespace TwoLadles.Stations
                     return (true, $"Assembled {combined.displayName}!");
                 }
 
+                // Identical items: swapping would change nothing and can trap bots in an endless loop
+                if (heldItem.itemId == playerItem.itemId)
+                {
+                    return (false, $"Counter already holds {heldItem.displayName}.");
+                }
+
                 var temp = playerItem.Clone();
                 playerItem = heldItem.Clone();
                 heldItem = temp;

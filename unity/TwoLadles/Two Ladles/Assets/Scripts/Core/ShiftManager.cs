@@ -356,6 +356,9 @@ namespace TwoLadles.Core
                 AdvanceTutorialStep(2);
             }
 
+            // LAN client: host owns order timers, expiry and spawning (synced via ORDERS packets)
+            if (isNetworkClient) return;
+
             // Tick active orders patience (frozen during tutorial so players can learn without stress)
             if (!isTutorial)
             {
@@ -497,6 +500,7 @@ namespace TwoLadles.Core
             currentStageId = stageId;
             currentMode = mode;
             shiftActive = true;
+            isNetworkClient = false; // LAN client re-sets this right after StartShift
             shiftElapsedSeconds = 0.0f;
             reputation = MAX_REPUTATION;
             levelVictory = false;
@@ -600,7 +604,8 @@ namespace TwoLadles.Core
                 waveOrdersCompleted = 0;
             }
             shiftTimeRemaining = duration;
-            isWaitingForRecipeBook = (!isTutorial && !isAutoplayQAMode);
+            // Only pause for the recipe book when a live HUD exists to close it (fail-safe: headless tests never deadlock)
+            isWaitingForRecipeBook = (!isTutorial && !isAutoplayQAMode && Application.isPlaying);
 
             orderSpawnTimer = isTutorial ? 99999.0f : 1.0f;
             OnFlowUpdated?.Invoke(kitchenFlow, false, 0.0f);
@@ -913,6 +918,12 @@ namespace TwoLadles.Core
                 patience += (itemCount - 1) * 22.0f;
             }
 
+            // Harder recipes (Day 3 BBQ Rice, Day 4 Broken Rice) get a little extra time
+            foreach (var item in selectedItems)
+            {
+                patience += GetRecipePatienceBonus(item);
+            }
+
             ticketCounter++;
             waveOrdersSpawned++;
             var ticket = new OrderTicket($"ticket_{ticketCounter}", selectedItems, vessel, patience);
@@ -921,5 +932,181 @@ namespace TwoLadles.Core
             OnOrderQueueUpdated?.Invoke(activeOrders);
             OnWaveUpdated?.Invoke(currentWaveNumber, totalWaves, waveOrdersCompleted, waveOrdersRequired);
         }
+
+        /// <summary>Extra customer patience (seconds) for recipes with more steps.</summary>
+        public static float GetRecipePatienceBonus(string recipeId)
+        {
+            switch (recipeId)
+            {
+                case "korean_bbq_rice":   // Day 3: grill + rice + assembly
+                case "viet_broken_rice":  // Day 4: more parts to assemble
+                    return 2.0f;
+                default:
+                    return 0.0f;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // LAN host -> client order / score sync
+        // ------------------------------------------------------------------
+
+        /// <summary>True on a LAN client: the host owns orders, timers and score; this side only displays them.</summary>
+        public bool isNetworkClient = false;
+
+        public const string ORDERS_PACKET = "ORDERS";
+        private const int ORDERS_HEADER_FIELDS = 9; // ORDERS + 8 state fields (last = order count)
+        private const int MAX_SYNC_ORDERS = 16;
+
+        private static string SyncSafe(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Replace("|", "").Replace(";", "").Replace(",", "");
+        }
+
+        private static string F(float v) => v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+        private static bool TryF(string s, out float v) =>
+            float.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v)
+            && !float.IsNaN(v) && !float.IsInfinity(v);
+
+        public NetworkShiftState CaptureNetworkState()
+        {
+            return new NetworkShiftState
+            {
+                score = totalScore,
+                reputation = reputation,
+                flow = kitchenFlow,
+                rushActive = rushRhythmActive,
+                rushRemaining = rushRhythmRemaining,
+                waveCompleted = waveOrdersCompleted,
+                waveRequired = waveOrdersRequired,
+                orders = activeOrders
+            };
+        }
+
+        public static string EncodeNetworkState(NetworkShiftState st)
+        {
+            var sb = new System.Text.StringBuilder();
+            var orders = st.orders ?? new List<OrderTicket>();
+            int n = Mathf.Min(orders.Count, MAX_SYNC_ORDERS);
+            sb.Append(ORDERS_PACKET).Append('|')
+              .Append(st.score).Append('|')
+              .Append(F(st.reputation)).Append('|')
+              .Append(F(st.flow)).Append('|')
+              .Append(st.rushActive ? "1" : "0").Append('|')
+              .Append(F(st.rushRemaining)).Append('|')
+              .Append(st.waveCompleted).Append('|')
+              .Append(st.waveRequired).Append('|')
+              .Append(n);
+            for (int i = 0; i < n; i++)
+            {
+                var o = orders[i];
+                var items = new List<string>();
+                foreach (var it in o.requiredItems) items.Add(SyncSafe(it));
+                var done = new List<string>();
+                foreach (var idx in o.fulfilledIndices) done.Add(idx.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append('|')
+                  .Append(SyncSafe(o.ticketId)).Append(';')
+                  .Append(string.Join(",", items)).Append(';')
+                  .Append(SyncSafe(o.targetVessel)).Append(';')
+                  .Append(F(o.timeRemaining)).Append(';')
+                  .Append(F(o.initialPatience)).Append(';')
+                  .Append(string.Join(",", done));
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>Parses an ORDERS packet. Returns null on any malformed input (never throws).</summary>
+        public static NetworkShiftState DecodeNetworkState(string packet)
+        {
+            if (string.IsNullOrEmpty(packet) || packet.Length > 8192) return null;
+            var parts = packet.Split('|');
+            if (parts.Length < ORDERS_HEADER_FIELDS || parts[0] != ORDERS_PACKET) return null;
+
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            if (!int.TryParse(parts[1], System.Globalization.NumberStyles.Integer, inv, out int score)) return null;
+            if (!TryF(parts[2], out float rep) || !TryF(parts[3], out float flow)) return null;
+            bool rush = parts[4] == "1";
+            if (!TryF(parts[5], out float rushRem)) return null;
+            if (!int.TryParse(parts[6], System.Globalization.NumberStyles.Integer, inv, out int wc)) return null;
+            if (!int.TryParse(parts[7], System.Globalization.NumberStyles.Integer, inv, out int wr)) return null;
+            if (!int.TryParse(parts[8], System.Globalization.NumberStyles.Integer, inv, out int n)) return null;
+            if (n < 0 || n > MAX_SYNC_ORDERS || parts.Length != ORDERS_HEADER_FIELDS + n) return null;
+
+            var st = new NetworkShiftState
+            {
+                score = score,
+                reputation = Mathf.Clamp(rep, 0f, MAX_REPUTATION),
+                flow = Mathf.Clamp(flow, 0f, MAX_FLOW),
+                rushActive = rush,
+                rushRemaining = Mathf.Max(0f, rushRem),
+                waveCompleted = wc,
+                waveRequired = wr,
+                orders = new List<OrderTicket>()
+            };
+
+            for (int i = 0; i < n; i++)
+            {
+                var f = parts[ORDERS_HEADER_FIELDS + i].Split(';');
+                if (f.Length != 6) return null;
+                var items = new List<string>();
+                foreach (var it in f[1].Split(',')) if (!string.IsNullOrEmpty(it)) items.Add(it);
+                if (items.Count == 0 || items.Count > 8) return null;
+                if (!TryF(f[3], out float tr) || !TryF(f[4], out float ip)) return null;
+
+                var ticket = new OrderTicket(f[0], items, f[2], Mathf.Max(0.1f, ip));
+                ticket.timeRemaining = Mathf.Max(0f, tr);
+                if (!string.IsNullOrEmpty(f[5]))
+                {
+                    foreach (var d in f[5].Split(','))
+                    {
+                        if (int.TryParse(d, System.Globalization.NumberStyles.Integer, inv, out int idx) && idx >= 0 && idx < items.Count)
+                        {
+                            if (!ticket.fulfilledIndices.Contains(idx)) ticket.fulfilledIndices.Add(idx);
+                        }
+                    }
+                }
+                ticket.recipeId = ticket.GetNextUnfulfilledRecipeId();
+                st.orders.Add(ticket);
+            }
+            return st;
+        }
+
+        /// <summary>Client side: replace local orders/score with the host's authoritative copy.</summary>
+        public void ApplyNetworkState(NetworkShiftState st)
+        {
+            if (st == null || !shiftActive) return;
+
+            float prevRep = reputation;
+            bool prevRush = rushRhythmActive;
+
+            totalScore = st.score;
+            reputation = st.reputation;
+            kitchenFlow = st.flow;
+            rushRhythmActive = st.rushActive;
+            rushRhythmRemaining = st.rushRemaining;
+            waveOrdersCompleted = st.waveCompleted;
+            waveOrdersRequired = st.waveRequired;
+            activeOrders = st.orders;
+
+            OnOrderQueueUpdated?.Invoke(activeOrders);
+            if (!Mathf.Approximately(prevRep, reputation)) OnReputationChanged?.Invoke(reputation, prevRep);
+            if (prevRush != rushRhythmActive) OnRushRhythmChanged?.Invoke(rushRhythmActive);
+            OnFlowUpdated?.Invoke(kitchenFlow, rushRhythmActive, rushRhythmRemaining);
+            OnWaveUpdated?.Invoke(currentWaveNumber, totalWaves, waveOrdersCompleted, waveOrdersRequired);
+        }
+    }
+
+    /// <summary>Snapshot of host-owned shift state sent to the LAN client.</summary>
+    public class NetworkShiftState
+    {
+        public int score;
+        public float reputation;
+        public float flow;
+        public bool rushActive;
+        public float rushRemaining;
+        public int waveCompleted;
+        public int waveRequired;
+        public List<OrderTicket> orders = new List<OrderTicket>();
     }
 }

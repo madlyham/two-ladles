@@ -1,21 +1,34 @@
-# Art Pipeline & 2.5D Visual Style Guide (`docs/ART_PIPELINE.md`)
+# Art Pipeline & 2.5D Visual Style Guide
 
-## 1. Visual Direction: Readable Stylized 2.5D
+> [!NOTE]
+> Applies to the Unity 2022.3.62f3 project at `unity/TwoLadles/Two Ladles/`. The earlier Godot 3D-capsule style is archived on the `godot` branch.
 
-**Two Ladles** uses a 3D kitchen rendered through a **fixed orthographic camera** (`Camera3D.PROJECTION_ORTHOGONAL`, `size = 13.5`, positioned at `(0, 11.5, 9.5)` looking at `(0, 0, 0.2)`).
+## 1. Visual Direction: Readable Pixel-Art 2.5D
 
-### Proportions & Readability Rules
-- **Characters (`Linh` & `Jiwon`):** Stylized low-poly capsules/meshes (`radius = 0.42m`, `height = 1.4m`) with distinct silhouette colors (`Linh` = Vietnamese Jade Teal `#38ADA9`; `Jiwon` = Korean Gochujang Terracotta `#E06B3D`).
-- **Food Proportions:** Oversized by ~1.35x relative to real-world scale so players on 6-inch phone screens can immediately identify whether a partner is carrying raw pork, grilled pork, pickled daikon, or a completed bowl of *Phở Bò*.
-- **Zone Floor Color Coding:**
-  - **West Zone (Linh's Home Side):** Cool slate-teal wood floor (`#3D4745`).
-  - **Center Divider & Pass Counter:** Warm brass/amber highlight (`#EBBA52`).
-  - **East Zone (Jiwon's Home Side):** Warm terracotta tile floor (`#4D3D38`).
+**Two Ladles** renders a 3D kitchen layout through a **fixed orthographic camera** ("2.5D Orthographic", `orthographicSize = 10.6`). Characters, food, and props are 2D pixel-art sprites placed upright in the 3D scene.
 
-## 2. Asset Vetting & License Compliance Protocol
+### Readability Rules
+- **Chefs (Linh & Jiwon):** Upright `SpriteRenderer` sprites with distinct silhouettes and colors so each player can spot their chef instantly.
+- **Carried items:** Shown floating above the chef's head with a gentle ±10° tilt and 0.08 m bob, large enough to read on a phone screen.
+- **Zones:** West (Linh) and East (Jiwon) sides are separated by a center divider wall with the Pass Counter between them. Floor and grass tiles are generated procedurally.
 
-Before introducing any external 3D model, texture, font, or audio file in Milestone 4:
-1. Inspect polygon count (< 1,500 tris for props, < 3,500 tris for characters) and texture dimensions (<= 1024×1024 compressed `ETC2/ASTC`).
-2. Verify explicit commercial-use license (CC0, MIT, or documented paid license).
-3. Record the asset source, author, and license in `docs/ASSET_ATTRIBUTIONS.md`.
-4. Never use unverified, mismatched asset packs or raw AI-generated 2D sprites in the 3D scene.
+## 2. Sprite Import Settings
+
+| Setting | Value |
+| :--- | :--- |
+| Pixels Per Unit | `32` |
+| Filter Mode | `Point` (no blurring) |
+| Folders | `Assets/Resources/Sprites` (loaded at runtime), `Assets/Sprites` |
+| Fonts | `Assets/Resources/Fonts` (lobby and story-phone UI) |
+
+## 3. Preview Captures
+
+`BuildScript.CaptureKitchenPreview` renders a kitchen screenshot to `Builds/preview` for quick visual checks without playing a shift.
+
+## 4. Asset Vetting & License Compliance
+
+Before adding any external sprite, font, or audio file:
+1. Verify an explicit commercial-use license (CC0, MIT, or a documented paid license).
+2. Record the source, author, and license in [ASSET_LICENSES.md](ASSET_LICENSES.md).
+3. Keep sprite sizes and import settings consistent with the table above.
+4. Never add unverified or license-unclear asset packs.

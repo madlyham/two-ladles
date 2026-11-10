@@ -1,24 +1,29 @@
 # Development Roadmap — Two Ladles (`docs/DEVELOPMENT_ROADMAP.md`)
 
 > [!IMPORTANT]
-> **Engine Transition Notice:** Active development on the Godot prototype has officially **stopped**. Engineering is now 100% focused on the **Unity 2022.3.62f3 C#** codebase (`unity/TwoLadles/`). All milestone progression, art pipelines, builds, and tournament submissions are executed exclusively in Unity.
+> All active work is in the **Unity 2022.3.62f3 C#** project at `unity/TwoLadles/Two Ladles/`. The Godot prototype is archived on the `godot` branch.
 
-## Milestone Status Overview
+## Milestone Status
 
 | Milestone | Scope | Engine | Status |
 | :--- | :--- | :--- | :--- |
-| **Milestone 0: Project Foundation** | Initial game design, authentic recipes, and full documentation suite | Godot (Archived) | **COMPLETE & ARCHIVED** |
-| **Milestone 1: Prototype Verification** | Initial mechanics validation & anti-exploit math prototyping | Godot (Archived) | **COMPLETE & ARCHIVED** |
-| **Milestone 2: Unity Engine Port & Architecture** | Complete C# port of all stations, recipes, flow, character progression, and 14-suite test runner in Unity 2022.3.62f3 | Unity C# | **COMPLETE & VERIFIED** |
-| **Milestone 3: Visuals, Collisions & Controls** | 2.5D kitchen builder, physical BoxColliders (zero phasing), hover tilt animation, throw mechanics, pixel-art tiles & appliances | Unity C# | **COMPLETE & VERIFIED** |
-| **Milestone 4: Android Build & Network Playtesting** | Touchscreen virtual controls, Windows desktop host + Android client LAN playtesting, audio integration | Unity C# | **ACTIVE MILESTONE** |
-| **Milestone 5: Competition Submission Build** | Final Android APK (`TwoLadles.apk`) & Windows executable (`TwoLadles.exe`) for Korea Game Week 2026 | Unity C# | Planned |
+| **M0: Project Foundation** | Game design, recipes, documentation | Godot (archived) | Complete & archived |
+| **M1: Prototype Verification** | Mechanics and anti-exploit math prototyping | Godot (archived) | Complete & archived |
+| **M2: Unity Port** (2026-11-07) | C# port of stations, recipes, Flow, progression, automated test suite | Unity | Complete |
+| **M3: Visuals, Economy & LAN Discovery** (2026-11-08) | 2.5D orthographic kitchen, colliders, hover/throw, tutorial, coins/upgrade shop, reputation & waves, LAN room discovery | Unity | Complete |
+| **M4: Content, Localization & AI** (2026-11-09) | 5-day menu, EN/VI/KO localization, solo AI partner (A* navigation), Two-Bot QA autoplay, part-time workers | Unity | Complete |
+| **M5: Lobby & Presentation** (2026-11-10) | Lobby revamp (Host/Join popups, room panel), story phone, day/night cycle, procedural audio, Leave-button fix | Unity | Complete (not yet playtested on real devices) |
+| **M6: Device Playtesting** | Laptop host + Android phone over Wi-Fi; Android build verification | Unity | **Active** |
+| **M7: Competition Submission** | Final `TwoLadles.exe` and `TwoLadles.apk` for Korea Game Week 2026 | Unity | Planned |
 
----
+## Next Steps (in order)
+1. Run the automated test suite (**Two Ladles → Run Automated Test Suite**) and confirm all 19 suites pass.
+2. Build the Android APK and install it on a real phone ([ANDROID_BUILD.md](ANDROID_BUILD.md)).
+3. Do a real laptop + phone LAN session using the [LAN crossplay test checklist](NETWORKING.md#lan-crossplay-test-checklist).
+4. Close the known networking gap: the host does not yet send order, score, or station state to the client during a shift (see [NETWORKING.md](NETWORKING.md)).
+5. Build final Windows and Android packages and refresh the web download zip (`web/downloads/TwoLadles-Windows-x64.zip`).
 
-## How to Continue in the Next Antigravity Session
-
+## Starting a New Session
 1. Read [`AGENTS.md`](../AGENTS.md) and [`README.md`](../README.md).
-2. Open the official Unity project at `unity/TwoLadles/` in Unity `2022.3.62f3`.
-3. Verify the automated C# test suite in `Assets/Tests/TwoLadlesTestSuite.cs`.
-4. Proceed to **Milestone 4**: Touchscreen controls, Android APK compilation via `BuildScript.cs`, and LAN network verification.
+2. Open `unity/TwoLadles/Two Ladles` in Unity `2022.3.62f3`.
+3. Run the test suite before changing code ([TESTING.md](TESTING.md)).

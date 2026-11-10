@@ -36,6 +36,9 @@ namespace TwoLadles.AI
         public float stuckTimer = 0.0f;
         private int stuckRepeatCount = 0;
         private string lastStuckGoal = null;
+        // While > 0, the watchdog's "drop item" order wins over the periodic planner (prevents instant re-stuck loops).
+        private float unstickTimer = 0.0f;
+        private const float UNSTICK_HOLD_TIME = 4.0f;
 
         [Header("Navigation & TAS Waypoints")]
         public List<Vector3> currentPath = new List<Vector3>();
@@ -175,6 +178,7 @@ namespace TwoLadles.AI
                         lastStuckGoal = null;
                         currentGoalName = "";
                         SetTarget(FindDropStation() ?? GetStation("trash_bin"), "Unstick: Drop Item");
+                        unstickTimer = UNSTICK_HOLD_TIME;
                     }
                     else
                     {
@@ -210,11 +214,18 @@ namespace TwoLadles.AI
                 }
             }
 
+            // Unstick hold: keep the drop order until the item leaves hands or the hold expires.
+            if (unstickTimer > 0.0f)
+            {
+                unstickTimer -= dt;
+                if (playerController.carriedItem == null) unstickTimer = 0.0f;
+            }
+
             // Periodic Utility Decision Cycle
             if (decisionTimer >= decisionInterval)
             {
                 decisionTimer = 0.0f;
-                EvaluateAndSelectGoal();
+                if (unstickTimer <= 0.0f) EvaluateAndSelectGoal();
             }
 
             ExecuteMovementAndAction(dt);
@@ -305,6 +316,15 @@ namespace TwoLadles.AI
                     SetTarget(urgentPan, $"Rescue Pan: {urgentPan.stationId}");
                     return;
                 }
+            }
+
+            // 1b. Pan rescue just finished (item in hands). Flour cake must be parked for the egg step,
+            // otherwise the bot keeps the stale "Rescue Pan" goal and the watchdog flags it STUCK.
+            if (playerController.carriedItem != null && !string.IsNullOrEmpty(currentGoalName) &&
+                currentGoalName.StartsWith("Rescue Pan") && playerController.carriedItem.itemId == "cooked_flour")
+            {
+                DropOrTrash("Place Flour Cake on Table");
+                return;
             }
 
             // 2. DELIVER / PASS COMPLETED DISH (Score: 260)
@@ -473,7 +493,10 @@ namespace TwoLadles.AI
             {
                 // No customer ticket queued right now (wave transition or idle): Standby without wasting fresh items!
                 StationBase standby = (characterId == "linh") ? GetStation("pass_counter") : GetStation("counter_east");
-                SetTarget(standby, "Standby for Next Customer Order");
+                if (playerController.carriedItem != null && !IsCompletedDish(playerController.carriedItem.itemId))
+                    DropOrTrash("Park Item While Waiting for Order");
+                else
+                    SetTarget(standby, "Standby for Next Customer Order");
                 BotCommunicationHub.BroadcastIntent(peerId, characterId, currentGoalName, targetStation != null ? targetStation.stationId : null, activeRecipeId);
                 return;
             }
@@ -996,6 +1019,12 @@ namespace TwoLadles.AI
                     {
                         var bbqOnTable = FindItemOnCounters("korean_bbq_raw");
                         if (bbqOnTable != null) { SetTarget(bbqOnTable, "Pick Up Sliced BBQ Meat from Table"); return; }
+                        // Cap: don't grill more beef than open orders need (stops counters filling with spare beef).
+                        if (CountBeefInPipeline() >= Mathf.Max(1, CountBeefDishesNeeded()))
+                        {
+                            SetTarget(GetStation("pass_counter"), "Standby: Beef Ready");
+                            return;
+                        }
                         desiredItemId = "unprocessed_raw_meat";
                         SetTarget(GetStation("fridge_east"), "Get Raw Meat from Fridge");
                         return;
@@ -1042,19 +1071,30 @@ namespace TwoLadles.AI
                             return;
                         }
                     }
-                    if (counter != null && counter.heldItem != null && counter.heldItem.itemId == "korean_bbq_rice")
+                    CounterStation readyBbq = FindItemOnCounters("korean_bbq_rice");
+                    if (readyBbq != null)
                     {
-                        SetTarget(counter, "Pick Up Korean BBQ on Rice");
+                        SetTarget(readyBbq, "Pick Up Korean BBQ on Rice");
                         return;
                     }
-                    if (counter != null && counter.heldItem != null && counter.heldItem.itemId == "cooked_rice")
+                    bool riceOnTable = FindItemOnCounters("cooked_rice") != null;
+                    bool beefOnTable = FindItemOnCounters("bbq_beef") != null || FindItemOnCounters("bulgogi") != null;
+                    if (riceOnTable && !beefOnTable)
                     {
                         // Holding counter has rice, waiting for BBQ beef from Pass Counter
                         SetTarget(GetStation("pass_counter"), "Standby at Pass Counter for BBQ Beef");
                         return;
                     }
+                    if (riceOnTable && beefOnTable)
+                    {
+                        // Rice and beef parked on separate tables: carry beef over to rice.
+                        CounterStation beefTable = FindItemOnCounters("bbq_beef") ?? FindItemOnCounters("bulgogi");
+                        SetTarget(beefTable, "Pick Up Beef to Combine with Rice");
+                        return;
+                    }
                     if (stove != null && stove.heldItem == null)
                     {
+                        // Also covers beef parked on table with no rice yet.
                         desiredItemId = "rice_portioned";
                         SetTarget(GetStation("shelf_west"), "Get Rice Portion");
                         return;
@@ -1069,12 +1109,12 @@ namespace TwoLadles.AI
                     }
                     if (playerController.carriedItem.itemId == "cooked_rice")
                     {
-                        SetTarget(counter, "Place Steamed Rice on Table");
+                        PlaceOrCombine(counter, "Place Steamed Rice on Table");
                         return;
                     }
                     if (playerController.carriedItem.itemId == "bbq_beef" || playerController.carriedItem.itemId == "bulgogi")
                     {
-                        SetTarget(counter, "Assemble BBQ Beef with Rice");
+                        PlaceOrCombine(counter, "Assemble BBQ Beef with Rice");
                         return;
                     }
                 }
@@ -1097,31 +1137,52 @@ namespace TwoLadles.AI
 
                 if (playerController.carriedItem == null)
                 {
-                    if (counter != null && counter.heldItem != null && counter.heldItem.itemId == "viet_broken_rice")
+                    // State-driven across ALL own-side tables (not just counter_west) so parked parts never strand Linh.
+                    CounterStation done = FindItemOnCounters("viet_broken_rice");
+                    if (done != null) { SetTarget(done, "Pick Up Viet Broken Rice"); return; }
+
+                    if (stove != null && stove.heldItem != null &&
+                        (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED))
                     {
-                        SetTarget(counter, "Pick Up Viet Broken Rice");
+                        SetTarget(stove, "Pick Up Steamed Rice");
                         return;
                     }
-                    if (counter != null && counter.heldItem != null && counter.heldItem.itemId == "cooked_rice")
+
+                    CounterStation rice = FindItemOnCounters("cooked_rice");
+                    CounterStation riceEgg = FindItemOnCounters("rice_with_egg");
+                    CounterStation bbqRice = FindItemOnCounters("korean_bbq_rice");
+                    CounterStation beefEgg = FindItemOnCounters("bbq_with_egg");
+                    CounterStation beef = FindItemOnCounters("bbq_beef") ?? FindItemOnCounters("bulgogi");
+                    CounterStation egg = FindItemOnCounters("egg_raw");
+
+                    // 1. Two parts on separate tables that combine: carry one onto the other.
+                    if (beef != null && (rice != null || riceEgg != null)) { SetTarget(beef, "Pick Up Beef to Combine"); return; }
+                    if (rice != null && beefEgg != null) { SetTarget(rice, "Pick Up Rice to Combine"); return; }
+                    if (egg != null && (rice != null || bbqRice != null || beef != null)) { SetTarget(egg, "Pick Up Egg to Combine"); return; }
+
+                    // 2. Base missing egg: fetch one.
+                    if (bbqRice != null || rice != null || (beef != null && stove != null && stove.heldItem != null))
                     {
                         desiredItemId = "egg_raw";
                         SetTarget(GetStation("fridge_west"), "Get Egg for Broken Rice");
                         return;
                     }
+
+                    // 3. Base waiting on Jiwon's beef.
+                    if (riceEgg != null)
+                    {
+                        SetTarget(GetStation("pass_counter"), "Standby at Pass Counter for BBQ Beef");
+                        return;
+                    }
+
                     if (stove != null && stove.heldItem != null)
                     {
-                        if (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED)
-                        {
-                            SetTarget(stove, "Pick Up Steamed Rice");
-                            return;
-                        }
-                        else
-                        {
-                            SetTarget(stove, "Wait for Rice to Steam");
-                            return;
-                        }
+                        SetTarget(stove, "Wait for Rice to Steam");
+                        return;
                     }
-                    if (stove != null && stove.heldItem == null && (counter == null || counter.heldItem == null))
+
+                    // 4. Need rice (nothing on tables, or beef/beef+egg waiting for rice).
+                    if (stove != null && stove.heldItem == null)
                     {
                         desiredItemId = "rice_portioned";
                         SetTarget(GetStation("shelf_west"), "Get Rice Portion");
@@ -1137,17 +1198,17 @@ namespace TwoLadles.AI
                     }
                     if (playerController.carriedItem.itemId == "cooked_rice")
                     {
-                        SetTarget(counter, "Place Steamed Rice on Table");
+                        PlaceOrCombine(counter, "Place Steamed Rice on Table");
                         return;
                     }
                     if (playerController.carriedItem.itemId == "egg_raw")
                     {
-                        SetTarget(counter, "Add Egg to Broken Rice on Table");
+                        PlaceOrCombine(counter, "Add Egg to Broken Rice on Table");
                         return;
                     }
                     if (playerController.carriedItem.itemId == "bbq_beef" || playerController.carriedItem.itemId == "bulgogi")
                     {
-                        SetTarget(counter, "Assemble BBQ Beef with Broken Rice");
+                        PlaceOrCombine(counter, "Assemble BBQ Beef with Broken Rice");
                         return;
                     }
                 }
@@ -1776,6 +1837,87 @@ namespace TwoLadles.AI
                 }
             }
             return null;
+        }
+
+        // True if placing carried item on this counter would combine into a new dish.
+        private static bool CanCombineWith(CounterStation c, KitchenItem carried)
+        {
+            return c != null && c.heldItem != null && carried != null && GameData.TryCombineItems(c.heldItem, carried, out _);
+        }
+
+        // Nearest own-side counter whose item combines with carried item.
+        private CounterStation FindCombinableCounter(KitchenItem carried)
+        {
+            if (KitchenController.Instance == null || carried == null) return null;
+            CounterStation best = null;
+            float minD = 999f;
+            foreach (var st in KitchenController.Instance.stations.Values)
+            {
+                if (!(st is CounterStation c) || !CanCombineWith(c, carried)) continue;
+                if (peerId == 1 && st.transform.position.x > 0f) continue;
+                if (peerId == 2 && st.transform.position.x < 0f) continue;
+                float d = Vector3.Distance(st.transform.position, transform.position);
+                if (d < minD) { minD = d; best = c; }
+            }
+            return best;
+        }
+
+        // Place carried item on preferred counter only if empty or combinable; else combine elsewhere; else park it.
+        // Prevents walking into a counter that rejects the item (old Linh STUCK loop on counter_west).
+        private void PlaceOrCombine(CounterStation preferred, string goal)
+        {
+            var carried = playerController.carriedItem;
+            if (carried == null) return;
+            if (CanCombineWith(preferred, carried)) { SetTarget(preferred, goal); return; }
+            CounterStation other = FindCombinableCounter(carried);
+            if (other != null) { SetTarget(other, goal); return; }
+            if (preferred != null && preferred.heldItem == null) { SetTarget(preferred, goal); return; }
+            DropOrTrash("Park " + carried.itemId + " on Table");
+        }
+
+        // Beef already in the pipeline (counters, pass slots, Linh's hands, grill, prep) — caps Jiwon over-production.
+        private int CountBeefInPipeline()
+        {
+            int n = 0;
+            if (KitchenController.Instance == null) return 0;
+            foreach (var st in KitchenController.Instance.stations.Values)
+            {
+                if (st is CounterStation c && c.heldItem != null && IsBeefStage(c.heldItem.itemId)) n++;
+                else if (st is CookingStation k && k.heldItem != null && IsBeefStage(k.heldItem.itemId)) n++;
+                else if (st is PrepStation p && p.heldItem != null && IsBeefStage(p.heldItem.itemId)) n++;
+                else if (st is PassCounter pc && pc.slots != null)
+                {
+                    foreach (var s in pc.slots)
+                        if (s != null && s.item != null && IsBeefStage(s.item.itemId)) n++;
+                }
+            }
+            foreach (var kv in KitchenController.Instance.playersByPeer)
+            {
+                if (kv.Value == null || kv.Value == playerController) continue;
+                var it = kv.Value.carriedItem;
+                if (it != null && IsBeefStage(it.itemId)) n++;
+            }
+            return n;
+        }
+
+        private static bool IsBeefStage(string id)
+        {
+            return id == "unprocessed_raw_meat" || id == "korean_bbq_raw" || id == "bbq_beef" || id == "bulgogi" ||
+                   id == "korean_bbq_rice" || id == "bbq_with_egg" || id == "viet_broken_rice";
+        }
+
+        // Open beef dishes (Day 3/4) still needed by active orders.
+        private int CountBeefDishesNeeded()
+        {
+            int n = 0;
+            if (ShiftManager.Instance == null || ShiftManager.Instance.activeOrders == null) return 0;
+            foreach (var o in ShiftManager.Instance.activeOrders)
+            {
+                if (o == null || o.isCompleted || o.isFailed) continue;
+                if (o.NeedsDish("korean_bbq_rice")) n++;
+                else if (o.NeedsDish("viet_broken_rice")) n++;
+            }
+            return n;
         }
 
         private StationBase GetStation(string stationId)

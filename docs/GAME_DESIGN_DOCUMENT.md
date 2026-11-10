@@ -1,16 +1,26 @@
 # Game Design Document — Two Ladles
 
+> [!NOTE]
+> This document describes the **Unity 2022.3.62f3** build at `unity/TwoLadles/Two Ladles/`. The Godot prototype is archived on the `godot` branch and is not described here. Numbers below are taken from `Assets/Scripts/Core/GameData.cs`, `CampaignLevelSpec.cs`, and `ShiftManager.cs`.
+
 ## 1. Core Identity & Narrative
 
 - **Title:** Two Ladles: A Vietnam–Korea Kitchen Story
-- **Genre:** 2-Player Local Wi-Fi Cooperative Cooking & Time-Management Game
+- **Genre:** 2-player local Wi-Fi cooperative cooking and time-management game (with a solo mode that uses an AI partner).
 - **Core Philosophy:** *"Easy to play badly. Difficult to play efficiently. Extremely satisfying to master."*
 
 ### Protagonists
-1. **Linh (Vietnamese, Former Software Programmer):** Left high-pressure tech deadlines to reopen a neglected family stall in rural Vietnam. Brings systems thinking and workflow optimization.
-2. **Jiwon (Korean, Former Corporate Executive):** Left corporate burnout for a sabbatical in Vietnam and partnered with Linh to build a Vietnam–Korea culinary venture. Brings operational planning and service management.
+1. **Linh (Vietnamese, former software programmer):** Left tech deadlines to reopen a neglected family stall in rural Vietnam. Brings systems thinking and workflow optimization.
+2. **Jiwon (Korean, former corporate executive):** Left corporate burnout for a sabbatical in Vietnam and partnered with Linh to build a Vietnam–Korea culinary venture. Brings operational planning and service management.
 
-Both characters can perform every kitchen action, while the kitchen's spatial topology creates natural teamwork: **Linh's West Zone prepares proteins and starches for Jiwon's East cooking stations, and Jiwon's East Zone prepares vegetables, slaw, fish cakes, and washed bowls/plates for Linh's West assembly stations.**
+Both chefs can perform every kitchen action. The kitchen is split into a **West zone (Linh)** and an **East zone (Jiwon)** by a **center divider wall**; ingredients cross between the zones through the **Pass Counter** or by throwing. Some supplies (flour, eggs, rice, fridges, shelves) are available on both sides.
+
+### Story & Presentation
+- **Story phone (`PhoneStoryUI` + `StoryScript`):** Before each campaign day, a chat-style phone conversation between the chefs plays. In co-op, both players must finish the story (`STORY_DONE` sync) before the shift begins.
+- **Recipe book:** Opens after the story and can be reopened with `R` during a shift.
+- **Day/night cycle (`DayNightCycleManager`):** Lighting shifts over the course of a shift.
+- **Audio (`AudioManager`):** Procedurally generated sound effects and music.
+- **Languages (`LocalizationManager`):** English, Vietnamese, Korean.
 
 ---
 
@@ -18,101 +28,105 @@ Both characters can perform every kitchen action, while the kitchen's spatial to
 
 | Station | Interaction Mechanism | Failure / Edge Handling |
 | :--- | :--- | :--- |
-| **1. Preparation Counter** | Discrete 4-strike rhythm cadence (`0.45s` ideal interval). Graded `PERFECT`, `GOOD`, or `MISS`. | `MISS` grades never block completion (4 strikes always complete prep). `PERFECT` cadence upgrades quality and awards bonus points. |
-| **2. Cooking Station** | 5-state timed heat machine: `RAW -> COOKING -> OPTIMAL -> OVERCOOKED -> BURNT`. | Removing during `OPTIMAL` awards +20% score & +20 Flow. `OVERCOOKED` reduces score (-25%). `BURNT` creates waste (-10 Flow). |
-| **3. Assembly Counter** | Vessel-first (`plate` or `bowl`) recipe combination. | Rejects invalid pairings with clear feedback without destroying existing components. Enforces *Phở Bò* broth-last rule. |
-| **4. Serving Counter** | Matches dish against active customer order queue. | Awards base score × multipliers + patience tip, and spawns 1 dirty plate at the Return Tray. |
-| **5. Washing Station** | Finite pool of 4 shared vessels; 4-stroke scrub cycle. | Prevents unlimited disposable plates while keeping scrubbing fast and forgiving. |
+| **1. Preparation Counter** | Discrete 4-strike rhythm cadence (`0.45s` ideal interval). Graded `PERFECT`, `GOOD`, or `MISS`. | `MISS` never blocks completion (4 strikes always complete prep). `PERFECT` cadence upgrades quality and awards bonus points. |
+| **2. Cooking Station** | 5-state timed heat machine: `RAW -> COOKING -> OPTIMAL -> OVERCOOKED -> BURNT`. | Removing during `OPTIMAL` awards +20% score and extra Flow. `OVERCOOKED` reduces score. `BURNT` creates waste. |
+| **3. Assembly Counter** | Combines components into a finished dish. | Rejects invalid combinations with feedback without destroying existing components. Vessel rules (plate vs bowl, Phở broth-last) apply to legacy recipes; the active 5-day dishes are vessel-less (`vessel = "none"`). |
+| **4. Serving Counter** | Matches the dish against the active customer order queue. | Awards base score × multipliers + patience tip. |
+| **5. No Washing** | Plates and bowls come free from the quick-select wheel. | Washing was cut on purpose to keep the game simple and friendly for new players. |
+
+Additional props: **holding counters** (place any item), **trash bin**, and carried-item **throwing** (`Q` / right-click) toward the partner, a holding counter, a Pass Counter slot, or the trash.
 
 ---
 
-## 3. Authentic Starter Menu & Cross-Prep Chains
+## 3. Active 5-Day Menu
 
-1. **Phở Bò (Traditional Vietnamese):**
-   - Prep `beef_raw` → `beef_sliced`.
-   - Blanch `noodles_raw` → `noodles_blanched` in the **Noodle Blancher** (separate from stockpot).
-   - Maintain hot broth (`broth_hot`) in the **Dedicated Stockpot**.
-   - Place clean `bowl` on Assembly Counter → add `noodles_blanched` and `beef_sliced` → pour `broth_hot` last.
-2. **Bánh Mì Thịt (Traditional Vietnamese):**
-   - Linh portions `pork_raw` → `pork_portioned` on West Prep Counter → passes via **Pass Counter** to Jiwon.
-   - Jiwon grills `pork_portioned` → `pork_grilled` on East Grill Pan and preps `daikon_carrot_raw` → `pickled_veg` on East Prep Counter → passes to Linh.
-   - Assemble on clean `plate` with `baguette` + `pork_grilled` + `pickled_veg`.
-3. **Tteokbokki (Traditional Korean):**
-   - Linh portions `tteok_raw` → `tteok_portioned` on West Prep Counter → passes via **Pass Counter** to Jiwon.
-   - Jiwon preps `eomuk_raw` → `eomuk_prepared` on East Prep Counter and simmers `tteok_portioned` + `eomuk_prepared` + `gochujang_sauce` in the **Simmer Wok** → `tteokbokki_simmered`.
-   - Plate in clean `bowl`.
-4. **Bulgogi Bánh Mì (Original Vietnam–Korea Fusion Specialty):**
-   - Explicitly labeled as an **Original Vietnam–Korea Fusion Specialty**.
-   - Linh portions `bulgogi_raw` → `bulgogi_portioned` on West Prep Counter → passes via **Pass Counter** to Jiwon.
-   - Jiwon sears `bulgogi_portioned` → `bulgogi_seared` on East Grill Pan and preps `kimchi_raw` → `kimchi_slaw` on East Prep Counter → passes to Linh.
-   - Assemble on clean `plate` with `baguette` + `bulgogi_seared` + `kimchi_slaw`.
+The dishes available on each day come from `GameData.GetDayAllowedRecipes`, which overrides the older `allowedRecipes` lists stored in `CampaignLevelSpec`. Each day adds one dish to the previous days, except Day 5, which focuses on the fusion dish only.
+
+| Day | New Dish | Components | Base Points |
+| :--- | :--- | :--- | :--- |
+| **1** | **Tteokbokki** (Korean) | `tteok_portioned` + `gochujang` | 115 |
+| **2** | **Bột Chiên** (Vietnamese fried rice-flour cake) | `cooked_flour` + `egg_raw` (stove) | 125 |
+| **3** | **Korean BBQ Rice** | `bbq_beef` + `cooked_rice` (raw meat cut once → `korean_bbq_raw` → grill → `bbq_beef`) | 140 |
+| **4** | **Cơm Tấm Sườn Trứng** (Vietnamese broken rice) | `bbq_beef` + `cooked_rice` + `egg_raw` | 155 |
+| **5** | **Bulgogi Bánh Mì** — *Original Vietnam–Korea Fusion Specialty* (only dish on Day 5) | Baguette (flour + egg, cooked) + `pickled_veg` (radish/carrot) + `bulgogi_seared` (raw meat cut twice on Jiwon's side, then seared) | 180 |
+
+- **Endless mode** uses all five dishes.
+- **Tutorial** serves a single Tteokbokki order with a 600-second timer.
+- **Legacy recipes** (`pho_bo`, `banh_mi_thit`, `kimchi_bokkeumbap`, and others) still exist in `GameData.recipes` and are covered by tests, but they are not part of the active day menu.
 
 ---
 
 ## 4. Kitchen Flow, Pass Counter & Rush Rhythm
 
-- **Pass Counter Handoff (+15 Flow):** When Player A places an ingredient needed by an active order onto the central Pass Counter and Player B retrieves it within **4 seconds**, the team earns **+15 Kitchen Flow**.
-- **Anti-Exploit Rules:**
-  - Self-retrieval (Player A placing and retrieving their own item) awards `0` Flow.
-  - Each customer order can grant the handoff bonus at most once.
-  - Passing the same item back and forth never generates duplicate bonuses.
-- **Rush Rhythm:**
-  - Reaching `100` Flow resets the Flow meter to `0` and triggers **Rush Rhythm** for **15 seconds**.
-  - All orders served during Rush Rhythm receive a **1.5x base score multiplier**.
-  - Flow generation is paused while Rush Rhythm is active and resumes automatically afterward.
+- **Pass Counter handoff (+15 Flow):** When one chef places an ingredient needed by an active order on the Pass Counter and the **other** chef picks it up within **4000 ms**, the team earns **+15 Kitchen Flow**.
+- **Anti-exploit rules:** self-retrieval awards `0` Flow; each order can grant the handoff bonus at most once; passing the same item back and forth never duplicates the bonus.
+- **Other Flow sources:** serving an order +12 (+20 if cooked at optimal); an expired order −15.
+- **Rush Rhythm:** reaching `100` Flow triggers **Rush Rhythm** for **15 seconds** with a **1.5x score multiplier**.
 
 ---
 
 ## 5. Pre-Shift Specializations
 
-- **PREP MASTER:** Widens Perfect cadence window by +25% and grants +15 bonus points on Perfect-prepped dishes.
-- **FLAME KEEPER:** Extends Optimal cooking window duration by +35% across all appliances.
+- **PREP MASTER:** Widens the Perfect cadence window by +25% and grants +15 bonus points on Perfect-prepped dishes.
+- **FLAME KEEPER:** Extends the Optimal cooking window by +35%.
 - **MARKET RUNNER:** Increases movement speed by +20%.
+- **FUSION ARTIST:** +20% score and +10 Flow on fusion dishes (Bulgogi Bánh Mì).
 
 ---
 
-## 6. Character Signature Abilities & Progression Tiers
+## 6. Character Progression Tiers
 
-Rather than interchangeable cosmetic skins, Linh and Jiwon possess distinct thematic progression identities:
+### Linh — Execution Specialist
+The mechanical third arm is visual and thematic; it does not act on its own.
+- **Tier 1 — Ordinary Chef:** 1.0x task speed. No arm.
+- **Tier 2 — Workshop Engineer (unlocks after Day 3):** Rustic brass/steel third arm. Prep strike interval ×0.92.
+- **Tier 3 — Precision Engineer (unlocks after Day 5):** Glowing white-and-blue precision arm. Prep strike interval ×0.85.
 
-### Linh — Execution Specialist (Automation & Precision Engineering)
-Linh optimizes kitchen throughput through mechanical cadence mastery and unlockable assistant arms. The arm is purely visual and thematic (no autonomous bot AI):
-- **Tier 1 — Ordinary Chef:** Standard movement and task cadence (1.0x task speed multiplier). No robotic arm visible.
-- **Tier 2 — Workshop Engineer (Unlocks after Level 3):** Unlocks a visible rustic brass/steel mechanical third arm mounted to her apron/back. Reduces rhythm prep strike intervals to 0.92x (~8% faster cadence).
-- **Tier 3 — Precision Engineer (Unlocks after Level 5):** Replaces the rustic arm with a sleek, white-and-blue glowing precision robotic arm with pulsing emissive lines. Further reduces prep strike intervals to 0.85x (~15% faster cadence; 0.38s ideal intervals).
+### Jiwon — Delegation Specialist ("Call in the Crew")
+- **Tier 1 — Burnt-out Executive:** 0 part-timer slots.
+- **Tier 2 — Restaurant Manager (unlocks after Day 3):** 1 part-timer slot.
+- **Tier 3 — Business Operator (unlocks after Day 5):** 2 part-timer slots.
 
-### Jiwon — Delegation & Multitasking Specialist ("Call in the Crew")
-Jiwon leverages executive delegation to hire temporary, predictable part-time contract workers using restaurant coins.
-- **Tier 1 — Burnt-out Executive:** 0 part-timer slots available. Casual apron attire. Must work stations by hand.
-- **Tier 2 — Restaurant Manager (Unlocks after Level 3):** 1 simultaneous part-timer slot. Crisp rolled-sleeve dress shirt. Can spend 20 coins to hire a worker for 20 seconds (45s agency cooldown).
-- **Tier 3 — Business Operator (Unlocks after Level 5):** 2 simultaneous part-timer slots. Formal business suit with executive styling. Can maintain 2 active workers concurrently.
-
-#### Part-Time Worker Roles & State Machine
-1. **Prep Assistant:** Walks into the kitchen, navigates to the East preparation counter, performs automated rhythm chopping strikes at 1.1s intervals, and departs when the 20s contract expires.
-2. **Dishwasher:** Walks into the kitchen, navigates to the washing station, performs automated plate scrubbing strokes at 1.2s intervals, and departs when the 20s contract expires.
-
-All hiring requests are host-authoritative: client requests validate coin balance, role cooldowns, and active capacity before deducting funds and spawning the worker over LAN.
+#### Part-Time Workers (`PartTimeWorker`)
+Hiring costs **20 coins** for a **20-second** contract with a **45-second** cooldown. Roles: **Prep Assistant** (automated chopping at the prep counter) and **Kitchen Helper** (second part-timer slot; there is no washing chore in the game). Hiring is host-authoritative: the host checks coins, cooldown, and slot capacity before spawning the worker.
 
 ---
 
-## 7. Handcrafted 5-Level Campaign Progression
+## 7. Campaign (Days 1–5)
 
-The campaign guides players from a humble rural stall through urban expansion:
+| Day | Title (Setting) | Duration | Waves | Order Patience |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | First Customer (Rural Vietnam) | 180 s | 3 waves | max(50, 72 − 3×day) s |
+| **2** | Lunch Rush (Village Market) | 180 s | 3 waves | same formula |
+| **3** | Night Market | 180 s | 3 waves | same formula |
+| **4** | City Bistro (City Food Market) | 180 s | 3 waves | same formula |
+| **5** | Grand Opening (Metropolitan Bistro) | 180 s | 3 waves (spawn interval 10 / 8.5 / 7.5 s; max concurrent 3 / 4 / 4) | 75 / 70 / 65 s |
 
-| Level | Title & Setting | Shift Duration | Target 1★ / 2★ / 3★ | Allowed Recipes | Concurrent / Interval | Unlocks & Narrative Context |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1** | **First Customer** (Rural Food Stand) | 180s | 150 / 300 / 500 | Phở Bò, Bánh Mì Thịt | 2 orders / 16.0s | Family stall reopening. Core movement and cross-prep basics. |
-| **2** | **Lunch Rush** (Village Market) | 180s | 220 / 450 / 650 | Phở Bò, Bánh Mì Thịt | 3 orders / 13.0s | Higher ticket volume. Finite plate stack and sink washing introduced. |
-| **3** | **Night Market** (Night Market Stall) | 180s | 300 / 600 / 850 | Phở, Bánh Mì, Tteokbokki | 3 orders / 11.0s | Introduces Korean Tteokbokki. **Unlocks Tier 2 for Linh & Jiwon!** |
-| **4** | **Fusion Special** (Street Food Hub) | 180s | 400 / 750 / 1100 | All 4 Recipes | 4 orders / 10.0s | Introduces Bulgogi Bánh Mì fusion dish. Intense cross-kitchen handoffs. |
-| **5** | **Grand Opening** (Modern Fusion Restaurant) | 180s | 550 / 950 / 1400 | All 4 Recipes | 4 orders / 8.5s | Culmination of the journey. **Unlocks Tier 3 for Linh & Jiwon!** |
+- **Days 1–4 waves:** wave order counts are `2 + (day − 1)`, then +1, then +2; the spawn interval starts at `max(8.5, 16 − 1.4×day)` seconds and drops by 2 s and then 3.5 s in later waves.
+- **Unlocks:** finishing Day 3 unlocks Tier 2 for both chefs; finishing Day 5 unlocks Tier 3. Days unlock in order and can be replayed.
+
+### Reputation, Stars & Gold
+- Each shift starts at full reputation. Every expired order costs **−25 reputation**; reaching **0** ends the shift in defeat.
+- **Stars:** reputation ≥ 75 → 3★, ≥ 40 → 2★, otherwise 1★.
+- **Gold reward:** `floor(200 × reputation / 100)` on victory, 0 on failure.
+
+### Upgrade Shop & Saves
+- New saves start with **150 coins**. Kitchen upgrades cost 100 / 100 / 150 / 250 / 500 / 150 / 200 / 250 coins.
+- `SaveSystem` + `ProgressionManager` persist coins/gold, career score, unlocked days, chef tiers, and purchased upgrades.
 
 ---
 
 ## 8. Endless Rush Mode
 
-- **Continuous Escalation:** Players toggle Endless Mode in the multiplayer lobby. Shift duration is unlimited.
-- **Dynamic Difficulty:** Order spawn interval scales downward from 14s to 6.5s as shift duration increases; concurrent order capacity scales from 2 to 4.
-- **Failure Condition:** Missing or letting 3 customer orders expire triggers an immediate shift conclusion.
-- **High Score Tracking:** Authoritatively records personal best score, orders served, and survival duration in persistent storage.
-- **FUSION ARTIST:** Grants +25% bonus score on Fusion recipes and 3+ component assemblies.
+- Selected as **Endless** in the lobby room panel. No time limit.
+- **Spawn interval:** `max(6.5, 14 − t/30)` seconds, where `t` is elapsed time.
+- **Concurrent orders:** 2, rising to 3 after 30 s, 4 after 60 s, and 5 after 120 s.
+- **Failure:** the run ends after **3** failed (expired) orders.
+- **High scores:** best score, orders served, and survival time are saved.
+
+---
+
+## 9. Solo Mode & AI
+
+- **Solo mode:** chosen in Settings; the player picks a chef and a **bot partner** (`BotController`) plays the other chef, navigating with an A* path graph (`KitchenNavGraph`) and coordinating via `BotCommunicationHub`.
+- **2-Bot QA (developer tool):** a faint (20% opacity) button in the Settings popup (hidden on mobile) runs two bots through the selected day up to Day 5 at 2x speed for automated playtesting (`TwoBotQAManager`). `F1` toggles the bot debug HUD.

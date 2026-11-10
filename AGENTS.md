@@ -3,11 +3,11 @@
 This file is the permanent engineering contract for all AI agents and human developers working on **Two Ladles**. The repository is the single source of truth.
 
 > [!IMPORTANT]
-> **Active Engine Notice:** Development on the Godot version has officially **STOPPED**. All active engineering, gameplay features, physics, sprites, tests, builds, and tournament submissions are **100% focused on the Unity 2022.3.62f3 C# version** located at `unity/TwoLadles/`. Do not write new gameplay code or features for Godot.
+> **Active Engine Notice:** Development on the Godot version has officially **STOPPED**. All active engineering, gameplay features, physics, sprites, tests, builds, and tournament submissions are **100% focused on the Unity 2022.3.62f3 C# version** located at `unity/TwoLadles/Two Ladles/`. Do not write new gameplay code or features for Godot.
 
 ## 1. Engine & Competition Mandatory Constraints
 
-- **Official Competition Engine:** Unity `2022.3.62f3` (C# with static typing) located at `unity/TwoLadles/`.
+- **Official Competition Engine:** Unity `2022.3.62f3` (C# with static typing) located at `unity/TwoLadles/Two Ladles/`.
 - **Target Platforms (Korea Game Week 2026 Submission):**
   - **Windows Desktop Standalone (`TwoLadles.exe`):** For desktop testing and laptop co-op host.
   - **Android Standalone APK (`TwoLadles.apk`):** For mobile touchscreen co-op client.
@@ -44,7 +44,7 @@ This file is the permanent engineering contract for all AI agents and human deve
 ## 3. Testing & CI Discipline
 
 - **Automated C# Test Suite (`Assets/Tests/TwoLadlesTestSuite.cs`):**
-  14 test suites covering:
+  18 test suites covering:
   1. Recipes & Cross-Prep Architecture
   2. Prep Station Rhythm Cadence
   3. Cooking State Machine & Phở Separation
@@ -59,4 +59,8 @@ This file is the permanent engineering contract for all AI agents and human deve
   12. 5-Level Campaign Progression & Unlock Gates
   13. Endless Rush Survival Mode & High Scores
   14. Holding Counters, Hover Tilt Animation & Throw Mechanics
+  15. Wave Progression, Reputation, Gold Economy, Shop & Level Replay
+  16. Solo Mode & Deterministic AI Partner
+  17. Two-Bot QA Autoplay Manager & Reporting
+  18. Story Phone Script & Day-Night Lighting
 - **Test Immutability:** Never weaken, skip, or delete assertions in `TwoLadlesTestSuite.cs` to make a build pass.

@@ -1,131 +1,91 @@
 # Testing Guide — Two Ladles (`docs/TESTING.md`)
 
 > [!IMPORTANT]
-> **Active Engine Notice:** Development on the Godot prototype has officially **stopped**. The active, authoritative test suite is the **Unity C# Test Runner** in `unity/TwoLadles/Assets/Tests/TwoLadlesTestSuite.cs` (14 suites, 692 assertions). The Godot test runner documentation below is retained strictly as an archived historical reference.
+> All active testing targets the **Unity 2022.3.62f3** project at `unity/TwoLadles/Two Ladles/`. The Godot prototype and its headless test runner are archived on the `godot` branch and are no longer maintained.
 
-## Official Active Test Suite: Unity C# (`Assets/Tests/TwoLadlesTestSuite.cs`)
+## 1. Automated C# Test Suite
 
-### What It Tests
-Exhaustively verifies all **14 test suites**:
-1. Recipes & Cross-Prep Architecture (Bánh Mì Thịt, Phở Bò, Tteokbokki, Kimchi Bokkeumbap, Bulgogi Bánh Mì)
-2. Prep Station Rhythm Cadence (0.45s sweet spot, non-blocking misses)
-3. Cooking State Machine (Raw -> Cooking -> Optimal -> Overcooked -> Burnt & dedicated Phở stockpot separation)
-4. Assembly Station Rules & Vessel Rejection (Bowls vs Plates, broth-last constraint)
-5. Pass Counter Handoff & Anti-Exploit Window (4.0s retrieval, cross-chef verification)
-6. Kitchen Flow (0-100) & Rush Rhythm (15s, 1.5x score multiplier)
-7. Washing Station Finite Plate Lifecycle & Scrub Strokes
-8. Multiplayer Lobby Character Exclusivity & Ready Resets
-9. Permanent Career Progression, JSON save/load & Kitchen Upgrades
-10. Linh Execution Specialist Tiers (Third Arm Visuals & Speed Multipliers)
-11. Jiwon Delegation Specialist Tiers (Part-Timer Crew Hiring)
+File: [`Assets/Tests/TwoLadlesTestSuite.cs`](../unity/TwoLadles/Two%20Ladles/Assets/Tests/TwoLadlesTestSuite.cs)
+
+### What it covers (19 suites)
+1. Recipes & Cross-Prep Architecture
+2. Prep Station Rhythm Cadence (0.45 s sweet spot)
+3. Cooking State Machine & Phở Separation
+4. Assembly Station Rules & Vessel Rejections
+5. Pass Counter Handoff & Anti-Exploit Window (4000 ms)
+6. Kitchen Flow & Rush Rhythm (15 s, 1.5x)
+7. No Washing Chore (unlimited plates; serving never makes dirty plates)
+8. Lobby Exclusivity & Ready Resets
+9. Permanent Career Progression & Kitchen Upgrades
+10. Linh Execution Specialist Tiers
+11. Jiwon Delegation Specialist Tiers (Part-Timer Crew)
 12. 5-Level Campaign Progression & Unlock Gates
 13. Endless Rush Survival Mode & High Scores
 14. Holding Counters, Hover Tilt Animation & Throw Mechanics
+15. Wave Progression, Reputation, Gold Economy, Shop & Level Replay
+16. Solo Mode & Deterministic AI Partner
+17. Two-Bot QA Autoplay Manager & Reporting
+18. Story Phone Script & Day-Night Lighting
+19. LAN Order Sync, Recipe Timing & Bot Safety
 
-### How to Run in Unity
-1. Open the project in Unity Editor (`unity/TwoLadles`).
-2. Attach or run `TwoLadlesTestSuite.cs` in an active test scene or via the Unity Test Framework.
-3. The console reports all 14 suites passing cleanly.
+> [!IMPORTANT]
+> **Test immutability:** never weaken, skip, comment out, or delete assertions to make a build pass. Fix the code instead. Tests change only when requirements change and the change is approved.
 
----
+### Run from the Unity Editor
+1. Open `unity/TwoLadles/Two Ladles` in Unity Hub (Unity 2022.3.62f3).
+2. Use one of these menu items:
+   - **Two Ladles → Run Automated Test Suite**
+   - **Two Ladles → Run All Tests**
+3. Check the Console. The summary line looks like `RESULTS: X / Y Passed`. Any failure is logged as an error.
 
-## Archived Godot Headless Test Suite (Historical Reference)
-
-### What It Tests
-Verifies all **114 automated assertions across 13 comprehensive test suites**:
-1. Starter recipes & cross-prep interdependence (*Phở Bò*, *Bánh Mì Thịt*, *Tteokbokki*, *Bulgogi Bánh Mì*).
-2. Preparation Counter 4-strike cadence & non-blocking misses.
-3. Cooking state machine (`RAW -> COOKING -> OPTIMAL -> OVERCOOKED -> BURNT`) and Phở blanching separation.
-4. Recipe assembly validation and broth-last sequence.
-5. Pass Counter handoff bonuses (+15 Flow within 4s) and anti-exploit guards.
-6. Kitchen Flow (0–100) and Rush Rhythm (15s, 1.5x score, paused Flow).
-7. Washing station and finite 4-plate lifecycle.
-8. Multiplayer lobby character exclusivity and readiness reset.
-9. Persistent progression, stage unlocks, and kitchen upgrades.
-10. Linh Execution Specialist: Tiers 1–3 speed multipliers (1.0x, 0.92x, 0.85x) and visual third arm evolution.
-11. Jiwon Multitasking & Delegation: Part-time worker hiring ("Call in the Crew"), coin balance deduction, cooldowns, and worker state machine.
-12. 5 Handcrafted Campaign Levels & Milestone 3 Character Tier Unlocks.
-13. Endless Rush Mode: Dynamic pressure scaling and personal best tracking.
-
-### Steps to Run
-Open **PowerShell** in `C:\Users\madly\OneDrive\Desktop\Projects\two-ladles` and run (read-only verification):
+### Run from the command line (batch mode)
+Open PowerShell in the repository folder. This only reads the project and writes logs; it does not change game files.
 ```powershell
-& "$env:LOCALAPPDATA\Programs\two-ladles-tools\godot\Godot_v4.7.2-stable_win64_console.exe" --headless -- --run-tests
+& "C:\Users\madly\AppData\Local\Programs\Unity\Hub\Editor\2022.3.62f3\Editor\Unity.exe" -batchmode -nographics -projectPath "unity/TwoLadles/Two Ladles" -executeMethod BuildScript.RunTestSuite -logFile test.log
 ```
-**Expected Output:** Ends with `RESULTS: 114 / 114 Passed | 0 Failed` and `ALL AUTOMATED TESTS PASSED CLEANLY.`
+(Adjust the Unity path if your editor is installed elsewhere.) `BuildScript.RunTestSuite` exits with code `0` when every test passes and `1` when any test fails. Read `test.log` for `ALL N TESTS PASSED CLEANLY!` or `TEST SUITE FAILED`.
 
----
+## 2. Two-Bot Autoplay QA
 
-## Level 2: Same-Computer Two-Instance Multiplayer Test (`127.0.0.1`)
+`TwoBotQAManager` lets two AI chefs play the campaign by themselves to catch stuck states, softlocks, and balance problems.
 
-### What It Tests
-Launches two independent game windows on your Windows PC that connect over UDP port `24567` using `127.0.0.1` (localhost).
+### From the Editor
+- **Two Ladles → 🤖 Run Two-Bot QA Test** — run the bot QA from the default day.
+- **Two Ladles → QA Test From Day → Day 1…Day 5** — choose the starting day (stored in EditorPrefs key `TwoLadles_QADay`).
+- In a desktop build, the **🤖 2-BOT TEST RUN** button sits at the bottom of the **Settings** popup (20% opacity, hidden on mobile). It runs from the currently selected day through Day 5 (or one Endless run if Endless is selected) at 2x speed with a random seed.
 
-### Automated 2-Process UDP Handshake Smoke Test
-Run this command in PowerShell to automatically launch a Host process and Client process, verify they connect over UDP, ready up as Linh & Jiwon, and start a synchronized shift:
+### From the command line
 ```powershell
-$godot = "$env:LOCALAPPDATA\Programs\two-ladles-tools\godot\Godot_v4.7.2-stable_win64_console.exe"
-$h = Start-Process $godot -ArgumentList "--headless","--","--lan-smoke-host" -PassThru -NoNewWindow
-$c = Start-Process $godot -ArgumentList "--headless","--","--lan-smoke-client" -PassThru -NoNewWindow
-$h.WaitForExit(10000); $c.WaitForExit(10000)
+& "C:\Users\madly\AppData\Local\Programs\Unity\Hub\Editor\2022.3.62f3\Editor\Unity.exe" -batchmode -projectPath "unity/TwoLadles/Two Ladles" -executeMethod BuildScript.RunAutoplayQABatch -autoplayQA -seed 42 -days 1-5 -timescale 4
 ```
+Arguments (parsed in `TwoBotQAManager.ParseCommandLineArguments`):
 
-### Interactive Side-by-Side 2-Window Desktop Playtest
-1. Open **PowerShell** in `C:\Users\madly\OneDrive\Desktop\Projects\two-ladles`.
-2. Launch Window 1 (Host - defaults to **Linh**):
-   ```powershell
-   Start-Process "build\windows\two-ladles.exe" -ArgumentList "--", "--auto-host"
-   ```
-3. Launch Window 2 (Client - defaults to **Jiwon**):
-   ```powershell
-   Start-Process "build\windows\two-ladles.exe" -ArgumentList "--", "--auto-join=127.0.0.1"
-   ```
-4. In **both** windows, click **TOGGLE READY**.
-5. In **Window 1 (Host)**, click **START SHIFT**.
-6. **Controls inside the Kitchen:**
-   - **Move:** `WASD` or Arrow Keys (or on-screen `▲ ▼ ◀ ▶` touch buttons).
-   - **Primary Interact / Pick Up / Place / Pass / Serve:** `E` or `Space` (or on-screen `INTERACT / PASS` button).
-   - **Secondary Strike / Scrub / Take Clean Bowl:** `F` (or on-screen `STRIKE / SCRUB / BOWL` button).
+| Argument | Meaning |
+| --- | --- |
+| `-autoplayQA` | Turn on QA mode (exits automatically when run in batch mode). |
+| `-seed <N>` | Random seed so runs can be repeated. |
+| `-days <N>` or `-days <A>-<B>` | `N` = Days 1 to N; `A-B` = a range. |
+| `-timescale <x>` | Simulation speed, clamped to 0.5–10. |
 
----
+### Output
+- QA reports: `unity/qa_reports/` (path resolved as `Application.dataPath/../../../qa_reports`).
+- Bot telemetry log: `Logs/bot_qa.log` (written by `BotLogger`).
+- In-game: press **F1** to toggle the bot debug / TAS HUD (off by default).
 
-## Level 3: Cross-Device Wi-Fi LAN Testing (Desktop + Android or Dual Android)
+> [!NOTE]
+> The batch QA path has not been re-verified as part of this documentation update. If a batch run never finishes, run QA from the Editor menu instead and report the log.
 
-### Procedure B: Windows Desktop (Host) + Android Phone (Client)
+## 3. Manual Multiplayer Tests
 
-#### Step 1: Find Your Windows PC's Local Wi-Fi IPv4 Address
-Open PowerShell on your Windows PC and run (read-only):
-```powershell
-Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -match "Wi-Fi|Ethernet" -and $_.IPAddress -notmatch "^169\.254" } | Select-Object InterfaceAlias, IPAddress
-```
-Note the `IPAddress` (for example, `192.168.1.42`). Both your PC and Android phone must be connected to the same Wi-Fi network.
+### Same computer (two windows)
+1. Build the Windows player (**Two Ladles → Build Standalone Windows EXE**) → `Builds/Windows/TwoLadles.exe`.
+2. Start it twice. In window 1 choose **Host** (enter a name and room name). In window 2 choose **Join** and pick the room from the LAN list, or type `127.0.0.1`.
+3. Pick a day in the room panel, press **Ready** in both windows, then **Start** on the host.
 
-#### Step 2: Allow UDP Port `24567` in Windows Firewall
-If your Android phone cannot connect to your Windows PC host, Windows Firewall is likely blocking incoming UDP traffic on port `24567`. Run **PowerShell as Administrator** once to allow it:
-```powershell
-New-NetFirewallRule -DisplayName "Two Ladles LAN UDP 24567" -Direction Inbound -Protocol UDP -LocalPort 24567 -Action Allow
-```
-*(To undo/remove this rule later: `Remove-NetFirewallRule -DisplayName "Two Ladles LAN UDP 24567"`)*
+### Laptop + Android phone over Wi-Fi
+Follow the [LAN crossplay test checklist](NETWORKING.md#lan-crossplay-test-checklist).
 
-#### Step 3: Connect & Play
-1. On your **Windows PC**, launch `build\windows\two-ladles.exe` and click **HOST GAME (UDP)**.
-2. Install `two-ladles-debug.apk` (from GitHub Actions Artifacts) onto your **Android phone**.
-3. On your **Android phone**, type your PC's IPv4 address (e.g., `192.168.1.42`) into the IP box and tap **JOIN GAME**.
-4. Select characters (**Linh** & **Jiwon**) and specializations, tap **TOGGLE READY** on both devices, and click **START SHIFT** on the Host.
+### Desktop-only helpers
+- **F3** toggles on-screen mobile controls on desktop (they show automatically on phones).
+- **F9** opens the story debug panel.
 
----
-
-### Procedure C: Two Physical Android Devices over Wi-Fi
-
-1. Connect both Android phones/tablets to the same Wi-Fi router (ensure the router does not have "AP Isolation / Guest Client Isolation" enabled).
-2. On **Phone 1 (Host)**: Open Wi-Fi Settings → Network Details to view Phone 1's local IPv4 address (e.g., `192.168.1.55`), then open **Two Ladles** and tap **HOST GAME (UDP)**.
-3. On **Phone 2 (Client)**: Open **Two Ladles**, enter Phone 1's IPv4 address (`192.168.1.55`), and tap **JOIN GAME**.
-4. Both players tap **TOGGLE READY**, and Phone 1 taps **START SHIFT**.
-
----
-
-## Level 4: Optional VirtualBox Android VM Notes
-
-Oracle VirtualBox is installed on this PC (`C:\Program Files\Oracle\VirtualBox\VBoxManage.exe`).
-- **When Useful:** Optional UI layout inspection of an x86_64 Android image (`export_presets.cfg` includes `architectures/x86_64=true` alongside `arm64-v8a=true`).
-- **Networking Caveat:** VirtualBox NAT mode isolates UDP broadcasts/incoming sockets. If testing LAN connection inside VirtualBox, set the VM Network Adapter to **Bridged Adapter** bound to your Wi-Fi card. However, real physical Android hardware over Wi-Fi remains the authoritative Level 3 test.

@@ -74,6 +74,8 @@ namespace TwoLadles.Networking
 
         private float posSyncTimer = 0.0f;
         private const float POS_SYNC_INTERVAL = 0.033f; // 30Hz network sync
+        private float orderSyncTimer = 0.0f;
+        private const float ORDER_SYNC_INTERVAL = 0.25f; // 4Hz host -> client order/score sync
 
         private void Awake()
         {
@@ -135,6 +137,17 @@ namespace TwoLadles.Networking
                 {
                     posSyncTimer = 0.0f;
                     BroadcastLocalPlayerTransform();
+                }
+            }
+
+            // 5. Host sends authoritative orders / score / flow to the client at 4Hz
+            if (isLanActive && IsHost() && partnerEndPoint != null && ShiftManager.Instance != null && ShiftManager.Instance.shiftActive)
+            {
+                orderSyncTimer += Time.unscaledDeltaTime;
+                if (orderSyncTimer >= ORDER_SYNC_INTERVAL)
+                {
+                    orderSyncTimer = 0.0f;
+                    SendPacket(ShiftManager.EncodeNetworkState(ShiftManager.Instance.CaptureNetworkState()), partnerEndPoint);
                 }
             }
         }
@@ -425,6 +438,7 @@ namespace TwoLadles.Networking
             }
             partnerEndPoint = null;
             isLanActive = false;
+            if (ShiftManager.Instance != null) ShiftManager.Instance.isNetworkClient = false;
             players.Clear();
             OnLobbyUpdated?.Invoke(players);
 
@@ -602,7 +616,16 @@ namespace TwoLadles.Networking
                         if (ShiftManager.Instance != null)
                         {
                             ShiftManager.Instance.StartShift(stage, mode);
+                            ShiftManager.Instance.isNetworkClient = true; // host owns orders/score from here on
                         }
+                    }
+                    break;
+
+                case ShiftManager.ORDERS_PACKET:
+                    if (!IsHost() && ShiftManager.Instance != null && ShiftManager.Instance.isNetworkClient)
+                    {
+                        var state = ShiftManager.DecodeNetworkState(msg);
+                        if (state != null) ShiftManager.Instance.ApplyNetworkState(state);
                     }
                     break;
 

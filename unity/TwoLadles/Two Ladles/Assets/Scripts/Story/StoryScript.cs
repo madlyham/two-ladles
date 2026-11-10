@@ -113,15 +113,15 @@ namespace TwoLadles.Story
                 descKo = "불고기 반미는 우리 가게가 직접 만든 베트남–한국 퓨전 메뉴야. 한국식 양념 소고기를 바삭한 베트남 바게트에 넣고 새콤한 절임 채소를 더했어.",
                 chat = new StoryLine[]
                 {
-                    new StoryLine("jiwon", "Big day. Nervous?", "Ngày trọng đại đấy. có hồi hộp không?", "Ngày trọng đại rồi đấy. 긴장돼?"),
-                    new StoryLine("linh", "A little. But I'm glad we're doing this together.", "Một chút. Nhưng em vui vì mình chung tay mà làm.", "조금. 그래도 우리가 함께하고 있어서 좋아."),
-                    new StoryLine("jiwon", "I was thinking... what if we combined something from both our food cultures?", "Anh đang nghĩ... hay là chúng ta kết hợp món ăn từ cả hai nền ẩm thực nhé?", "문득 생각했는데... 우리 두 나라의 음식을 하나로 합쳐보는 건 어때?"),
+                    new StoryLine("jiwon", "Big day. Nervous?", "Hôm nay là ngày lớn đấy. Hồi hộp không?", "중요한 날이네. 긴장돼?"),
+                    new StoryLine("linh", "A little. But I'm glad we're doing this together.", "Hơi hơi. Nhưng tớ vui vì tụi mình cùng làm.", "조금. 그래도 우리가 함께하고 있어서 좋아."),
+                    new StoryLine("jiwon", "I was thinking... what if we combined something from both our food cultures?", "Tớ đang nghĩ... hay mình thử kết hợp món của cả hai nước xem?", "문득 생각했는데... 우리 두 나라의 음식을 하나로 합쳐보는 건 어때?"),
                     new StoryLine("linh", "Kind of like bulgogi in a Vietnamese bánh mì, huh?", "Kiểu như Bulgogi kẹp trong bánh mì Việt Nam à?", "베트남 반미에 불고기를 넣는 거네?"),
-                    new StoryLine("jiwon", "Add some crunchy pickled vegetables, too. Our own little specialty.", "Thêm chút rau củ muối chua giòn nữa. Món đặc biệt của riêng của shop.", "아삭한 절임 채소도 넣자. 우리 가게만의 특별 메뉴로."),
-                    new StoryLine("linh", "I like it. Let's make something people will remember.", "Em thấy oke đấy. Hãy làm một món mà mọi người sẽ nhớ đến.", "마음에 들어. 사람들이 오래 기억할 만한 메뉴로 만들자."),
-                    new StoryLine("jiwon", "Me too. Dinner after we close? No more work talk. I'm tired of all that.", "anh cũng vậy. Sau khi đóng cửa, đi ăn nhé? Không bàn chuyện công việc nx mệt r.", "나도 그래. 가게 문 닫고 저녁 먹을래? 일 얘기는 그만하자. 이제 좀 지쳤어."),
-                    new StoryLine("linh", "Deal. But I'm picking dessert.", "Đồng ý. Nhưng món tráng miệng để em chọn nhé.", "좋아. 대신 디저트는 내가 고를게."),
-                    new StoryLine("jiwon", "Go ahead. Pick whatever you like.", "Ừ chọn đi.<3", "그래, 네가 골라. <3")
+                    new StoryLine("jiwon", "Add some crunchy pickled vegetables, too. Our own little specialty.", "Thêm chút đồ chua giòn giòn nữa. Món đặc biệt của riêng quán mình.", "아삭한 절임 채소도 넣자. 우리 가게만의 특별 메뉴로."),
+                    new StoryLine("linh", "I like it. Let's make something people will remember.", "Nghe được đấy! Làm món gì cho khách nhớ mãi luôn.", "마음에 들어. 사람들이 오래 기억할 만한 메뉴로 만들자."),
+                    new StoryLine("jiwon", "Me too. Dinner after we close? No more work talk. I'm tired of all that.", "Tớ cũng thế. Đóng cửa xong đi ăn nhé? Cấm nói chuyện công việc, mệt lắm rồi.", "나도 그래. 가게 문 닫고 저녁 먹을래? 일 얘기는 그만하자. 이제 좀 지쳤어."),
+                    new StoryLine("linh", "Deal. But I'm picking dessert.", "Chốt! Nhưng món tráng miệng là tớ chọn đấy.", "좋아. 대신 디저트는 내가 고를게."),
+                    new StoryLine("jiwon", "Go ahead. Pick whatever you like.", "Ừ, cậu chọn đi. Gì cũng được hết.", "그래, 네가 골라. <3")
                 }
             }
         };

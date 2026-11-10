@@ -444,7 +444,7 @@ namespace TwoLadles.UI
             chefSelectButton.onClick.AddListener(OnToggleChefSelectClicked);
             chefSelectButton.gameObject.SetActive(isSoloMode);
 
-            // 2-Bot QA Test Button (Hidden on Mobile)
+            // 2-Bot QA Test Button: dev tool, lives in Settings, hidden on mobile.
             twoBotTestButton = CreateButton("TwoBotTestBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -280f), new Vector2(220f, 36f), "🤖 2-BOT TEST RUN", new Color(0.18f, 0.50f, 0.64f, 0.75f), out twoBotTestButtonText, 11);
             twoBotTestButton.onClick.AddListener(OnTwoBotTestClicked);
             twoBotTestButton.gameObject.SetActive(!Application.isMobilePlatform);
@@ -647,7 +647,8 @@ namespace TwoLadles.UI
         {
             if (NetworkManager.Instance != null)
             {
-                NetworkManager.Instance.Disconnect();
+                // Tells partner we left (DISCONNECT packet), then closes socket.
+                NetworkManager.Instance.ReturnToMenu("Partner left the room.");
             }
             ShowMainMenu();
             UpdateStatus("Returned to main menu.", false);

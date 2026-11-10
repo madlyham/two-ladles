@@ -73,7 +73,7 @@ namespace TwoLadles.Tests
             Test4_AssemblyStationRules();
             Test5_PassCounterHandoffAndAntiExploit();
             Test6_KitchenFlowAndRushRhythm();
-            Test7_WashingStationPlateLifecycle();
+            Test7_NoWashingPlateSupply();
             Test8_LobbyExclusivityAndReadyReset();
             Test9_ProgressionSystem();
             Test10_LinhExecutionSpecialistTiers();
@@ -85,6 +85,7 @@ namespace TwoLadles.Tests
             Test16_SoloModeAndAIPartner();
             Test17_TwoBotQAManagerAndReporting();
             Test18_StoryPhoneAndDayNightCycle();
+            Test19_LanSyncTimingAndBotSafety();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -352,40 +353,25 @@ namespace TwoLadles.Tests
             Assert(ShiftManager.Instance.kitchenFlow == 20.0f, "Flow generation resumes cleanly after Rush Rhythm ends");
         }
 
-        // Suite 7: Washing Station (7 assertions)
-        private void Test7_WashingStationPlateLifecycle()
+        // Suite 7: No Washing Chore — plates are free from the quick-select wheel (8 assertions)
+        // Requirement change (user-approved 2026-11-10): the washing sink was removed to keep the game simple.
+        // Serving never creates dirty plates and never runs the kitchen out of vessels.
+        private void Test7_NoWashingPlateSupply()
         {
-            Debug.Log("\n[Suite 7] Washing Station & Finite Synchronized Plate Stack");
+            Debug.Log("\n[Suite 7] No Washing Chore — Unlimited Plates");
             ShiftManager.Instance.StartShift(1, GameMode.CAMPAIGN);
-            var wsObj = new GameObject("WashingTest");
-            var ws = wsObj.AddComponent<WashingStation>();
+            int scoreBefore = ShiftManager.Instance.totalScore;
 
-            Assert(ShiftManager.Instance.cleanPlates == 4, "Kitchen starts with finite pool of 4 clean plates/bowls");
-
-            // Take 4 clean vessels
-            for (int i = 0; i < 4; i++)
+            // Serve more dishes than the old 4-plate pool allowed; every delivery must succeed.
+            for (int i = 0; i < 6; i++)
             {
-                var take = ws.TakeCleanVessel("plate");
-                Assert(take.ok, "Took clean vessel from stack");
+                ShiftManager.Instance.activeOrders.Add(new OrderTicket($"ord_noplate_{i}", "banh_mi_thit", "plate", 60.0f));
+                var res = ShiftManager.Instance.DeliverDish(new KitchenItem("banh_mi_thit", "Banh Mi", "plate"), 1);
+                Assert(res.success, $"Delivery {i + 1} succeeds without any plate washing");
             }
 
-            // 5th take rejected
-            var take5 = ws.TakeCleanVessel("plate");
-            Assert(!take5.ok, "5th vessel pickup rejected when all 4 plates are in use (no unlimited disposable plates)");
-
-            // Deliver dish -> 1 dirty plate
-            ShiftManager.Instance.activeOrders.Add(new OrderTicket("ord_wash", "banh_mi_thit", "plate", 60.0f));
-            ShiftManager.Instance.DeliverDish(new KitchenItem("banh_mi_thit", "Banh Mi", "plate"), 1);
-            Assert(ShiftManager.Instance.dirtyPlatesAtReturn == 1, "Serving a dish generates 1 dirty plate at the Return Tray");
-
-            // Scrubbing
-            ws.PerformScrubStroke();
-            ws.PerformScrubStroke();
-            ws.PerformScrubStroke();
-            var stroke4 = ws.PerformScrubStroke();
-            Assert(stroke4.plateCleaned && ShiftManager.Instance.cleanPlates == 1, "4 scrub strokes clean the dirty plate and return it to the shared clean stack");
-
-            DestroyImmediate(wsObj);
+            Assert(ShiftManager.Instance.dirtyPlatesAtReturn == 0, "Serving dishes never creates dirty plates (no washing chore)");
+            Assert(ShiftManager.Instance.totalScore > scoreBefore, "Served dishes still award score");
         }
 
         // Suite 8: Lobby Exclusivity & Readiness Reset (5 assertions)
@@ -954,6 +940,63 @@ namespace TwoLadles.Tests
             Assert(Visuals.DayNightCycleManager.StageForWave(3, 3) == 2, "3 waves: wave 3 = night");
             Assert(Visuals.DayNightCycleManager.StageForWave(0, 3) == -1, "No lighting stage before first wave");
             Assert(Visuals.DayNightCycleManager.StageForWave(2, 2) == 2, "2 waves: last wave reaches night");
+        }
+
+        // Suite 19: LAN Order Sync, Recipe Timing Variety, Part-Timer Size & Bot Counter Safety
+        private void Test19_LanSyncTimingAndBotSafety()
+        {
+            Debug.Log("\n[Suite 19] LAN Order Sync, Recipe Timing, Part-Timer Size & Counter Safety");
+
+            // 1. Part-timer worker sprite is readable (not tiny)
+            Assert(KitchenController.PART_TIMER_HEIGHT >= 1.7f, "Part-timer worker drawn at least 1.7 units tall");
+
+            // 2. Counter never swaps identical items (prevents endless beef-for-beef swap loop)
+            var cObj = new GameObject("TestCounterSame");
+            var c = cObj.AddComponent<CounterStation>();
+            c.stationId = "counter_west_9";
+            c.heldItem = new KitchenItem("bbq_beef", "BBQ Beef");
+            KitchenItem hand = new KitchenItem("bbq_beef", "BBQ Beef");
+            var sameRes = c.InteractPrimary(ref hand, 1, "linh");
+            Assert(!sameRes.ok, "Counter rejects swapping an identical item");
+            Assert(hand != null && hand.itemId == "bbq_beef" && c.heldItem != null && c.heldItem.itemId == "bbq_beef", "Identical-item rejection leaves both items in place");
+            DestroyImmediate(cObj);
+
+            // 3. Harder Day 3/4 recipes get 1-2 extra seconds of customer patience
+            float bbqBonus = ShiftManager.GetRecipePatienceBonus("korean_bbq_rice");
+            float brokenBonus = ShiftManager.GetRecipePatienceBonus("viet_broken_rice");
+            Assert(bbqBonus >= 1f && bbqBonus <= 2f, "Korean BBQ Rice (Day 3) gets 1-2s extra patience");
+            Assert(brokenBonus >= 1f && brokenBonus <= 2f, "Viet Broken Rice (Day 4) gets 1-2s extra patience");
+            Assert(ShiftManager.GetRecipePatienceBonus("tteokbokki") == 0f, "Day 1 Tteokbokki gets no extra patience");
+
+            // 4. Host -> client order/score sync round-trip
+            var t1 = new OrderTicket("ticket_7", new List<string> { "tteokbokki", "bot_chien" }, "bowl", 72.5f);
+            t1.timeRemaining = 40.25f;
+            t1.MarkItemFulfilled(1);
+            var t2 = new OrderTicket("tick|et;8,x", "korean_bbq_rice", "plate", 67f);
+            var state = new NetworkShiftState
+            {
+                score = 1234, reputation = 75f, flow = 42.5f, rushActive = true, rushRemaining = 9.5f,
+                waveCompleted = 2, waveRequired = 5,
+                orders = new List<OrderTicket> { t1, t2 }
+            };
+            string packet = ShiftManager.EncodeNetworkState(state);
+            var decoded = ShiftManager.DecodeNetworkState(packet);
+            Assert(decoded != null, "Order sync packet decodes");
+            Assert(decoded != null && decoded.score == 1234 && Mathf.Approximately(decoded.reputation, 75f) && Mathf.Approximately(decoded.flow, 42.5f), "Score, reputation and flow survive sync");
+            Assert(decoded != null && decoded.rushActive && Mathf.Approximately(decoded.rushRemaining, 9.5f) && decoded.waveCompleted == 2 && decoded.waveRequired == 5, "Rush and wave progress survive sync");
+            Assert(decoded != null && decoded.orders.Count == 2, "Both orders survive sync");
+            if (decoded != null && decoded.orders.Count == 2)
+            {
+                var d1 = decoded.orders[0];
+                Assert(d1.ticketId == "ticket_7" && d1.requiredItems.Count == 2 && d1.requiredItems[1] == "bot_chien" && d1.targetVessel == "bowl", "Order ids, items and vessel preserved");
+                Assert(Mathf.Abs(d1.timeRemaining - 40.25f) < 0.01f && Mathf.Abs(d1.initialPatience - 72.5f) < 0.01f, "Order timers preserved");
+                Assert(d1.fulfilledIndices.Contains(1) && !d1.fulfilledIndices.Contains(0) && d1.recipeId == "tteokbokki", "Fulfilled dishes preserved");
+                var d2 = decoded.orders[1];
+                Assert(!d2.ticketId.Contains("|") && !d2.ticketId.Contains(";") && !d2.ticketId.Contains(","), "Separator characters stripped from synced ids");
+                Assert(d2.requiredItems.Count == 1 && d2.requiredItems[0] == "korean_bbq_rice", "Malicious id does not corrupt following fields");
+            }
+            Assert(ShiftManager.DecodeNetworkState("ORDERS|garbage") == null, "Malformed sync packet rejected safely");
+            Assert(ShiftManager.DecodeNetworkState(null) == null, "Null sync packet rejected safely");
         }
     }
 }

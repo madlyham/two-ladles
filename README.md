@@ -1,77 +1,124 @@
-# TWO LADLES
-### A Vietnam–Korea Kitchen Story
+# Two Ladles
 
-> [!IMPORTANT]
-> **Engine Migration Notice:** Active development on the Godot prototype has officially **stopped**. The project has fully transitioned to **100% Unity (Unity 2022.3.62f3 C#)** located at [`unity/TwoLadles/`](unity/TwoLadles/). All upcoming gameplay features, physics, sprites, network multiplayer, automated tests, and Korea Game Week 2026 competition deliverables are strictly developed in the Unity codebase.
+**Two Ladles** is a two-player cooking game about a Vietnamese chef (**Linh**) and a Korean chef (**Jiwon**) running one kitchen together. Each chef works on their own side of the kitchen, and neither can finish a dish alone — you have to pass ingredients, cook, and serve as a team before customers run out of patience.
 
-**Two Ladles** is a 2-player local Wi-Fi (LAN) cooperative cooking game built in **Unity 2022.3.62f3** (C#, 2.5D stylized 3D kitchen, Android APK + Windows desktop builds for Korea Game Week 2026).
+It is being built for **Korea Game Week 2026** in **Unity 2022.3.62f3** (C#).
 
-Two players (**Linh**, a Vietnamese former software programmer, and **Jiwon**, a Korean former business executive) operate a high-pressure Vietnam–Korea kitchen together over a local network.
-
-> **Core Design Philosophy:** *"Easy to play badly. Difficult to play efficiently. Extremely satisfying to master."*
+> [!NOTE]
+> An early prototype was made in Godot. That version is **archived** on the `godot` branch and is no longer developed. Everything on this branch is the Unity game.
 
 ---
 
-## Competition Deliverables & Engine Architecture
+## How to play
 
-- **Active Engine:** Unity `2022.3.62f3` standard edition (`unity/TwoLadles/`).
-- **Target Platforms:**
-  - **Windows Desktop Standalone (`Builds/Windows/TwoLadles.exe`):** For desktop testing and laptop co-op host.
-  - **Android Standalone APK (`Builds/Android/TwoLadles.apk`):** For mobile touchscreen co-op partner.
-- **Godot Status:** Godot `4.7.2` was used as a rapid prototyping sandbox and is permanently archived on the `godot` branch. All active development, physics, assets, and tournament builds are Unity.
+### Playing together on one Wi-Fi network (co-op)
+1. Both devices must be on the **same Wi-Fi network**.
+2. On the laptop, open `TwoLadles.exe` and choose **HOST A KITCHEN**. Type your chef name and a kitchen name.
+3. On the phone (or second computer), open the game and choose **JOIN KITCHEN (LAN)**. Tap your partner's kitchen in the list, or type the host's IP address and press **CONNECT**.
+4. In the room, the host picks **Day 1–5** or **Endless Survival**. Both players press **READY**, then the host presses **START**.
+5. **LEAVE** returns you to the main menu.
 
----
+If the phone cannot find the kitchen, see the [LAN crossplay checklist](docs/NETWORKING.md#lan-crossplay-test-checklist) (usually a Windows firewall setting).
 
-## Key Gameplay Mechanics
+### Playing alone (solo)
+Open **SETTINGS & OPTIONS**, switch the mode from **LAN CO-OP** to solo, and pick which chef you want to play. The other chef is controlled by the computer.
 
-1. **Mandatory 2-Player Local Network Co-Op:** Built on UDP port `24567`. Host runs on laptop/desktop, partner joins via LAN IP from mobile or second machine.
-2. **Solid Physical Collisions (Zero Character Phasing):** Every counter, appliance, crate, and perimeter wall has a physical `BoxCollider` static body. Chefs move via `CharacterController` with collision boundaries (`radius = 0.45`, `height = 1.3`), completely preventing characters from phasing through counters or appliances.
-3. **Carried Item Visuals & Throw Mechanics:** Carried items hover dynamically above the chef's head with subtle side-to-side tilt (`±10°`) and floating vertical bobbing (`0.08m`). Press `Q` or right-click to throw items directly to your partner (who catches them with empty hands), onto an empty holding counter, into the pass counter, or into the trash.
-4. **Asymmetric Vietnam–Korea Cross-Prep Layout:**
-   - **Linh's West Zone:** Prepares proteins & starches (*Pork Belly*, *Bulgogi*, *Rice Cakes*, *Dry Rice Noodles*, *Baguettes*), operates the **Dedicated Phở Stockpot** and **Noodle Blancher**, and assembles Vietnamese dishes.
-   - **Jiwon's East Zone:** Prepares vegetables & fish cakes (*Daikon & Carrot*, *Aged Kimchi*, *Fish Cakes*, *Gochujang*), operates the **Grill/Sear Pan** and **Gochujang Simmer Wok**, washes dirty dishes, and provides clean vessels.
-5. **Authentic 5-Level Campaign Progression:**
-   - **Level 1 (First Customer):** *Bánh Mì Thịt* (Traditional Vietnamese — Baguette + grilled pork + pickled veg + cilantro/sauce on plate).
-   - **Level 2 (Lunch Rush):** *Phở Bò* (Traditional Vietnamese — Bowl + blanched rice noodles + sliced beef + hot stockpot broth poured last).
-   - **Level 3 (Night Market):** *Tteokbokki* (Traditional Korean — Bowl + simmered rice cakes + fish cakes + gochujang sauce. Rejects flat plates!).
-   - **Level 4 (Street Kitchen):** *Kimchi Bokkeumbap* (Traditional Korean — Plate + stir-fried rice + aged kimchi + grilled protein).
-   - **Level 5 (Grand Opening):** *Bulgogi Bánh Mì* (Original Vietnam–Korea Fusion Specialty — Baguette + grilled bulgogi + kimchi slaw + gochujang glaze).
-6. **Pass Counter Handoffs & Rush Rhythm:**
-   - Handoff bonus grants `+15` Kitchen Flow when retrieved by the other player within 4.0s.
-   - Reaching `100` Flow activates **Rush Rhythm** (`1.5x` score multiplier) for 15.0 seconds.
+### Learning the basics
+Choose **★ TUTORIAL ★** on the main menu for the Kitchen Academy, a short guided lesson that walks you through one Tteokbokki order step by step.
 
----
+### Other menu options
+- **★ UPGRADES ★** — spend coins earned from shifts on permanent kitchen upgrades (faster knives, speed boots, faster burners, chef tiers, and more).
+- **Settings** — language (English, Tiếng Việt, 한국어), solo/co-op, chef choice.
+- **2-BOT TEST RUN** (testers only) — a faint button at the bottom of the **Host** popup that lets two computer chefs play automatically. Hidden on phones.
 
-## Project Structure (`unity/TwoLadles`)
+## The menu (5 days)
 
+Each day adds a new dish to the menu:
+
+| Day | New dish |
+|---|---|
+| 1 | Tteokbokki (Korean spicy rice cakes) |
+| 2 | Bột Chiên (Vietnamese fried rice-flour cake with egg) |
+| 3 | Korean BBQ on Rice |
+| 4 | Vietnamese Broken Rice (Cơm Tấm Sườn Trứng) |
+| 5 | Bulgogi Bánh Mì — the Vietnam–Korea fusion finale (3-minute shift) |
+
+Each day has **3 waves** of customers. Late or missed orders cost **reputation**; if reputation reaches zero, the shift is lost. Finishing all waves wins the day and unlocks the next one. **Endless Survival** mixes all five dishes and keeps going until three orders are missed.
+
+Before each day, a short "phone chat" story between Linh and Jiwon introduces the day's dish (you can skip it).
+
+## Controls
+
+| Action | Keyboard / mouse | Phone |
+|---|---|---|
+| Move | WASD / arrow keys | On-screen joystick |
+| Pick up / put down / use station | `E` or `Space` | Interact button |
+| Chop (hold-style action) | `F` | Secondary button |
+| Throw held item to partner or counter | `Q` or right-click | Throw button |
+| Switch chef (solo only) | `C` | — |
+| Hire part-time helper (Jiwon) | `H` | — |
+| Open/close recipe book | `R` | — |
+| Show/hide phone controls on desktop | `F3` | — |
+| Bot debug overlay (testing) | `F1` | — |
+| Menu / skip story | `Esc` | — |
+
+Phone controls appear automatically on phones and tablets and are hidden on desktop.
+
+## Downloads
+
+After building in Unity (see below), the game files are created here:
+- Windows: `unity/TwoLadles/Two Ladles/Builds/Windows/TwoLadles.exe`
+- Android: `unity/TwoLadles/Two Ladles/Builds/Android/TwoLadles.apk`
+
+A zipped Windows copy is also kept at [`web/downloads/TwoLadles-Windows-x64.zip`](web/downloads/TwoLadles-Windows-x64.zip) for the project web page.
+
+## For developers
+
+### Open the project
+Open the folder `unity/TwoLadles/Two Ladles/` in **Unity Hub** with Unity **2022.3.62f3**. The main scene is `Assets/Scenes/MainKitchen.unity`.
+
+### Build and test (Unity menu bar → **Two Ladles**)
+- **Build Standalone Windows EXE** → `Builds/Windows/TwoLadles.exe`
+- **Build Android Standalone APK** → `Builds/Android/TwoLadles.apk` (needs the Unity Android module)
+- **Run Automated Test Suite** → runs all 19 test suites and prints `RESULTS: X / Y Passed`
+- **🤖 Run Two-Bot QA Test** / **QA Test From Day → Day 1..5** → automatic two-bot playthrough
+
+### Project layout
 ```
-unity/TwoLadles/
-├── Assets/
-│   ├── Editor/
-│   │   └── BuildScript.cs          # Automated scene generation & Windows/Android build pipeline
-│   ├── Resources/
-│   │   └── Sprites/               # Pixel-art kitchen tiles, appliances, item icons & characters
-│   ├── Scenes/
-│   │   └── MainKitchen.unity       # Primary 2.5D game scene
-│   ├── Scripts/
-│   │   ├── Core/                  # GameData, ShiftManager, ProgressionManager
-│   │   ├── Data/                  # RecipeData, CampaignLevelSpec, CharacterProgressionData
-│   │   ├── Kitchen/               # KitchenController (layout builder & collision setup)
-│   │   ├── Networking/            # NetworkManager (UDP 24567 host/client synchronization)
-│   │   ├── Player/                # PlayerController (movement, physics, throw, carried item hover)
-│   │   ├── Stations/              # Prep, Cooking, Assembly, Washing, PassCounter, Crate, Trash
-│   │   └── UI/                    # LobbyUI & KitchenHUD
-│   └── Tests/
-│       └── TwoLadlesTestSuite.cs  # 14-suite automated verification runner (692 assertions)
+two-ladles/
+├── AGENTS.md                 # Engineering rules for all contributors
+├── CHANGELOG.md
+├── GLOSSARY.md
+├── docs/                     # Design, architecture, networking, testing, build guides
+├── web/                      # Project web page + downloads/ zip mirror
+└── unity/TwoLadles/Two Ladles/
+    ├── Assets/
+    │   ├── Editor/           # BuildScript.cs, TwoLadlesEditorMenu.cs
+    │   ├── Resources/        # Sprites, fonts loaded at runtime
+    │   ├── Scenes/           # MainKitchen.unity
+    │   ├── Scripts/
+    │   │   ├── AI/           # Bot partner, A* navigation, 2-bot QA, bot logs/HUD
+    │   │   ├── Core/         # GameData, ShiftManager, ProgressionManager, Audio, Localization
+    │   │   ├── Data/         # Recipe, campaign/wave and character data
+    │   │   ├── IO/           # SaveSystem
+    │   │   ├── Kitchen/      # KitchenController, PartTimeWorker
+    │   │   ├── Networking/   # NetworkManager (LAN UDP)
+    │   │   ├── Player/       # PlayerController
+    │   │   ├── Stations/     # Prep, cooking, assembly, pass, serving, crates, trash (WashingStation is legacy/unused)
+    │   │   ├── Story/        # StoryScript (day-start phone chats)
+    │   │   ├── UI/           # LobbyUI, KitchenHUD, PhoneStoryUI, QuickSelectWheelUI
+    │   │   └── Visuals/      # DayNightCycleManager
+    │   ├── Sprites/
+    │   └── Tests/            # TwoLadlesTestSuite.cs (19 suites), TwoLadlesTestRunner.cs
+    └── Builds/               # Build output (Windows / Android)
 ```
 
----
-
-## How to Open & Build in Unity
-
-1. Open **Unity Hub** (or start Unity `2022.3.62f3`).
-2. Add and open the project at `unity/TwoLadles`.
-3. In Unity Editor:
-   - Run scene `Assets/Scenes/MainKitchen.unity`.
-   - Or click **BuildScript -> Build Windows** in the menu or execute `BuildScript.BuildWindows()` to output `Builds/Windows/TwoLadles.exe`.
-   - To build Android APK, ensure Android Target Support is installed and select Android platform.
+### Documentation
+- [Game Design Document](docs/GAME_DESIGN_DOCUMENT.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Networking & LAN checklist](docs/NETWORKING.md)
+- [Testing](docs/TESTING.md)
+- [Android build](docs/ANDROID_BUILD.md)
+- [Art pipeline](docs/ART_PIPELINE.md)
+- [Roadmap](docs/DEVELOPMENT_ROADMAP.md)
+- [Glossary](GLOSSARY.md) · [Changelog](CHANGELOG.md) · [Asset licenses](docs/ASSET_LICENSES.md)

@@ -10,9 +10,9 @@ All external art assets used in **Two Ladles: A Vietnam–Korea Kitchen Story** 
 - **Format:** 32x32 pixel art, top-down (3/4 view)
 - **License:** Free forever for commercial and non-commercial game development projects. Modification allowed.
 - **Used In:**
-  - `unity/TwoLadles/Assets/Sprites/Kitchen/professional_kitchen.png`
-  - `unity/TwoLadles/Assets/Sprites/Kitchen/professional_kitchen_room_door_tiles.png`
-  - `unity/TwoLadles/Assets/Sprites/Kitchen/professional_kitchen_withshadows.png`
+  - `unity/TwoLadles/Two Ladles/Assets/Sprites/Kitchen/professional_kitchen.png`
+  - `unity/TwoLadles/Two Ladles/Assets/Sprites/Kitchen/professional_kitchen_room_door_tiles.png`
+  - `unity/TwoLadles/Two Ladles/Assets/Sprites/Kitchen/professional_kitchen_withshadows.png`
   - `assets/sprites/kitchen/` (Godot equivalent)
 - **Game Usage:** Stainless steel modular counters, pass counter window, sinks, prep surfaces, stoves, floors, and room walls.
 
@@ -24,7 +24,7 @@ All external art assets used in **Two Ladles: A Vietnam–Korea Kitchen Story** 
 - **Format:** 32x32 pixel art PNG icons
 - **License:** Free to download, commercial use permitted.
 - **Used In:**
-  - `unity/TwoLadles/Assets/Sprites/Items/`
+  - `unity/TwoLadles/Two Ladles/Assets/Sprites/Items/`
   - `assets/sprites/items/` (Godot equivalent)
 - **Game Usage:**
   - **Proteins:** Pork belly (`pork_belly_raw.png`, `pork_portioned.png`), Beef bulgogi (`beef_bulgogi_raw.png`, `bulgogi_portioned.png`), Fish cake (`fish_cake_raw.png`, `eomuk_prepared.png`).
@@ -36,5 +36,5 @@ All external art assets used in **Two Ladles: A Vietnam–Korea Kitchen Story** 
 
 ## 3. Character Concept Sprites (Handcrafted)
 - **Characters:** Linh (Execution Specialist, Tiers 1–3) & Jiwon (Business Operator, Tiers 1–3)
-- **Source:** Handcrafted original concept art (`SPRITES/idea.jpg` / `unity/TwoLadles/Assets/Sprites/Characters/`)
+- **Source:** Handcrafted original concept art (`SPRITES/idea.jpg` / `unity/TwoLadles/Two Ladles/Assets/Sprites/Characters/`)
 - **Intellectual Property:** Original Two Ladles IP created specifically for Two Ladles / KGW2026.

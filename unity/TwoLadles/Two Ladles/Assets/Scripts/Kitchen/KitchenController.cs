@@ -14,6 +14,9 @@ namespace TwoLadles.Kitchen
     {
         public static KitchenController Instance { get; set; }
 
+        /// <summary>World height (units) of hired part-timer sprites. Chefs are ~1.9; part-timers slightly smaller but readable.</summary>
+        public const float PART_TIMER_HEIGHT = 1.75f;
+
         public event Action<string, Color> OnStatusToast;
         public event Action<string> OnPromptChanged;
         public event Action<int> OnChefSwitched;
@@ -1190,12 +1193,12 @@ namespace TwoLadles.Kitchen
 
             if (sp != null && sp.bounds.size.y > 0.01f)
             {
-                float scale = 1.35f / sp.bounds.size.y;
+                float scale = PART_TIMER_HEIGHT / sp.bounds.size.y;
                 workerObj.transform.localScale = Vector3.one * scale;
             }
             else
             {
-                workerObj.transform.localScale = Vector3.one * 0.45f;
+                workerObj.transform.localScale = Vector3.one * 0.58f;
             }
 
             var workerComp = workerObj.AddComponent<PartTimeWorker>();

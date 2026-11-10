@@ -1,61 +1,49 @@
 # Android Build Guide — Two Ladles (`docs/ANDROID_BUILD.md`)
 
 > [!IMPORTANT]
-> **Active Engine Notice:** Godot Android export is officially **stopped and archived**. The official competition Android APK (`TwoLadles.apk`) is built exclusively in **Unity 2022.3.62f3** located at `unity/TwoLadles/`.
+> The competition APK (`TwoLadles.apk`) is built only with **Unity 2022.3.62f3** from `unity/TwoLadles/Two Ladles/`. The old Godot export and its GitHub Actions workflow are archived on the `godot` branch and are not used.
 
-## 1. Official Unity Android Build Pipeline (`BuildScript.cs`)
+## 1. Prerequisites
+- Unity `2022.3.62f3` with the **Android Build Support** module, including **Android SDK & NDK Tools** and **OpenJDK** (add them in Unity Hub → Installs → ⚙ → Add modules).
+- An Android phone running **Android 7.0 (API 24) or newer** with a 64-bit (ARM64) processor.
 
-### Prerequisites in Unity
-- Unity `2022.3.62f3` with **Android Build Support** (including Android SDK, NDK, and OpenJDK modules installed via Unity Hub).
-- Scripting Backend: `IL2CPP` or `Mono` (Target Architecture: `ARM64` / `ARMv7`).
+## 2. Build `TwoLadles.apk`
+1. Open `unity/TwoLadles/Two Ladles` in Unity Hub.
+2. In the Unity menu bar choose **Two Ladles → Build Android Standalone APK**.
+3. Wait for the Console message `ANDROID BUILD SUCCESSFUL! APK generated at: Builds/Android/TwoLadles.apk`.
 
-### How to Build `TwoLadles.apk` in Unity
-1. Open the project at `unity/TwoLadles` in Unity Editor.
-2. In the top Unity menu, select **File -> Build Settings...** and switch platform to **Android**.
-3. Click **Build** and choose output path `Builds/Android/TwoLadles.apk`.
-4. Alternatively, use the automated build pipeline in [`Assets/Editor/BuildScript.cs`](../unity/TwoLadles/Assets/Editor/BuildScript.cs):
-   - Invoke `BuildScript.BuildAndroid()` to generate a clean production APK.
+Output: `unity/TwoLadles/Two Ladles/Builds/Android/TwoLadles.apk`.
 
----
+### What the build script sets
+[`BuildScript.BuildAndroid()`](../unity/TwoLadles/Two%20Ladles/Assets/Editor/BuildScript.cs) regenerates the main scene, then applies:
 
-## 2. Installing APK onto Android Test Devices
-Connect your Android phone via USB with USB Debugging enabled, or transfer via Wi-Fi:
+| Setting | Value |
+| --- | --- |
+| Product name / company | `Two Ladles` / `Two Ladles Team` |
+| Orientation | Landscape Left |
+| Minimum SDK | API 24 |
+| Target SDK | API 34 |
+| Scripting backend | IL2CPP |
+| Architecture | ARM64 |
+
+If the build fails, the script logs `ANDROID BUILD FAILED!` with the error count and exits with code `1` (useful for batch builds).
+
+### Batch build (optional)
+```powershell
+& "C:\Program Files\Unity\Hub\Editor\2022.3.62f3\Editor\Unity.exe" -batchmode -quit -projectPath "unity/TwoLadles/Two Ladles" -executeMethod BuildScript.BuildAndroid -logFile android-build.log
+```
+
+## 3. Install on a phone
+Connect the phone by USB with **USB debugging** turned on (Settings → Developer options), then run in PowerShell from `unity/TwoLadles/Two Ladles`:
 ```powershell
 adb install -r "Builds/Android/TwoLadles.apk"
 ```
+`-r` replaces an existing install and keeps saved progress. You can also copy the APK to the phone and open it (allow "install unknown apps" when asked).
 
----
+## 4. On the phone
+- On-screen touch controls (joystick plus INTERACT, CHOP and THROW buttons) appear automatically on mobile (`Application.isMobilePlatform`).
+- Developer-only buttons such as **2-BOT TEST RUN** are hidden on mobile.
+- To play co-op with a laptop, follow the [LAN crossplay test checklist](NETWORKING.md#lan-crossplay-test-checklist).
 
-## 3. Archived Godot Android Setup (Historical Reference)
-
-To avoid downloading gigabytes of Android SDK/NDK toolchains locally during early development, `.github/workflows/android-build.yml` compiles the signed debug Android APK (`two-ladles-debug.apk`) in GitHub Actions.
-
-### How to Trigger a Cloud Android APK Build
-1. **Manual Dispatch:** Open your GitHub repository → **Actions** tab → **Two Ladles Android Debug APK Build** → click **Run workflow**.
-2. **Version Tag:** Push any tag starting with `v` (for example `git tag v0.2.0 && git push origin v0.2.0`).
-3. Download the resulting `two-ladles-android-debug-apk-<sha>` zip artifact from the completed workflow run and install `two-ladles-debug.apk` on your Android phone.
-
----
-
-## 2. Optional Local Android SDK Setup (For Future Local APK Exports)
-
-If you later want to export Android APKs directly from your Windows PC without using GitHub Actions:
-
-1. **Install OpenJDK 17:**
-   ```powershell
-   winget install EclipseAdoptium.Temurin.17.JDK
-   ```
-2. **Install Android SDK Command-Line Tools** (via Android Studio or `sdkmanager`) into `%LOCALAPPDATA%\Android\Sdk` with:
-   - `platform-tools` (`adb`)
-   - `build-tools;34.0.0`
-   - `platforms;android-34`
-3. **Generate a Local Debug Keystore:**
-   ```powershell
-   keytool -genkeypair -v -keystore "$env:USERPROFILE\.android\debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-   ```
-4. **Point Godot Editor Settings** (`Editor -> Editor Settings -> Export -> Android`) to your Android SDK path and debug keystore, then run:
-   ```powershell
-   & "$env:LOCALAPPDATA\Programs\two-ladles-tools\godot\Godot_v4.7.2-stable_win64_console.exe" --headless --export-debug "Android" "build/android/two-ladles-debug.apk"
-   ```
-
-> **Security Rule:** Never commit `.keystore` or `.jks` files to Git. `.gitignore` blocks them automatically.
+> [!CAUTION]
+> Never commit `.keystore` or `.jks` signing files to Git. `.gitignore` blocks them.

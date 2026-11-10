@@ -30,33 +30,69 @@ namespace TwoLadles.UI
             }
         }
 
-        // Balanced storage (4 + 4, no duplicates). Fridge = cold items: Raw Meat, Radish & Carrot, Fresh Egg, Toboki Portion
-        private static readonly WheelItem[] FRIDGE_ITEMS = new WheelItem[]
+        // Per-station storage: 2 distinct items per fridge/shelf, 8 total, no duplicates.
+        // West (Linh) keeps the Day-1 tutorial items (Toboki in fridge, Gochujang on shelf).
+        private static readonly WheelItem[] FRIDGE_WEST_ITEMS = new WheelItem[]
+        {
+            new WheelItem("tteok_portioned", "Toboki Portion", "tteok_portioned", new Color(0.96f, 0.96f, 0.94f)),
+            new WheelItem("egg_raw", "Fresh Egg", "egg_raw", new Color(0.98f, 0.92f, 0.72f))
+        };
+        private static readonly WheelItem[] FRIDGE_EAST_ITEMS = new WheelItem[]
         {
             new WheelItem("unprocessed_raw_meat", "Raw Meat", "unprocessed_raw_meat", new Color(0.95f, 0.45f, 0.45f)),
-            new WheelItem("radish_carrot", "Radish & Carrot", "radish_carrot", new Color(0.98f, 0.65f, 0.25f)),
-            new WheelItem("egg_raw", "Fresh Egg", "egg_raw", new Color(0.98f, 0.92f, 0.72f)),
-            new WheelItem("tteok_portioned", "Toboki Portion", "tteok_portioned", new Color(0.96f, 0.96f, 0.94f))
+            new WheelItem("radish_carrot", "Radish & Carrot", "radish_carrot", new Color(0.98f, 0.65f, 0.25f))
         };
-
-        // Shelf = dry goods: Gochujang, Flour, Rice Portion, Baguette (No bowls or plates!)
-        private static readonly WheelItem[] SHELF_ITEMS = new WheelItem[]
+        private static readonly WheelItem[] SHELF_WEST_ITEMS = new WheelItem[]
         {
             new WheelItem("gochujang", "Gochujang", "gochujang", new Color(0.92f, 0.25f, 0.20f)),
-            new WheelItem("flour", "Flour", "flour", new Color(0.96f, 0.94f, 0.88f)),
+            new WheelItem("flour", "Flour", "flour", new Color(0.96f, 0.94f, 0.88f))
+        };
+        private static readonly WheelItem[] SHELF_EAST_ITEMS = new WheelItem[]
+        {
             new WheelItem("rice_portioned", "Rice Portion", "rice_portioned", new Color(0.98f, 0.98f, 0.98f)),
             new WheelItem("baguette", "Baguette", "baguette", new Color(0.90f, 0.70f, 0.36f))
         };
 
-        public static string[] GetCatalogIds(bool isFridge)
+        private static WheelItem[] Concat(WheelItem[] a, WheelItem[] b)
         {
-            var src = isFridge ? FRIDGE_ITEMS : SHELF_ITEMS;
+            var r = new WheelItem[a.Length + b.Length];
+            a.CopyTo(r, 0);
+            b.CopyTo(r, a.Length);
+            return r;
+        }
+
+        private static WheelItem[] GetStationCatalog(string stationId)
+        {
+            switch (stationId)
+            {
+                case "fridge_west": return FRIDGE_WEST_ITEMS;
+                case "fridge_east": return FRIDGE_EAST_ITEMS;
+                case "shelf_west": return SHELF_WEST_ITEMS;
+                case "shelf_east": return SHELF_EAST_ITEMS;
+                default:
+                    bool fridge = stationId != null && stationId.Contains("fridge");
+                    return fridge ? Concat(FRIDGE_WEST_ITEMS, FRIDGE_EAST_ITEMS) : Concat(SHELF_WEST_ITEMS, SHELF_EAST_ITEMS);
+            }
+        }
+
+        private static string[] ToIds(WheelItem[] src)
+        {
             var ids = new string[src.Length];
             for (int i = 0; i < src.Length; i++) ids[i] = src[i].itemId;
             return ids;
         }
 
-        private WheelItem[] currentCatalog = FRIDGE_ITEMS;
+        public static string[] GetStationCatalogIds(string stationId) => ToIds(GetStationCatalog(stationId));
+
+        /// <summary>All fridge items (both fridges) or all shelf items (both shelves).</summary>
+        public static string[] GetCatalogIds(bool isFridge) => ToIds(GetStationCatalog(isFridge ? "fridge" : "shelf"));
+
+        /// <summary>Wheel closes once the chef walks a bit past interact range.</summary>
+        public const float AUTO_CLOSE_DISTANCE = 3.0f;
+        public static bool ShouldAutoClose(float distanceToStation) => distanceToStation > AUTO_CLOSE_DISTANCE;
+
+        private Transform openStation;
+        private WheelItem[] currentCatalog = FRIDGE_WEST_ITEMS;
         private GameObject wheelRoot;
         private Text storageHeaderText;
         private List<GameObject> sliceObjects = new List<GameObject>();
@@ -94,6 +130,22 @@ namespace TwoLadles.UI
                 return;
             }
 
+            // Auto-close when the local chef walks away from the opened fridge/shelf
+            if (IsOpen && openStation != null && KitchenController.Instance != null)
+            {
+                int localPeer = NetworkManager.Instance != null ? NetworkManager.Instance.localPeerId : 1;
+                if (KitchenController.Instance.playersByPeer.TryGetValue(localPeer, out var chef) && chef != null)
+                {
+                    Vector3 d = chef.transform.position - openStation.position;
+                    d.y = 0f;
+                    if (ShouldAutoClose(d.magnitude))
+                    {
+                        CloseWheel();
+                        return;
+                    }
+                }
+            }
+
             // Mouse direction highlight when wheel is open
             if (IsOpen && currentCatalog != null && currentCatalog.Length > 0)
             {
@@ -123,8 +175,18 @@ namespace TwoLadles.UI
 
         public void OpenWheelForStorage(bool isFridge)
         {
-            currentCatalog = isFridge ? FRIDGE_ITEMS : SHELF_ITEMS;
-            RebuildSlices(isFridge ? "FRIDGE (MEAT • VEG • EGG • TOBOKI)" : "SHELF (GOCHUJANG • FLOUR • RICE • BAGUETTE)");
+            OpenWheelForStation(isFridge ? "fridge" : "shelf", null);
+        }
+
+        /// <summary>Opens the wheel with only the items stocked at this station; auto-closes when the chef walks away.</summary>
+        public void OpenWheelForStation(string stationId, Transform station)
+        {
+            currentCatalog = GetStationCatalog(stationId);
+            openStation = station;
+            bool isFridge = stationId != null && stationId.Contains("fridge");
+            var names = new List<string>();
+            foreach (var it in currentCatalog) names.Add(it.displayName.ToUpper());
+            RebuildSlices((isFridge ? "FRIDGE (" : "SHELF (") + string.Join(" • ", names) + ")");
             if (wheelRoot != null)
             {
                 wheelRoot.SetActive(true);
@@ -138,6 +200,7 @@ namespace TwoLadles.UI
             {
                 wheelRoot.SetActive(false);
             }
+            openStation = null;
             highlightedIndex = -1;
         }
 

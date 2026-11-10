@@ -1412,6 +1412,24 @@ namespace TwoLadles.Tests
             var allIds = new List<string>(fridgeIds); allIds.AddRange(shelfIds);
             Assert(Array.TrueForAll(new[] { "unprocessed_raw_meat", "radish_carrot", "egg_raw", "tteok_portioned", "gochujang", "flour", "rice_portioned", "baguette" }, id => allIds.Contains(id)), "Every base ingredient is still available from storage");
 
+            // Per-station storage: both fridges and both shelves hold exactly 2 distinct items each
+            var stationIds = new[] { "fridge_west", "fridge_east", "shelf_west", "shelf_east" };
+            var seen = new List<string>();
+            bool allTwo = true;
+            foreach (var st in stationIds)
+            {
+                var ids = QuickSelectWheelUI.GetStationCatalogIds(st);
+                if (ids == null || ids.Length != 2) allTwo = false;
+                else seen.AddRange(ids);
+            }
+            Assert(allTwo, "Each fridge and shelf holds exactly 2 ingredients");
+            Assert(seen.Count == 8 && new HashSet<string>(seen).Count == 8, "No ingredient is duplicated across the 4 storage stations");
+            Assert(Array.TrueForAll(new[] { "unprocessed_raw_meat", "radish_carrot", "egg_raw", "tteok_portioned", "gochujang", "flour", "rice_portioned", "baguette" }, id => seen.Contains(id)), "All 8 base ingredients are reachable across the 4 storage stations");
+
+            // Wheel auto-closes when the chef walks away from the storage station
+            Assert(!QuickSelectWheelUI.ShouldAutoClose(2.0f), "Wheel stays open while the chef stands at the station");
+            Assert(QuickSelectWheelUI.ShouldAutoClose(4.0f), "Wheel closes when the chef walks away from the station");
+
             sm.isNetworkClient = false;
             sm.shiftActive = false;
             sm.isAutoplayQAMode = prevQA;

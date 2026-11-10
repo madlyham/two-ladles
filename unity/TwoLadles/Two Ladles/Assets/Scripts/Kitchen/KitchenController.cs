@@ -779,9 +779,9 @@ namespace TwoLadles.Kitchen
             blancher.applianceId = "noodle_blancher";
 
             // West Storage: Fridge flush on North wall baseboard (-6.2, 5.5) & Vertical Shelf flush on West wall (-10.35, -3.3)
-            var fridgeWest = CreateCrateStation("fridge_west", "FRIDGE (Meat / Radish / Egg / Toboki)", "tteok_portioned", new Vector3(-6.2f, 0.0f, 5.5f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", null);
+            var fridgeWest = CreateCrateStation("fridge_west", "FRIDGE (Toboki / Egg)", "tteok_portioned", new Vector3(-6.2f, 0.0f, 5.5f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", null);
             fridgeWest.isFridge = true;
-            var shelfWest = CreateCrateStation("shelf_west", "SHELF (Gochujang / Flour / Rice / Baguette)", "gochujang", new Vector3(-10.35f, 0.0f, -3.3f), new Color(0.70f, 0.65f, 0.58f), "shelf_vertical", null);
+            var shelfWest = CreateCrateStation("shelf_west", "SHELF (Gochujang / Flour)", "gochujang", new Vector3(-10.35f, 0.0f, -3.3f), new Color(0.70f, 0.65f, 0.58f), "shelf_vertical", null);
             stations["crate_pork"] = fridgeWest;
             stations["crate_beef"] = fridgeWest;
             stations["crate_bulgogi"] = fridgeWest;
@@ -827,9 +827,9 @@ namespace TwoLadles.Kitchen
             wok.applianceId = "simmer_wok";
 
             // East Storage: Fridge flush on North wall baseboard (6.2, 5.5) & Vertical Shelf flush on East wall (10.35, -3.3)
-            var fridgeEast = CreateCrateStation("fridge_east", "FRIDGE (Raw Meat / Radish / Egg / Toboki)", "unprocessed_raw_meat", new Vector3(6.2f, 0.0f, 5.5f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", null);
+            var fridgeEast = CreateCrateStation("fridge_east", "FRIDGE (Raw Meat / Radish)", "unprocessed_raw_meat", new Vector3(6.2f, 0.0f, 5.5f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", null);
             fridgeEast.isFridge = true;
-            var shelfEast = CreateCrateStation("shelf_east", "SHELF (Gochujang / Flour / Rice / Baguette)", "gochujang", new Vector3(10.35f, 0.0f, -3.3f), new Color(0.70f, 0.65f, 0.58f), "shelf_vertical", null);
+            var shelfEast = CreateCrateStation("shelf_east", "SHELF (Rice / Baguette)", "rice_portioned", new Vector3(10.35f, 0.0f, -3.3f), new Color(0.70f, 0.65f, 0.58f), "shelf_vertical", null);
             stations["crate_kimchi"] = fridgeEast;
             stations["crate_daikon"] = fridgeEast;
             stations["crate_tteok"] = shelfEast;

@@ -443,12 +443,12 @@ namespace TwoLadles.UI
             dirtyPlatesText.gameObject.SetActive(false);
             scoreText = CreateLabel("ScoreText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(616f, 0f), new Vector2(120f, 28f), "0 pts", 13, Color.yellow, TextAnchor.MiddleLeft);
 
-            // D) Top-Right Utility Buttons: Recipes [R], Touch UI, Mute, Switch Chef [C], Lobby
-            returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 0f), new Vector2(44f, 26f), "⏸", new Color(0.30f, 0.34f, 0.44f, 0.95f), out _, 14);
+            // D) Top-Right Utility Buttons: Recipes [R], Touch UI, Switch Chef [C], Pause (BGM toggle lives in Pause > Settings)
+            returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 0f), new Vector2(48f, 28f), "⏸", new Color(1.0f, 0.82f, 0.10f, 1f), out var pauseBtnText, 16);
+            if (pauseBtnText != null) { pauseBtnText.color = new Color(0.08f, 0.08f, 0.10f, 1f); pauseBtnText.fontStyle = FontStyle.Bold; }
             switchChefButton = CreateButton("SwitchChefBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-88f, 0f), new Vector2(115f, 26f), "LINH [C]", new Color(0.18f, 0.42f, 0.65f, 0.95f), out switchChefButtonText, 11);
             recipeBookButton = CreateButton("RecipeBookBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-209f, 0f), new Vector2(100f, 26f), "Recipes [R]", new Color(0.65f, 0.42f, 0.14f, 0.95f), out _, 11);
             touchControlsToggleButton = CreateButton("TouchToggleBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-315f, 0f), new Vector2(72f, 26f), "Joypad", new Color(0.24f, 0.36f, 0.48f, 0.95f), out _, 11);
-            audioMuteButton = CreateButton("AudioMuteBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-393f, 0f), new Vector2(68f, 26f), "BGM: ON", new Color(0.22f, 0.25f, 0.32f, 0.95f), out audioMuteButtonText, 11);
 
             // =========================================================================
             // 2. TUTORIAL GUIDANCE CARD (Non-Overlapping, Compact Top-Center)
@@ -853,8 +853,8 @@ namespace TwoLadles.UI
         // ------------------------------------------------------------------
         // Pause menu: the only way to leave a running game.
         // ------------------------------------------------------------------
-        private GameObject pauseModal;
-        private Text pauseTitleText, pauseResumeText, pauseLeaveText;
+        private GameObject pauseModal, pauseMainPanel, pauseSettingsPanel;
+        private Text pauseTitleText, pauseResumeText, pauseLeaveText, pauseSettingsText, pauseBackText;
         public bool IsPaused => pauseModal != null && pauseModal.activeSelf;
 
         /// <summary>Solo pause freezes time; LAN pause only shows the menu (the shared kitchen keeps running).</summary>
@@ -871,20 +871,64 @@ namespace TwoLadles.UI
             r.anchorMax = new Vector2(0.5f, 0.5f);
             r.pivot = new Vector2(0.5f, 0.5f);
             r.anchoredPosition = Vector2.zero;
-            r.sizeDelta = new Vector2(320f, 210f);
+            r.sizeDelta = new Vector2(320f, 260f);
             pauseModal.AddComponent<Image>().color = new Color(0.07f, 0.09f, 0.14f, 0.97f);
 
             pauseTitleText = CreateLabel("PauseTitle", pauseModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(290f, 34f), "PAUSED", 20, Color.white, TextAnchor.MiddleCenter);
-            var resume = CreateButton("PauseResumeBtn", pauseModal.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 4f), new Vector2(220f, 42f), "▶ RESUME", new Color(0.20f, 0.62f, 0.35f, 1f), out pauseResumeText, 13);
-            var leave = CreateButton("PauseLeaveBtn", pauseModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(220f, 42f), "✖ LEAVE GAME", new Color(0.55f, 0.20f, 0.20f, 1f), out pauseLeaveText, 13);
+
+            // Main tab: RESUME / SETTINGS / LEAVE GAME
+            pauseMainPanel = new GameObject("PauseMainPanel", typeof(RectTransform));
+            pauseMainPanel.transform.SetParent(pauseModal.transform, false);
+            StretchFull(pauseMainPanel.GetComponent<RectTransform>());
+            var resume = CreateButton("PauseResumeBtn", pauseMainPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 30f), new Vector2(220f, 42f), "▶ RESUME", new Color(0.20f, 0.62f, 0.35f, 1f), out pauseResumeText, 13);
+            var settings = CreateButton("PauseSettingsBtn", pauseMainPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(220f, 42f), "⚙ SETTINGS", new Color(0.24f, 0.36f, 0.58f, 1f), out pauseSettingsText, 13);
+            var leave = CreateButton("PauseLeaveBtn", pauseMainPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(220f, 42f), "✖ LEAVE GAME", new Color(0.55f, 0.20f, 0.20f, 1f), out pauseLeaveText, 13);
             resume.onClick.AddListener(() => SetPaused(false));
+            settings.onClick.AddListener(() => ShowPauseSettings(true));
             leave.onClick.AddListener(() => { SetPaused(false); OnReturnToLobbyClicked(); });
+
+            // Settings tab: BGM ON/OFF toggle + BACK
+            pauseSettingsPanel = new GameObject("PauseSettingsPanel", typeof(RectTransform));
+            pauseSettingsPanel.transform.SetParent(pauseModal.transform, false);
+            StretchFull(pauseSettingsPanel.GetComponent<RectTransform>());
+            audioMuteButton = CreateButton("AudioMuteBtn", pauseSettingsPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(220f, 42f), "BGM: ON", new Color(0.22f, 0.45f, 0.55f, 1f), out audioMuteButtonText, 13);
+            var back = CreateButton("PauseSettingsBackBtn", pauseSettingsPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(220f, 42f), "◀ BACK", new Color(0.30f, 0.34f, 0.44f, 1f), out pauseBackText, 13);
+            back.onClick.AddListener(() => ShowPauseSettings(false));
+            pauseSettingsPanel.SetActive(false);
+
             pauseModal.SetActive(false);
+        }
+
+        private static void StretchFull(RectTransform rt)
+        {
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+        }
+
+        private void ShowPauseSettings(bool show)
+        {
+            if (pauseMainPanel != null) pauseMainPanel.SetActive(!show);
+            if (pauseSettingsPanel != null) pauseSettingsPanel.SetActive(show);
+            if (pauseTitleText != null)
+            {
+                var lm = LocalizationManager.Instance;
+                pauseTitleText.text = show ? (lm != null ? lm.Get("pause.settings_title", "SETTINGS") : "SETTINGS")
+                                           : (lm != null ? lm.Get("pause.title", "PAUSED") : "PAUSED");
+            }
+            if (show && audioMuteButtonText != null)
+            {
+                bool muted = AudioManager.Instance != null && AudioManager.Instance.isMuted;
+                var lm = LocalizationManager.Instance;
+                audioMuteButtonText.text = lm != null ? lm.Get(muted ? "hud.bgm_off" : "hud.bgm_on", muted ? "BGM: OFF" : "BGM: ON") : (muted ? "BGM: OFF" : "BGM: ON");
+            }
         }
 
         public void SetPaused(bool paused)
         {
             if (pauseModal == null) return;
+            ShowPauseSettings(false);
             pauseModal.SetActive(paused);
             if (paused) pauseModal.transform.SetAsLastSibling();
             Time.timeScale = PauseTimeScale(paused, IsLan());
@@ -1898,6 +1942,8 @@ namespace TwoLadles.UI
                 if (pauseTitleText != null) pauseTitleText.text = lm.Get("pause.title", "PAUSED");
                 if (pauseResumeText != null) pauseResumeText.text = lm.Get("pause.resume", "▶ RESUME");
                 if (pauseLeaveText != null) pauseLeaveText.text = lm.Get("pause.leave", "✖ LEAVE GAME");
+                if (pauseSettingsText != null) pauseSettingsText.text = lm.Get("pause.settings", "⚙ SETTINGS");
+                if (pauseBackText != null) pauseBackText.text = lm.Get("pause.back", "◀ BACK");
             }
             if (recipeBookButton != null)
             {

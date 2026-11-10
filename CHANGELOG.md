@@ -2,6 +2,16 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-11 — v1.4.6: Pause Settings & Storage Split
+
+- **Pause button is bright yellow** so it stands out in the top bar.
+- **BGM toggle moved to Pause → ⚙ Settings tab** (with a Back button), removed from the top bar.
+- **2 ingredients per storage station, no duplicates:**
+  - West fridge: toboki, egg. West shelf: gochujang, flour.
+  - East fridge: raw meat, radish/carrot. East shelf: rice, baguette.
+- **Storage wheel auto-closes** when the chef walks more than ~3m away from the fridge/shelf.
+- Tests: Test20 +5 — 353 total.
+
 ## 2026-11-10 — v1.4.5: Balanced Storage
 
 - **Fridge and shelf now hold 4 ingredients each, no duplicates** (same on Linh's west and Jiwon's east side).

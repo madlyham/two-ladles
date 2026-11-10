@@ -135,5 +135,8 @@ hud.pause,⏸,⏸,⏸
 pause.title,PAUSED,TẠM DỪNG,일시정지
 pause.resume,▶ RESUME,▶ TIẾP TỤC,▶ 계속하기
 pause.leave,✖ LEAVE GAME,✖ RỜI TRẬN,✖ 게임 나가기
+pause.settings,⚙ SETTINGS,⚙ CÀI ĐẶT,⚙ 설정
+pause.settings_title,SETTINGS,CÀI ĐẶT,설정
+pause.back,◀ BACK,◀ QUAY LẠI,◀ 뒤로
 results.ready,✔ READY ({0}/2),✔ SẴN SÀNG ({0}/2),✔ 준비 ({0}/2)
 results.waiting_partner,⏳ WAITING ({0}/2),⏳ ĐANG CHỜ ({0}/2),⏳ 대기 중 ({0}/2)

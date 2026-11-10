@@ -72,7 +72,7 @@ namespace TwoLadles.Stations
                 {
                     return (false, "Hands full.");
                 }
-                QuickSelectWheelUI.Instance.OpenWheelForStorage(isFridgeStation);
+                QuickSelectWheelUI.Instance.OpenWheelForStation(stationId, transform);
                 return (true, isFridgeStation ? "Opened Fridge." : "Opened Shelf.");
             }
 

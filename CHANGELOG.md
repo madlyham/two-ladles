@@ -25,6 +25,7 @@ All notable changes to **Two Ladles** are documented in this file.
 - Day 5 Vietnamese story dialogue uses friendly `tớ / cậu` instead of `anh / em` (warm and light-hearted, not romantic). Day 5's first Korean line fixed (it contained Vietnamese).
 
 ### Fixed
+- **Day 5 Bot Baguette Pipeline** (`AI/BotController.cs`): Linh fetches egg immediately once flour begins frying to create baguette dough on time; Linh handles and combines partial bánh mì components, baked baguettes, and cooked flour cakes; Linh retrieves passed `bulgogi_seared` from the pass counter; cooker BURNT pickup unblocks burned cookers; Jiwon caps beef pipeline taking `bulgogi_seared` and `bulgogi_portioned` into account.
 - **Bot stuck fixes** (`AI/BotController.cs`): bots place or combine onto any free/matching counter instead of always one fixed table; Jiwon stops making extra beef once enough is in the pipeline; Linh's Day 3/4 plan reads the counters instead of a fixed script; rescue-pan flour is parked on a table; bots hold a new plan for 4 s after an unstick; idle bots park items while waiting for an order.
 - Lobby **LEAVE** button called a nonexistent `NetworkManager.Disconnect`; it now calls `NetworkManager.Instance.ReturnToMenu("Partner left the room.")`, which sends a `DISCONNECT` packet and closes the connection.
 - Recipe-book pause no longer blocks headless (batch-mode) tests.

@@ -468,7 +468,7 @@ namespace TwoLadles.AI
                                 SetTarget(pass, "Retrieve Ingredient from Pass Counter");
                                 return;
                             }
-                            if (characterId == "linh" && (slot.item.itemId == "bbq_beef" || slot.item.itemId == "bulgogi"))
+                            if (characterId == "linh" && (slot.item.itemId == "bbq_beef" || slot.item.itemId == "bulgogi" || slot.item.itemId == "bulgogi_seared"))
                             {
                                 SetTarget(pass, $"Retrieve {slot.item.itemId} from Pass Counter");
                                 return;
@@ -1229,85 +1229,173 @@ namespace TwoLadles.AI
                 PrepStation prep = GetStation("prep_west") as PrepStation;
                 CookingStation stove = GetStation("noodle_blancher") as CookingStation;
                 CounterStation counter = GetStation("counter_west") as CounterStation;
+                var carried = playerController.carriedItem;
 
-                if (playerController.carriedItem == null)
+                bool stoveFlourRaw = stove != null && stove.heldItem != null && stove.heldItem.itemId == "flour" &&
+                    (stove.currentState == CookingState.COOKING || stove.currentState == CookingState.RAW);
+
+                if (carried == null)
                 {
-                    if (counter != null && counter.heldItem != null && counter.heldItem.itemId == "bulgogi_banh_mi")
+                    // 1. Ready completed dish on own counters: pick up to serve
+                    CounterStation readyDish = FindItemOnCounters("bulgogi_banh_mi");
+                    if (readyDish != null)
                     {
-                        SetTarget(counter, "Pick Up Bulgogi Bánh Mì");
+                        SetTarget(readyDish, "Pick Up Bulgogi Bánh Mì");
                         return;
                     }
-                    if (prep != null && prep.heldItem != null)
+
+                    // 2. Prep station has pickled veg ready: pick up
+                    if (prep != null && prep.heldItem != null && prep.strikesCompleted >= PrepStation.REQUIRED_STRIKES)
                     {
-                        if (prep.strikesCompleted >= PrepStation.REQUIRED_STRIKES)
+                        SetTarget(prep, "Pick Up Pickled Veg");
+                        return;
+                    }
+
+                    // 3. Prep station has radish needing chopping: chop it
+                    if (prep != null && prep.heldItem != null && prep.strikesCompleted < PrepStation.REQUIRED_STRIKES)
+                    {
+                        SetTarget(prep, "Chop Radish & Carrots");
+                        return;
+                    }
+
+                    // 4. Stove has flour frying: immediately fetch egg to turn it into baguette dough!
+                    if (stoveFlourRaw)
+                    {
+                        desiredItemId = "egg_raw";
+                        SetTarget(GetStation("fridge_west"), "Get Egg for Baguette Dough");
+                        return;
+                    }
+
+                    // 5. Stove finished baking (baguette, cooked flour, or burnt waste): pick it up
+                    if (stove != null && stove.heldItem != null &&
+                        (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED || stove.currentState == CookingState.BURNT))
+                    {
+                        SetTarget(stove, "Pick Up Baked Baguette");
+                        return;
+                    }
+
+                    // 6. Check if two items on own counters can be combined (e.g. partial + meat, bread + veg, etc.)
+                    CounterStation combineTarget = null;
+                    if (KitchenController.Instance != null)
+                    {
+                        foreach (var st1 in KitchenController.Instance.stations.Values)
                         {
-                            SetTarget(prep, "Pick Up Pickled Veg");
-                            return;
+                            if (st1 is CounterStation c1 && c1.heldItem != null && st1.transform.position.x <= 0f)
+                            {
+                                foreach (var st2 in KitchenController.Instance.stations.Values)
+                                {
+                                    if (st2 != st1 && st2 is CounterStation c2 && c2.heldItem != null && st2.transform.position.x <= 0f)
+                                    {
+                                        if (GameData.TryCombineItems(c1.heldItem, c2.heldItem, out _))
+                                        {
+                                            combineTarget = c1;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (combineTarget != null) break;
+                            }
                         }
-                        else
+                    }
+                    if (combineTarget != null)
+                    {
+                        if (!recentlyPlacedCooldowns.ContainsKey(combineTarget) || recentlyPlacedCooldowns[combineTarget] <= 0f)
                         {
-                            SetTarget(prep, "Chop Radish & Carrots");
+                            SetTarget(combineTarget, $"Pick Up {combineTarget.heldItem.itemId} to Assemble");
                             return;
                         }
                     }
-                    if (stove != null && stove.heldItem != null)
-                    {
-                        if (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED)
-                        {
-                            SetTarget(stove, "Pick Up Baked Baguette");
-                            return;
-                        }
-                        else
-                        {
-                            SetTarget(stove, "Wait for Baguette to Bake");
-                            return;
-                        }
-                    }
-                    if (counter == null || counter.heldItem == null)
+
+                    // 7. Check if we need pickled veg (not in prep, not on counters, not in partials)
+                    bool hasVeg = (prep != null && prep.heldItem != null) ||
+                                  FindItemOnCounters("pickled_veg") != null ||
+                                  FindItemOnCounters("banh_mi_partial_bp") != null ||
+                                  FindItemOnCounters("banh_mi_partial_pb") != null;
+                    if (!hasVeg)
                     {
                         desiredItemId = "radish_carrot";
                         SetTarget(GetStation("fridge_west"), "Get Radish for Pickling");
                         return;
                     }
-                    if (counter != null && counter.heldItem.itemId == "pickled_veg" && stove != null && stove.heldItem == null)
+
+                    // 8. Check if we need bread / baguette (not baking on stove, not on counters, not in partials)
+                    bool hasBread = (stove != null && stove.heldItem != null) ||
+                                    FindItemOnCounters("baguette") != null ||
+                                    FindItemOnCounters("baguette_dough") != null ||
+                                    FindItemOnCounters("cooked_flour") != null ||
+                                    FindItemOnCounters("banh_mi_partial_bp") != null ||
+                                    FindItemOnCounters("banh_mi_partial_bb") != null;
+                    if (!hasBread && stove != null && stove.heldItem == null)
                     {
                         desiredItemId = "flour";
                         SetTarget(GetStation("shelf_west"), "Get Flour for Baguette");
                         return;
                     }
+
+                    // 9. Stove is baking baguette dough: wait for it
+                    if (stove != null && stove.heldItem != null && (stove.currentState == CookingState.COOKING || stove.currentState == CookingState.RAW))
+                    {
+                        SetTarget(stove, "Wait for Baguette to Bake");
+                        return;
+                    }
+
+                    // 10. Fallback: Standby at Pass Counter to receive meat from Jiwon
+                    SetTarget(GetStation("pass_counter"), "Standby at Pass Counter for Bulgogi");
+                    return;
                 }
                 else
                 {
-                    if (playerController.carriedItem.itemId == "radish_carrot")
+                    string id = carried.itemId;
+                    if (id == "radish_carrot")
                     {
                         SetTarget(prep, "Cut Radish & Carrots at Prep Table");
                         return;
                     }
-                    if (playerController.carriedItem.itemId == "pickled_veg")
+                    if (id == "egg_raw")
                     {
-                        SetTarget(counter, "Place Pickled Veg on Table");
+                        if (stoveFlourRaw || (stove != null && stove.heldItem != null && stove.heldItem.itemId == "flour"))
+                        {
+                            SetTarget(stove, "Add Egg to Baguette Dough");
+                            return;
+                        }
+                        CounterStation tableFlour = FindItemOnCounters("cooked_flour") ?? FindItemOnCounters("flour");
+                        if (tableFlour != null)
+                        {
+                            SetTarget(tableFlour, "Add Egg to Flour Cake on Table");
+                            return;
+                        }
+                        DropOrTrash("Place Egg on Table");
                         return;
                     }
-                    if (playerController.carriedItem.itemId == "flour")
+                    if (id == "flour")
                     {
-                        SetTarget(stove, "Place Flour in Oven");
+                        if (stove != null && stove.heldItem == null)
+                        {
+                            SetTarget(stove, "Place Flour in Oven");
+                            return;
+                        }
+                        DropOrTrash("Place Flour on Table");
                         return;
                     }
-                    if (playerController.carriedItem.itemId == "egg_raw")
+                    if (id == "burnt_waste")
                     {
-                        SetTarget(stove, "Add Egg to Baguette Dough");
+                        SetTarget(GetStation("trash_bin"), "Trash Burnt Waste");
                         return;
                     }
-                    if (playerController.carriedItem.itemId == "baguette")
+                    if (id == "bulgogi_banh_mi")
                     {
-                        SetTarget(counter, "Assemble Baguette with Pickled Veg");
+                        SetTarget(GetStation("serving_station"), "Deliver Dish to Serving Window");
                         return;
                     }
-                    if (playerController.carriedItem.itemId == "bulgogi" || playerController.carriedItem.itemId == "bulgogi_seared")
+                    if (id == "pickled_veg" || id == "baguette" || id == "baguette_dough" || id == "cooked_flour" ||
+                        id == "bulgogi_seared" || id == "bulgogi" || id.StartsWith("banh_mi_partial"))
                     {
-                        SetTarget(counter, "Assemble Bulgogi into Bánh Mì");
+                        PlaceOrCombine(counter, "Assemble Bánh Mì Parts");
                         return;
                     }
+
+                    DropOrTrash("Park " + id + " on Table");
+                    return;
                 }
             }
             else
@@ -1320,7 +1408,7 @@ namespace TwoLadles.AI
                 {
                     if (grill != null && grill.heldItem != null)
                     {
-                        if (grill.currentState == CookingState.OPTIMAL || grill.currentState == CookingState.OVERCOOKED)
+                        if (grill.currentState == CookingState.OPTIMAL || grill.currentState == CookingState.OVERCOOKED || grill.currentState == CookingState.BURNT)
                         {
                             SetTarget(grill, "Pick Up Grilled Bulgogi");
                             return;
@@ -1374,11 +1462,18 @@ namespace TwoLadles.AI
                         SetTarget(grill, "Grill Bulgogi Portion");
                         return;
                     }
+                    if (playerController.carriedItem.itemId == "burnt_waste")
+                    {
+                        SetTarget(GetStation("trash_bin"), "Trash Burnt Waste");
+                        return;
+                    }
                     if (playerController.carriedItem.itemId == "bulgogi" || playerController.carriedItem.itemId == "bulgogi_seared")
                     {
                         SetTarget(GetStation("pass_counter"), "Pass Bulgogi to Linh");
                         return;
                     }
+                    DropOrTrash("Park " + playerController.carriedItem.itemId + " on Table");
+                    return;
                 }
             }
         }
@@ -1551,6 +1646,20 @@ namespace TwoLadles.AI
                     else
                     {
                         interactCooldown = INTERACTION_DELAY;
+                    }
+                }
+                else if (cook.currentState == CookingState.BURNT && playerController.carriedItem == null)
+                {
+                    var res = playerController.TryInteractPrimary(targetStation);
+                    BotLogger.LogAction(characterId, "Pick up Burnt Waste from Cooker", targetStation.stationId, res.ok, res.reason);
+                    interactCooldown = INTERACTION_DELAY;
+                    if (res.ok)
+                    {
+                        targetStation = null;
+                        currentPath.Clear();
+                        currentWaypointIndex = 0;
+                        EvaluateAndSelectGoal();
+                        return;
                     }
                 }
                 else if (cook.heldItem == null && playerController.carriedItem != null && (currentGoalName.Contains("Place") || currentGoalName.Contains("Cook") || currentGoalName.Contains("Add") || currentGoalName.StartsWith("Grill")))
@@ -1908,7 +2017,8 @@ namespace TwoLadles.AI
         private static bool IsBeefStage(string id)
         {
             return id == "unprocessed_raw_meat" || id == "korean_bbq_raw" || id == "bbq_beef" || id == "bulgogi" ||
-                   id == "korean_bbq_rice" || id == "bbq_with_egg" || id == "viet_broken_rice";
+                   id == "bulgogi_seared" || id == "bulgogi_portioned" || id == "korean_bbq_rice" ||
+                   id == "bbq_with_egg" || id == "viet_broken_rice" || id == "bulgogi_banh_mi";
         }
 
         // Open beef dishes (Day 3/4) still needed by active orders.

@@ -698,6 +698,9 @@ namespace TwoLadles.UI
                 ("day.5", "Day 5: Bulgogi Bánh Mì", "bulgogi_banh_mi", new[] { ("baguette", "Cook Flour+Egg"), ("pickled_veg", "Cut Radish"), ("bulgogi", "Cut 2x➔Cook") })
             };
             recipeRowTitleTexts = new Text[recipeRows.Length];
+            recipeRowObjects = new GameObject[recipeRows.Length];
+            recipeRowGroups = new CanvasGroup[recipeRows.Length];
+            recipeRowNewTags = new Text[recipeRows.Length];
 
             for (int i = 0; i < recipeRows.Length; i++)
             {
@@ -726,6 +729,11 @@ namespace TwoLadles.UI
                     float sx = 248f + (s * 112f);
                     CreateRecipeStepBadge(rowGo.transform, sx, row.steps[s].icon, row.steps[s].tag);
                 }
+
+                recipeRowObjects[i] = rowGo;
+                recipeRowGroups[i] = rowGo.AddComponent<CanvasGroup>();
+                recipeRowNewTags[i] = CreateLabel("NewTag", rowGo.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-4f, -2f), new Vector2(50f, 14f), "NEW!", 10, new Color(1.0f, 0.45f, 0.35f), TextAnchor.MiddleRight);
+                recipeRowNewTags[i].gameObject.SetActive(false);
             }
 
             closeRecipeBookButton = CreateButton("CloseRecipeBookBtn", recipeBookModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 14f), new Vector2(180f, 32f), "CLOSE [R]", new Color(0.25f, 0.55f, 0.35f, 1f), out _, 12);
@@ -748,6 +756,71 @@ namespace TwoLadles.UI
             if (spr != null) img.sprite = spr;
 
             CreateLabel("StepText", parent, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(xOffset + 32f, 0f), new Vector2(76f, 0f), label, 10, Color.white, TextAnchor.MiddleLeft);
+        }
+
+        // ---- Recipe Book discovery: future days are blank, today's recipe fades in ----
+        private GameObject[] recipeRowObjects;
+        private CanvasGroup[] recipeRowGroups;
+        private Text[] recipeRowNewTags;
+        private int recipeFadeRow = -1;
+        private float recipeFadeT = 0f;
+        private const float RECIPE_FADE_SECONDS = 1.2f;
+
+        /// <summary>Campaign Day N shows recipes 1..N (tutorial counts as Day 1); Endless Rush shows all.</summary>
+        public static bool IsRecipeUnlocked(int recipeDay, int currentStageId, GameMode mode)
+        {
+            if (mode == GameMode.ENDLESS_RUSH) return true;
+            return recipeDay <= Mathf.Max(1, currentStageId);
+        }
+
+        /// <summary>The recipe discovered today (gets the fade-in). Only in campaign days 1-5.</summary>
+        public static bool IsNewRecipe(int recipeDay, int currentStageId, GameMode mode)
+        {
+            return mode == GameMode.CAMPAIGN && currentStageId >= 1 && recipeDay == currentStageId;
+        }
+
+        private void RefreshRecipeDiscovery(bool animateNew)
+        {
+            if (recipeRowObjects == null) return;
+            var sm = ShiftManager.Instance;
+            int stage = sm != null ? sm.currentStageId : 1;
+            GameMode mode = sm != null ? sm.currentMode : GameMode.CAMPAIGN;
+            recipeFadeRow = -1;
+
+            for (int i = 0; i < recipeRowObjects.Length; i++)
+            {
+                var rowGo = recipeRowObjects[i];
+                if (rowGo == null) continue;
+                bool unlocked = IsRecipeUnlocked(i + 1, stage, mode);
+                bool isNew = IsNewRecipe(i + 1, stage, mode);
+
+                // Locked rows stay blank: hide every child (title, icons, steps), keep only a faint empty slot.
+                foreach (Transform child in rowGo.transform)
+                    child.gameObject.SetActive(unlocked);
+                if (recipeRowNewTags[i] != null) recipeRowNewTags[i].gameObject.SetActive(unlocked && isNew);
+
+                var bg = rowGo.GetComponent<Image>();
+                if (bg != null) bg.color = unlocked ? new Color(0.13f, 0.16f, 0.22f, 0.92f) : new Color(0.10f, 0.12f, 0.17f, 0.45f);
+
+                if (recipeRowGroups[i] != null) recipeRowGroups[i].alpha = 1f;
+                if (unlocked && isNew && animateNew)
+                {
+                    recipeFadeRow = i;
+                    recipeFadeT = 0f;
+                    if (recipeRowGroups[i] != null) recipeRowGroups[i].alpha = 0f;
+                }
+            }
+        }
+
+        private void AnimateRecipeFade()
+        {
+            if (recipeFadeRow < 0 || recipeRowGroups == null || recipeFadeRow >= recipeRowGroups.Length) return;
+            var cg = recipeRowGroups[recipeFadeRow];
+            if (cg == null || recipeBookModal == null || !recipeBookModal.activeSelf) { if (cg != null) cg.alpha = 1f; recipeFadeRow = -1; return; }
+            recipeFadeT += Time.unscaledDeltaTime;
+            float p = Mathf.Clamp01(recipeFadeT / RECIPE_FADE_SECONDS);
+            cg.alpha = p * p * (3f - 2f * p); // smooth ease-in-out
+            if (p >= 1f) recipeFadeRow = -1;
         }
 
         private void BuildLevelResultsModal(Transform root)
@@ -1126,6 +1199,7 @@ namespace TwoLadles.UI
             if (recipeBookModal != null)
             {
                 bool willBeActive = !recipeBookModal.activeSelf;
+                if (willBeActive) RefreshRecipeDiscovery(false);
                 recipeBookModal.SetActive(willBeActive);
                 if (!willBeActive && ShiftManager.Instance != null && ShiftManager.Instance.isWaitingForRecipeBook)
                 {
@@ -1388,6 +1462,7 @@ namespace TwoLadles.UI
                 if (recipeBookModal != null && !recipeBookModal.activeSelf && !hasAutoOpenedRecipeBook && !PhoneStoryUI.IsShowing)
                 {
                     hasAutoOpenedRecipeBook = true;
+                    RefreshRecipeDiscovery(true);
                     recipeBookModal.SetActive(true);
                 }
             }
@@ -1397,6 +1472,7 @@ namespace TwoLadles.UI
                 storyShownForShift = false;
             }
 
+            AnimateRecipeFade();
             AnimateReputationTrailingBar(Time.deltaTime);
 
             if (ShiftManager.Instance == null || !ShiftManager.Instance.shiftActive) return;

@@ -2,6 +2,19 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-10 — Recipe Discovery & LAN Wi-Fi Fixes
+
+### Added
+- **Recipe Book discovery:** a day's new recipe fades in on the HUD when that day starts; recipes not yet discovered stay as blank, empty slots.
+- **LAN Wi-Fi scan:** the Join screen now scans the real Wi-Fi network (subnet broadcast + direct sweep of every address in the /24 subnet for 60 s) instead of localhost. Found kitchens fill the IP box automatically. The host's room screen shows its Wi-Fi IP for manual joining.
+- **2-player ready gate:** a LAN co-op level starts only when 2 chefs are in the room, both pressed READY, and the host presses START. Chefs now start as not ready.
+- **Reliable join:** the client re-sends HELLO every 0.5 s (up to 10 times) and shows a clear Wi-Fi / firewall hint if the host never answers.
+
+### Fixed
+- Direct-IP box no longer defaults to 127.0.0.1; loopback/invalid IPs are rejected with a helpful message.
+- Android build forces the INTERNET permission (ForceInternetPermission: 1).
+- Test suite: 261 assertions (was 233), all passing.
+
 ## 2026-11-10 — Final Hand-in Cleanup
 
 ### Changed

@@ -354,7 +354,11 @@ namespace TwoLadles.UI
 
             // Direct IP Connect row for cross-network / hotspot
             CreateLabel("IpPrompt", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-120f, -205f), new Vector2(240f, 22f), "Or Enter Host IP:", 11, new Color(0.7f, 0.75f, 0.85f), TextAnchor.MiddleRight);
-            string savedIp = PlayerPrefs.GetString("TwoLadles_LastJoinedIP", "127.0.0.1");
+            string savedIp = PlayerPrefs.GetString("TwoLadles_LastJoinedIP", "");
+            if (!NetworkManager.IsUsableLanAddress(savedIp))
+            {
+                savedIp = NetworkManager.GetSubnetPrefix(NetworkManager.Instance != null ? NetworkManager.Instance.LocalWifiIp : "");
+            }
             ipInput = CreateInputField("IpInput", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(50f, -205f), new Vector2(170f, 28f), savedIp, "192.168.1.xxx");
 
             joinButton = CreateButton("DirectJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(185f, -205f), new Vector2(85f, 28f), "CONNECT", new Color(0.20f, 0.48f, 0.78f, 1f), out joinButtonLabel, 11);
@@ -398,7 +402,7 @@ namespace TwoLadles.UI
             endlessModeButton.onClick.AddListener(OnSelectEndlessClicked);
 
             // Room Action Row: Ready, Start Level, Leave
-            readyButton = CreateButton("ReadyBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-210f, -252f), new Vector2(150f, 44f), "READY: YES", new Color(0.25f, 0.45f, 0.68f, 1f), out readyButtonText, 12);
+            readyButton = CreateButton("ReadyBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-210f, -252f), new Vector2(150f, 44f), "READY: NO", new Color(0.25f, 0.45f, 0.68f, 1f), out readyButtonText, 12);
             readyButton.onClick.AddListener(OnReadyClicked);
 
             startShiftButton = CreateButton("StartShiftBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(15f, -252f), new Vector2(260f, 44f), "▶ START LEVEL 1 (3 WAVES)", new Color(0.88f, 0.42f, 0.14f, 1f), out startShiftButtonText, 13);
@@ -496,7 +500,12 @@ namespace TwoLadles.UI
 
             if (NetworkManager.Instance != null)
             {
-                NetworkManager.Instance.SendLanDiscoveryProbe();
+                NetworkManager.Instance.ScanWifiNow();
+                string myIp = NetworkManager.Instance.LocalWifiIp;
+                if (NetworkManager.IsUsableLanAddress(myIp))
+                    UpdateStatus($"Scanning your Wi-Fi ({NetworkManager.GetSubnetPrefix(myIp)}x) for kitchens...", false);
+                else
+                    UpdateStatus("Not connected to Wi-Fi. Join the same Wi-Fi as the host.", true);
             }
         }
 
@@ -509,6 +518,10 @@ namespace TwoLadles.UI
             if (settingsPopupPanel != null) settingsPopupPanel.SetActive(false);
 
             RefreshProgressionDisplay();
+            if (NetworkManager.Instance != null)
+            {
+                RefreshLobbyDisplay(NetworkManager.Instance.players);
+            }
         }
 
         public void ShowSettingsPopup()
@@ -623,17 +636,22 @@ namespace TwoLadles.UI
         private void OnJoinClicked()
         {
             string pName = nameInput != null && !string.IsNullOrEmpty(nameInput.text) ? nameInput.text : "Chef Jiwon";
-            string targetIp = ipInput != null && !string.IsNullOrEmpty(ipInput.text) ? ipInput.text : "127.0.0.1";
+            string targetIp = ipInput != null && ipInput.text != null ? ipInput.text.Trim() : "";
+            if (!NetworkManager.IsUsableLanAddress(targetIp) && currentDiscoveredRooms.Count > 0)
+            {
+                targetIp = currentDiscoveredRooms[0].hostIp;
+            }
 
             PlayerPrefs.SetString("TwoLadles_PlayerName_Join", pName);
-            PlayerPrefs.SetString("TwoLadles_LastJoinedIP", targetIp);
             PlayerPrefs.Save();
 
-            if (NetworkManager.Instance != null)
+            if (NetworkManager.Instance == null) return;
+            if (NetworkManager.Instance.JoinGame(targetIp, NetworkManager.DEFAULT_PORT, pName))
             {
-                NetworkManager.Instance.JoinGame(targetIp, NetworkManager.DEFAULT_PORT, pName);
+                PlayerPrefs.SetString("TwoLadles_LastJoinedIP", targetIp);
+                PlayerPrefs.Save();
+                ShowRoomPanel();
             }
-            ShowRoomPanel();
         }
 
         private void OnLanRoomSlotClicked(int slotIdx)
@@ -647,8 +665,8 @@ namespace TwoLadles.UI
             }
             else
             {
-                NetworkManager.Instance.SendLanDiscoveryProbe();
-                UpdateStatus("Scanning LAN for open kitchens...", false);
+                NetworkManager.Instance.ScanWifiNow();
+                UpdateStatus("Scanning your Wi-Fi for open kitchens...", false);
             }
         }
 
@@ -680,6 +698,11 @@ namespace TwoLadles.UI
                     lanRoomButtonLabels[i].text = i == 0 ? "[LAN] Scanning for open kitchens..." : "[LAN] Click to refresh scan";
                     lanRoomButtons[i].GetComponent<Image>().color = new Color(0.14f, 0.18f, 0.24f, 0.95f);
                 }
+            }
+
+            if (currentDiscoveredRooms.Count > 0 && ipInput != null && !NetworkManager.IsUsableLanAddress((ipInput.text ?? "").Trim()))
+            {
+                ipInput.text = currentDiscoveredRooms[0].hostIp;
             }
         }
 
@@ -718,6 +741,22 @@ namespace TwoLadles.UI
                 string pName = nameInput != null && !string.IsNullOrEmpty(nameInput.text) ? nameInput.text : "Chef Linh";
                 string rName = roomNameInput != null && !string.IsNullOrEmpty(roomNameInput.text) ? roomNameInput.text : "Two Ladles Bistro";
                 NetworkManager.Instance.HostGame(24567, pName, rName);
+            }
+
+            // LAN co-op gate: 2 chefs in room, both READY, only host starts.
+            if (!isSoloMode && NetworkManager.Instance != null && NetworkManager.Instance.isLanActive)
+            {
+                if (!NetworkManager.Instance.IsHost())
+                {
+                    UpdateStatus("Waiting for the host to start the level...", false);
+                    return;
+                }
+                var gate = NetworkManager.Instance.CanStartShift(true);
+                if (!gate.ok)
+                {
+                    UpdateStatus(NetworkManager.Instance.GetLobbyWaitReason(), true);
+                    return;
+                }
             }
 
             int stage = selectedLevelId;
@@ -810,6 +849,29 @@ namespace TwoLadles.UI
                     readyButtonText.text = localP.ready ? "READY: YES ✓" : "READY: NO";
                 }
             }
+
+            var nm = NetworkManager.Instance;
+            if (nm != null)
+            {
+                bool lanCoop = !isSoloMode && nm.isLanActive;
+                if (startShiftButton != null)
+                {
+                    startShiftButton.interactable = !lanCoop || (nm.IsHost() && nm.CanStartShift(true).ok);
+                }
+                if (lanCoop && playersListText != null && nm.IsHost())
+                {
+                    string myIp = nm.LocalWifiIp;
+                    if (NetworkManager.IsUsableLanAddress(myIp))
+                        playersListText.text += $"\nYour Wi-Fi IP: {myIp} (partner can type this)";
+                }
+                if (lanCoop && players != null && players.Count > 0)
+                {
+                    string reason = nm.GetLobbyWaitReason();
+                    if (!string.IsNullOrEmpty(reason)) UpdateStatus(reason, false);
+                    else if (nm.IsHost()) UpdateStatus("Both chefs READY! Press START.", false);
+                    else UpdateStatus("Both chefs READY! Waiting for host to start...", false);
+                }
+            }
         }
 
         public void SetAppLanguage(string langCode)
@@ -828,6 +890,7 @@ namespace TwoLadles.UI
                 chefSelectButton.gameObject.SetActive(isSoloMode);
             }
             RefreshLocalizedText();
+            if (NetworkManager.Instance != null) RefreshLobbyDisplay(NetworkManager.Instance.players);
         }
 
         private void OnToggleChefSelectClicked()

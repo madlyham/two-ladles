@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -68,6 +69,17 @@ namespace TwoLadles.Networking
         private bool isScanningLan = false;
         private float beaconBroadcastTimer = 0.0f;
         private float scanPruneTimer = 0.0f;
+        private float sweepTimer = 0.0f;
+        private float sweepUntilRealtime = 0.0f; // sweep only runs for 60s after the Join screen opens
+        private float helloRetryTimer = 0.0f;
+        private int helloRetriesLeft = 0; // client resends HELLO every 0.5s until the host answers
+        private const float SWEEP_INTERVAL = 3.0f; // unicast Wi-Fi sweep (works even when router drops broadcasts)
+
+        // Cached Wi-Fi address of this device (never 127.0.0.1)
+        private string localWifiIp = "";
+        private string localWifiMask = "255.255.255.0";
+        private float localIpRefreshTimer = 999f;
+        public string LocalWifiIp { get { RefreshLocalWifiIp(false); return localWifiIp; } }
 
         private readonly Queue<Action> mainThreadQueue = new Queue<Action>();
         private readonly object queueLock = new object();
@@ -118,6 +130,34 @@ namespace TwoLadles.Networking
                 else if (isScanningLan && !isLanActive)
                 {
                     SendLanDiscoveryProbe();
+                }
+            }
+
+            // 2b. Joiner sweeps every address on the Wi-Fi subnet (unicast) every 3s
+            if (isScanningLan && !isLanActive && Time.realtimeSinceStartup < sweepUntilRealtime)
+            {
+                sweepTimer += Time.unscaledDeltaTime;
+                if (sweepTimer >= SWEEP_INTERVAL)
+                {
+                    sweepTimer = 0.0f;
+                    SendSubnetSweep();
+                }
+            }
+
+            // 2c. Client resends HELLO until the host replies (UDP may drop the first one)
+            if (helloRetriesLeft > 0 && isLanActive && !IsHost() && partnerEndPoint != null)
+            {
+                helloRetryTimer += Time.unscaledDeltaTime;
+                if (helloRetryTimer >= 0.5f)
+                {
+                    helloRetryTimer = 0f;
+                    helloRetriesLeft--;
+                    if (players.TryGetValue(2, out var me)) SendPacket(BuildHelloPacket(me.name), partnerEndPoint);
+                    if (helloRetriesLeft == 0)
+                    {
+                        CloseConnection();
+                        OnConnectionStatusChanged?.Invoke("Host did not answer. Same Wi-Fi? Host allowed the game in Windows Firewall?", true);
+                    }
                 }
             }
 
@@ -293,28 +333,223 @@ namespace TwoLadles.Networking
         public void SendLanDiscoveryProbe()
         {
             if (discoverySocket == null) return;
-            try
+            RefreshLocalWifiIp(false);
+            byte[] probe = Encoding.UTF8.GetBytes("LAN_DISCOVER");
+            foreach (var target in GetBroadcastTargets())
             {
-                byte[] probe = Encoding.UTF8.GetBytes("LAN_DISCOVER");
-                discoverySocket.Send(probe, probe.Length, new IPEndPoint(IPAddress.Broadcast, DEFAULT_PORT));
-                discoverySocket.Send(probe, probe.Length, new IPEndPoint(IPAddress.Loopback, DEFAULT_PORT));
+                try { discoverySocket.Send(probe, probe.Length, new IPEndPoint(target, DEFAULT_PORT)); } catch { }
             }
-            catch { }
+        }
+
+        /// <summary>
+        /// Opens the Join screen: refresh this device's Wi-Fi address and probe the whole subnet right now.
+        /// </summary>
+        public void ScanWifiNow()
+        {
+            if (!isScanningLan) StartLanDiscovery();
+            RefreshLocalWifiIp(true);
+            SendLanDiscoveryProbe();
+            SendSubnetSweep();
+            sweepTimer = 0.0f;
+            sweepUntilRealtime = Time.realtimeSinceStartup + 60f;
+        }
+
+        /// <summary>
+        /// Unicast LAN_DISCOVER to every address on the /24 Wi-Fi subnet. Works on routers that block broadcast.
+        /// 253 tiny packets (~3 KB) every 3 seconds while the Join screen is open.
+        /// </summary>
+        private void SendSubnetSweep()
+        {
+            if (discoverySocket == null) return;
+            RefreshLocalWifiIp(false);
+            var targets = BuildSubnetSweepTargets(localWifiIp);
+            if (targets.Count == 0) return;
+            byte[] probe = Encoding.UTF8.GetBytes("LAN_DISCOVER");
+            foreach (var ip in targets)
+            {
+                try { discoverySocket.Send(probe, probe.Length, new IPEndPoint(IPAddress.Parse(ip), DEFAULT_PORT)); } catch { }
+            }
+        }
+
+        private List<IPAddress> GetBroadcastTargets()
+        {
+            var list = new List<IPAddress> { IPAddress.Broadcast, IPAddress.Loopback };
+            string subnetBc = GetSubnetBroadcast(localWifiIp, localWifiMask);
+            if (!string.IsNullOrEmpty(subnetBc) && IPAddress.TryParse(subnetBc, out var bc)) list.Insert(0, bc);
+            return list;
         }
 
         private void BroadcastHostBeacon()
         {
             if (udpSocket == null || !IsHost()) return;
+            RefreshLocalWifiIp(false);
+            byte[] bytes = Encoding.UTF8.GetBytes(BuildBeacon());
+            foreach (var target in GetBroadcastTargets())
+            {
+                try { udpSocket.Send(bytes, bytes.Length, new IPEndPoint(target, DISCOVERY_PORT)); } catch { }
+            }
+        }
+
+        private string BuildBeacon()
+        {
+            string hostName = players.TryGetValue(1, out var p) ? p.name : "Host Chef";
+            string cleanRoom = string.IsNullOrEmpty(currentRoomName) ? $"{hostName}'s Kitchen" : currentRoomName;
+            return $"LAN_BEACON|{CleanField(cleanRoom)}|{CleanField(hostName)}|{DEFAULT_PORT}|{players.Count}";
+        }
+
+        // ---------- Wi-Fi address helpers (pure functions are unit tested in Suite 19) ----------
+
+        /// <summary>Strips protocol separators from player-typed text.</summary>
+        public static string CleanField(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "Chef";
+            string c = s.Replace("|", " ").Replace(";", " ").Trim();
+            if (c.Length > 24) c = c.Substring(0, 24);
+            return c.Length == 0 ? "Chef" : c;
+        }
+
+        /// <summary>True for a real IPv4 Wi-Fi/LAN address (not localhost, not link-local 169.254.x.x).</summary>
+        public static bool IsUsableLanAddress(string ip)
+        {
+            if (string.IsNullOrWhiteSpace(ip)) return false;
+            string[] parts = ip.Trim().Split('.');
+            if (parts.Length != 4) return false;
+            var b = new int[4];
+            for (int i = 0; i < 4; i++)
+            {
+                if (!int.TryParse(parts[i], NumberStyles.None, CultureInfo.InvariantCulture, out b[i]) || b[i] < 0 || b[i] > 255) return false;
+            }
+            if (b[0] == 127 || b[0] == 0 || b[0] >= 224) return false;
+            if (b[0] == 169 && b[1] == 254) return false;
+            return true;
+        }
+
+        /// <summary>192.168.1.37 + 255.255.255.0 -> 192.168.1.255. Returns null on bad input.</summary>
+        public static string GetSubnetBroadcast(string ip, string mask)
+        {
+            if (!IsUsableLanAddress(ip) || string.IsNullOrEmpty(mask)) return null;
+            if (!IPAddress.TryParse(mask, out var m) || m.AddressFamily != AddressFamily.InterNetwork) return null;
+            byte[] a = IPAddress.Parse(ip.Trim()).GetAddressBytes();
+            byte[] mb = m.GetAddressBytes();
+            var r = new byte[4];
+            for (int i = 0; i < 4; i++) r[i] = (byte)(a[i] | (~mb[i] & 0xFF));
+            return new IPAddress(r).ToString();
+        }
+
+        /// <summary>"192.168.1.37" -> "192.168.1." ; unusable address -> "".</summary>
+        public static string GetSubnetPrefix(string ip)
+        {
+            if (!IsUsableLanAddress(ip)) return "";
+            string t = ip.Trim();
+            return t.Substring(0, t.LastIndexOf('.') + 1);
+        }
+
+        /// <summary>Every host .1-.254 on the /24 subnet of localIp, excluding localIp itself.</summary>
+        public static List<string> BuildSubnetSweepTargets(string localIp)
+        {
+            var list = new List<string>();
+            string prefix = GetSubnetPrefix(localIp);
+            if (prefix.Length == 0) return list;
+            string self = localIp.Trim();
+            for (int i = 1; i <= 254; i++)
+            {
+                string ip = prefix + i.ToString(CultureInfo.InvariantCulture);
+                if (ip != self) list.Add(ip);
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// Finds this device's Wi-Fi (or Ethernet) IPv4 address + mask. Skips VPN / virtual adapters.
+        /// </summary>
+        public static bool TryGetLocalWifiIPv4(out string ip, out string mask)
+        {
+            ip = ""; mask = "255.255.255.0";
+            int bestScore = -1;
             try
             {
-                string hostName = players.TryGetValue(1, out var p) ? p.name : "Host Chef";
-                string cleanRoom = string.IsNullOrEmpty(currentRoomName) ? $"{hostName}'s Kitchen" : currentRoomName.Replace("|", " ");
-                string beacon = $"LAN_BEACON|{cleanRoom}|{hostName}|{DEFAULT_PORT}|{players.Count}";
-                byte[] bytes = Encoding.UTF8.GetBytes(beacon);
-                udpSocket.Send(bytes, bytes.Length, new IPEndPoint(IPAddress.Broadcast, DISCOVERY_PORT));
-                udpSocket.Send(bytes, bytes.Length, new IPEndPoint(IPAddress.Loopback, DISCOVERY_PORT));
+                foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                    if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback || ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel) continue;
+                    string n = ((ni.Name ?? "") + " " + (ni.Description ?? "")).ToLowerInvariant();
+                    if (n.Contains("virtual") || n.Contains("vethernet") || n.Contains("vmware") || n.Contains("hyper-v") || n.Contains("vpn") || n.Contains("virtualbox") || n.Contains("tap-windows") || n.Contains("wsl") || n.Contains("bluetooth")) continue;
+
+                    int score = ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 || n.Contains("wlan") || n.Contains("wi-fi") || n.Contains("wifi") ? 3
+                              : ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet ? 2 : 1;
+                    if (score <= bestScore) continue;
+
+                    IPInterfaceProperties props;
+                    try { props = ni.GetIPProperties(); } catch { continue; }
+                    foreach (var ua in props.UnicastAddresses)
+                    {
+                        if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                        string candidate = ua.Address.ToString();
+                        if (!IsUsableLanAddress(candidate)) continue;
+                        string m = "255.255.255.0";
+                        try { if (ua.IPv4Mask != null && ua.IPv4Mask.ToString() != "0.0.0.0") m = ua.IPv4Mask.ToString(); } catch { }
+                        ip = candidate; mask = m; bestScore = score;
+                        break;
+                    }
+                }
             }
             catch { }
+
+            if (bestScore < 0)
+            {
+                // Fallback: ask the OS which local address would route outward (no packet is actually sent).
+                try
+                {
+                    using (var s = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp))
+                    {
+                        s.Connect("8.8.8.8", 65530);
+                        string candidate = ((IPEndPoint)s.LocalEndPoint).Address.ToString();
+                        if (IsUsableLanAddress(candidate)) { ip = candidate; bestScore = 0; }
+                    }
+                }
+                catch { }
+            }
+            return bestScore >= 0;
+        }
+
+        private void RefreshLocalWifiIp(bool force)
+        {
+            if (!force && Time.realtimeSinceStartup - localIpRefreshTimer < 10f && localIpRefreshTimer < 900f) return;
+            localIpRefreshTimer = Time.realtimeSinceStartup;
+            if (TryGetLocalWifiIPv4(out var ip, out var mask))
+            {
+                localWifiIp = ip;
+                localWifiMask = mask;
+            }
+            else
+            {
+                localWifiIp = "";
+            }
+        }
+
+        // ---------- Lobby helpers ----------
+
+        public static PlayerLobbyInfo CreateHostPlayer(string playerName)
+        {
+            return new PlayerLobbyInfo { peerId = 1, name = CleanField(playerName), character = "linh", specialization = "prep_master", ready = false };
+        }
+
+        public static PlayerLobbyInfo CreateClientPlayer(string playerName)
+        {
+            return new PlayerLobbyInfo { peerId = 2, name = CleanField(playerName), character = "jiwon", specialization = "flame_keeper", ready = false };
+        }
+
+        public static string BuildHelloPacket(string playerName)
+        {
+            return $"HELLO|2|{CleanField(playerName)}|jiwon|flame_keeper|0";
+        }
+
+        /// <summary>Lobby hint shown to both chefs. Empty when the host can press Start.</summary>
+        public string GetLobbyWaitReason()
+        {
+            if (players.Count < 2) return $"Waiting for partner to join (1/2)...";
+            var check = CanStartShift(true);
+            return check.ok ? "" : check.reason;
         }
 
         public bool IsHost()
@@ -331,14 +566,7 @@ namespace TwoLadles.Networking
             currentRoomName = string.IsNullOrEmpty(roomName) ? $"{playerName}'s Kitchen" : roomName;
 
             players.Clear();
-            players[1] = new PlayerLobbyInfo
-            {
-                peerId = 1,
-                name = playerName,
-                character = "linh",
-                specialization = "prep_master",
-                ready = true
-            };
+            players[1] = CreateHostPlayer(playerName);
 
             try
             {
@@ -348,8 +576,10 @@ namespace TwoLadles.Networking
                 receiveThread = new Thread(ReceiveLoop) { IsBackground = true };
                 receiveThread.Start();
 
+                RefreshLocalWifiIp(true);
                 BroadcastHostBeacon();
-                OnConnectionStatusChanged?.Invoke($"Hosting Room '{currentRoomName}' on LAN! Waiting for partner...", false);
+                string where = string.IsNullOrEmpty(localWifiIp) ? "(no Wi-Fi found - connect to Wi-Fi!)" : $"on Wi-Fi {localWifiIp}";
+                OnConnectionStatusChanged?.Invoke($"Hosting '{currentRoomName}' {where}. Waiting for partner (1/2)...", string.IsNullOrEmpty(localWifiIp));
                 OnLobbyUpdated?.Invoke(players);
                 return true;
             }
@@ -374,30 +604,25 @@ namespace TwoLadles.Networking
             {
                 return JoinGame(room.hostIp, room.port, playerName);
             }
-            return JoinGame("127.0.0.1", DEFAULT_PORT, playerName);
+            OnConnectionStatusChanged?.Invoke("No kitchen found on your Wi-Fi yet. Ask your partner to Host first, then try again.", true);
+            return false;
         }
 
         public bool JoinGame(string ipAddress, int port = DEFAULT_PORT, string playerName = "Partner Chef")
         {
-            CloseConnection();
-            string cleanIp = ipAddress.Trim();
-            if (string.IsNullOrEmpty(cleanIp))
+            string cleanIp = (ipAddress ?? "").Trim();
+            if (!IsUsableLanAddress(cleanIp))
             {
-                cleanIp = "127.0.0.1";
+                OnConnectionStatusChanged?.Invoke("Enter the host's Wi-Fi IP (shown on the host's screen, e.g. 192.168.1.23).", true);
+                return false;
             }
+            CloseConnection();
 
             localPeerId = 2;
             isLanActive = true;
 
             players.Clear();
-            players[2] = new PlayerLobbyInfo
-            {
-                peerId = 2,
-                name = playerName,
-                character = "jiwon",
-                specialization = "flame_keeper",
-                ready = true
-            };
+            players[2] = CreateClientPlayer(playerName);
 
             try
             {
@@ -408,7 +633,9 @@ namespace TwoLadles.Networking
                 receiveThread = new Thread(ReceiveLoop) { IsBackground = true };
                 receiveThread.Start();
 
-                SendPacket($"HELLO|2|{playerName}|jiwon|flame_keeper|1", partnerEndPoint);
+                SendPacket(BuildHelloPacket(playerName), partnerEndPoint);
+                helloRetryTimer = 0f;
+                helloRetriesLeft = 10;
 
                 OnConnectionStatusChanged?.Invoke($"Joining Room at {cleanIp}...", false);
                 OnLobbyUpdated?.Invoke(players);
@@ -513,9 +740,7 @@ namespace TwoLadles.Networking
                 case "LAN_DISCOVER":
                     if (IsHost() && isLanActive)
                     {
-                        string hostName = players.TryGetValue(1, out var p) ? p.name : "Host Chef";
-                        string cleanRoom = string.IsNullOrEmpty(currentRoomName) ? $"{hostName}'s Kitchen" : currentRoomName.Replace("|", " ");
-                        string beacon = $"LAN_BEACON|{cleanRoom}|{hostName}|{DEFAULT_PORT}|{players.Count}";
+                        string beacon = BuildBeacon();
                         SendPacket(beacon, senderEp);
                         if (discoverySocket != null)
                         {
@@ -540,19 +765,17 @@ namespace TwoLadles.Networking
                     break;
 
                 case "HELLO":
-                    if (IsHost() && parts.Length >= 6)
+                    if (IsHost() && isLanActive && parts.Length >= 6)
                     {
+                        // Room holds exactly 2 chefs: ignore a third device once a partner is connected.
+                        if (partnerEndPoint != null && !partnerEndPoint.Equals(senderEp) && players.ContainsKey(2)) break;
+                        bool isRetry = players.ContainsKey(2) && partnerEndPoint != null && partnerEndPoint.Equals(senderEp);
                         partnerEndPoint = senderEp;
-                        int pId = int.Parse(parts[1]);
-                        players[pId] = new PlayerLobbyInfo
+                        if (!isRetry)
                         {
-                            peerId = pId,
-                            name = parts[2],
-                            character = parts[3],
-                            specialization = parts[4],
-                            ready = parts[5] == "1"
-                        };
-                        OnConnectionStatusChanged?.Invoke($"{parts[2]} joined '{currentRoomName}'!", false);
+                            players[2] = CreateClientPlayer(parts[2]);
+                            OnConnectionStatusChanged?.Invoke($"{players[2].name} joined '{currentRoomName}'! Both chefs press READY.", false);
+                        }
                         OnLobbyUpdated?.Invoke(players);
                         BroadcastLobbyState();
                     }
@@ -561,6 +784,7 @@ namespace TwoLadles.Networking
                 case "LOBBY_STATE":
                     if (!IsHost() && parts.Length >= 2)
                     {
+                        helloRetriesLeft = 0;
                         partnerEndPoint = senderEp;
                         int count = int.Parse(parts[1]);
                         players.Clear();

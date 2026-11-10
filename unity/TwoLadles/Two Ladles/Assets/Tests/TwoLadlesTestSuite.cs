@@ -968,6 +968,18 @@ namespace TwoLadles.Tests
             Assert(Visuals.DayNightCycleManager.StageForWave(3, 3) == 2, "3 waves: wave 3 = night");
             Assert(Visuals.DayNightCycleManager.StageForWave(0, 3) == -1, "No lighting stage before first wave");
             Assert(Visuals.DayNightCycleManager.StageForWave(2, 2) == 2, "2 waves: last wave reaches night");
+
+            // Recipe Book discovery: future days stay blank until reached; today's recipe is the new one
+            Assert(UI.KitchenHUD.IsRecipeUnlocked(1, 1, GameMode.CAMPAIGN), "Day 1: Day 1 recipe discovered");
+            Assert(!UI.KitchenHUD.IsRecipeUnlocked(2, 1, GameMode.CAMPAIGN), "Day 1: Day 2 recipe still unknown");
+            Assert(UI.KitchenHUD.IsRecipeUnlocked(3, 3, GameMode.CAMPAIGN) && UI.KitchenHUD.IsRecipeUnlocked(1, 3, GameMode.CAMPAIGN), "Day 3: Days 1-3 recipes discovered");
+            Assert(!UI.KitchenHUD.IsRecipeUnlocked(4, 3, GameMode.CAMPAIGN), "Day 3: Day 4 recipe still unknown");
+            Assert(UI.KitchenHUD.IsRecipeUnlocked(5, 5, GameMode.CAMPAIGN), "Day 5: all recipes discovered");
+            Assert(UI.KitchenHUD.IsRecipeUnlocked(1, 0, GameMode.CAMPAIGN) && !UI.KitchenHUD.IsRecipeUnlocked(2, 0, GameMode.CAMPAIGN), "Tutorial: only Day 1 recipe shown");
+            Assert(UI.KitchenHUD.IsRecipeUnlocked(5, 1, GameMode.ENDLESS_RUSH), "Endless Rush: all recipes shown");
+            Assert(UI.KitchenHUD.IsNewRecipe(3, 3, GameMode.CAMPAIGN), "Day 3 recipe is the new (fade-in) recipe on Day 3");
+            Assert(!UI.KitchenHUD.IsNewRecipe(2, 3, GameMode.CAMPAIGN), "Day 2 recipe is not new on Day 3");
+            Assert(!UI.KitchenHUD.IsNewRecipe(5, 5, GameMode.ENDLESS_RUSH), "No new-recipe fade in Endless Rush");
         }
 
         // Suite 19: LAN Order Sync, Recipe Timing Variety, Part-Timer Size & Bot Counter Safety
@@ -1059,6 +1071,37 @@ namespace TwoLadles.Tests
             Assert(!pmQA.qaSandboxActive, "QA sandbox ends after bot test");
             Assert(pmQA.coins == 150 && pmQA.linhTier == 1 && pmQA.jiwonTier == 1, "Real gold and tiers restored after QA");
             Assert(!pmQA.IsUpgradeOwned("specialist_tier_3"), "QA upgrades removed after bot test");
+
+            // 7. LAN Wi-Fi scan helpers: never use localhost / link-local, sweep the whole /24 Wi-Fi subnet
+            Assert(!NetworkManager.IsUsableLanAddress("127.0.0.1"), "Localhost is not a usable Wi-Fi address");
+            Assert(!NetworkManager.IsUsableLanAddress("169.254.3.4"), "Link-local (no DHCP) is not a usable Wi-Fi address");
+            Assert(!NetworkManager.IsUsableLanAddress("") && !NetworkManager.IsUsableLanAddress("not-an-ip") && !NetworkManager.IsUsableLanAddress(null), "Empty / garbage addresses rejected");
+            Assert(NetworkManager.IsUsableLanAddress("192.168.1.5") && NetworkManager.IsUsableLanAddress("10.0.0.7"), "Normal Wi-Fi addresses accepted");
+            Assert(NetworkManager.GetSubnetBroadcast("192.168.1.37", "255.255.255.0") == "192.168.1.255", "Subnet broadcast for /24 Wi-Fi");
+            Assert(NetworkManager.GetSubnetBroadcast("10.0.5.9", "255.255.0.0") == "10.0.255.255", "Subnet broadcast for /16 network");
+            Assert(NetworkManager.GetSubnetBroadcast("garbage", "255.255.255.0") == null, "Invalid subnet input returns null");
+            var sweep = NetworkManager.BuildSubnetSweepTargets("192.168.1.37");
+            Assert(sweep.Count == 253, "Wi-Fi sweep probes 253 neighbours (.1-.254 minus self)");
+            Assert(!sweep.Contains("192.168.1.37") && !sweep.Contains("192.168.1.0") && !sweep.Contains("192.168.1.255"), "Sweep skips self, network and broadcast addresses");
+            Assert(sweep.Contains("192.168.1.1") && sweep.Contains("192.168.1.254"), "Sweep covers router and last host");
+            Assert(NetworkManager.BuildSubnetSweepTargets("127.0.0.1").Count == 0, "No sweep when only localhost is available");
+            Assert(NetworkManager.GetSubnetPrefix("192.168.1.37") == "192.168.1." && NetworkManager.GetSubnetPrefix("127.0.0.1") == "", "Join box pre-fills Wi-Fi prefix, never localhost");
+
+            // 8. Lobby: nobody starts Ready, HELLO says not-ready, 2 ready chefs required to start
+            Assert(!NetworkManager.CreateHostPlayer("Host").ready && !NetworkManager.CreateClientPlayer("Guest").ready, "Host and joining chef both start NOT Ready");
+            string hello = NetworkManager.BuildHelloPacket("Bad|Name;x");
+            Assert(hello.StartsWith("HELLO|2|") && hello.EndsWith("|jiwon|flame_keeper|0"), "HELLO packet announces client as not Ready");
+            Assert(hello.Split('|').Length == 6 && !hello.Contains(";"), "Player name separators stripped from HELLO packet");
+            var nmLan = NetworkManager.Instance;
+            nmLan.players.Clear();
+            nmLan.players[1] = NetworkManager.CreateHostPlayer("Host");
+            nmLan.players[1].ready = true;
+            Assert(!nmLan.CanStartShift(true).ok, "Host cannot start a LAN shift alone");
+            nmLan.players[2] = NetworkManager.CreateClientPlayer("Guest");
+            Assert(!nmLan.CanStartShift(true).ok, "Host cannot start while partner is not Ready");
+            nmLan.players[2].ready = true;
+            Assert(nmLan.CanStartShift(true).ok, "Shift starts once both chefs are Ready");
+            nmLan.players.Clear();
         }
     }
 }

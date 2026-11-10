@@ -532,7 +532,8 @@ def create_deck(output_path="docs/two_ladles_concept.pptx"):
             "Ports: UDP 24567 gameplay sync (30Hz movement, 4Hz host state) + UDP 24568 LAN room discovery.",
             "Character Exclusivity: Mutual exclusion enforced in lobby (Linh vs Jiwon).",
             "Readiness Reset: Changing character or perks resets Ready state to prevent race conditions.",
-            "Unit tests: 19 suites, 233/233 assertions passed (2026-11-10).",
+            "Wi-Fi Scan: auto-finds the host on the same Wi-Fi; START needs 2 chefs, both READY.",
+            "Unit tests: 19 suites, 261/261 assertions passed (2026-11-10).",
             "Full-gameplay QA (separate): 2-bot autoplay with selectable test day and all upgrades."
         ],
         C_TERRA

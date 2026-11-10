@@ -14,11 +14,29 @@
 - **Packet format:** UTF-8 text, fields separated by `|` (e.g. `POS|2|1.25|0|-3.5|...`).
 - **Cross-locale safety:** all decimal numbers in `POS` and `THROW` are written and parsed with `CultureInfo.InvariantCulture`, so a Vietnamese/Korean-locale phone and an English-locale laptop agree on `1.25` vs `1,25`.
 
-## 2. LAN Room Discovery
+## 2. LAN Room Discovery (Wi-Fi scan)
 
-1. The host broadcasts `LAN_BEACON|room|hostName|port|playerCount` on UDP `24568` every 1.2 s.
-2. A player on the **Join** screen sends a `LAN_DISCOVER` probe and listens for beacons.
-3. Each discovered kitchen appears as a tappable slot. A **direct IP** box (default `127.0.0.1`, last value remembered in `PlayerPrefs` key `TwoLadles_LastJoinedIP`) is available if discovery is blocked.
+The game finds the device's real **Wi-Fi IPv4 address** (`NetworkManager.TryGetLocalWifiIPv4`; skips virtual adapters such as Hyper-V, VMware, VirtualBox, WSL, VPN, Bluetooth). It never defaults to `127.0.0.1`.
+
+Discovery uses three layers, so it still works when one is blocked:
+
+1. **Host beacon:** the host sends `LAN_BEACON|room|hostName|port|playerCount` every 1.2 s on UDP `24568` to the **subnet broadcast** (e.g. `192.168.1.255`), `255.255.255.255` and loopback.
+2. **Join probe:** opening the **Join** screen calls `ScanWifiNow()`, which sends `LAN_DISCOVER` to the subnet broadcast, `255.255.255.255` and loopback.
+3. **Wi-Fi sweep:** for 60 s after the Join screen opens, the joiner also sends `LAN_DISCOVER` directly (unicast) to every address in its /24 Wi-Fi subnet (`x.x.x.1`–`x.x.x.254`, port `24567`) every 3 s. This works on routers or phones that drop broadcast packets.
+
+The host answers every `LAN_DISCOVER` with a unicast `LAN_BEACON` to the sender. Found kitchens appear as tappable slots; the IP box auto-fills with the first found host. Rooms not heard from for 5 s are removed.
+
+**Manual fallback:** the host's lobby screen shows `Your Wi-Fi IP: x.x.x.x`. The joiner can type it in the IP box (pre-filled with the Wi-Fi prefix, e.g. `192.168.1.`; last good IP remembered in `PlayerPrefs` key `TwoLadles_LastJoinedIP`). Loopback/invalid addresses are rejected.
+
+## 2b. Join Handshake & Lobby Rules
+
+1. Client sends `HELLO|2|name|jiwon|flame_keeper|0`, re-sent every 0.5 s up to 10 times until the host replies with `LOBBY_STATE`. If no reply: *"Host did not answer. Same Wi-Fi? Host allowed the game in Windows Firewall?"*
+2. Host accepts only one partner. A repeated `HELLO` from the same device does not reset it; a third device is ignored.
+3. Both chefs start **not ready**.
+4. **START** works only when: 2 chefs are in the room, both pressed **READY**, and the **host** presses it (`CanStartShift(true)`). The client's START button is disabled and shows *"Waiting for the host…"*.
+5. Solo mode and the tutorial are not gated.
+
+Text fields (names, room names) are cleaned before sending: `|` and `;` removed, max 24 characters.
 
 ## 3. Packet Reference
 
@@ -57,8 +75,8 @@
 
 Use this for a laptop (Windows) + phone (Android) test.
 
-1. **Same network:** laptop and phone on the same Wi-Fi (not a guest network that isolates devices; mobile hotspot from a third device is fine).
-2. **Windows firewall:** the first time `TwoLadles.exe` runs, Windows may ask to allow network access — tick **Private networks** and allow. If you missed it, open PowerShell **as Administrator** and run (this *changes* firewall settings):
+1. **Same network:** laptop and phone on the same Wi-Fi (not a guest network that isolates devices; mobile hotspot from a third device is fine). On the phone, turn **mobile data off** so it doesn't route through 4G/5G.
+2. **Windows firewall:** the first time `TwoLadles.exe` runs, Windows may ask to allow network access — tick **Private networks** and allow. Make sure Windows treats the Wi-Fi as **Private**, not Public. If you missed it, open PowerShell **as Administrator** and run (this *changes* firewall settings):
    ```powershell
    New-NetFirewallRule -DisplayName "Two Ladles LAN UDP" -Direction Inbound -Protocol UDP -LocalPort 24567,24568 -Action Allow
    ```
@@ -66,8 +84,8 @@ Use this for a laptop (Windows) + phone (Android) test.
    ```powershell
    Remove-NetFirewallRule -DisplayName "Two Ladles LAN UDP"
    ```
-3. **Laptop hosts:** open `TwoLadles.exe` → **HOST A KITCHEN** → enter names → confirm.
-4. **Phone joins:** open the app → **JOIN KITCHEN (LAN)** → tap the kitchen slot. If no slot appears, find the laptop's IP (`ipconfig` in PowerShell, "IPv4 Address", read-only) and type it in the IP box → **CONNECT**.
-5. **Room:** host picks a day, both press **READY**, host presses **START**.
+3. **Laptop hosts first:** open `TwoLadles.exe` → **HOST A KITCHEN** → enter names → confirm. The room screen shows `Your Wi-Fi IP: x.x.x.x` and *"Waiting for partner to join (1/2)"*. START is greyed out.
+4. **Phone joins:** open the app → **JOIN KITCHEN (LAN)**. Status says *"Scanning your Wi-Fi (192.168.x.x)…"*. Within ~5 s the kitchen slot should turn green → tap it. If no slot appears, type the IP shown on the laptop's room screen → **CONNECT**.
+5. **Room:** both screens list 2 chefs. Host picks a day, **both** press **READY** (button shows `READY: YES ✓`), then the host presses **START**.
 6. **Check:** both chefs move on both screens; the phone chef can pick up and use stations; **orders, score and timers match on both screens**; the story phone closes on both when the host skips it; **LEAVE** on either side returns both to the menu.
 7. **If it fails:** note which step failed and whether the phone sees the room slot (discovery, port 24568) vs. cannot connect by IP (gameplay, port 24567).

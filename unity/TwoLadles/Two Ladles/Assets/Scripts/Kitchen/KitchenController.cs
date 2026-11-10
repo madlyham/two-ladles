@@ -16,6 +16,10 @@ namespace TwoLadles.Kitchen
 
         /// <summary>World height (units) of hired part-timer sprites. Chefs are ~1.9; part-timers slightly smaller but readable.</summary>
         public const float PART_TIMER_HEIGHT = 1.75f;
+        /// <summary>Serving Counter sits south of the North double door so the doorway stays clear.</summary>
+        public static readonly Vector3 SERVING_STATION_POS = new Vector3(0.0f, 0.0f, 3.2f);
+        /// <summary>Decor divider tables along x=0 (none near the North double door).</summary>
+        public static readonly float[] DIVIDER_DECOR_Z = new float[] { -1.45f, -2.50f, -3.55f, -4.55f };
 
         public event Action<string, Color> OnStatusToast;
         public event Action<string> OnPromptChanged;
@@ -53,7 +57,7 @@ namespace TwoLadles.Kitchen
                 Transform restCorner = transform.Find("FloorTileGrid/VisualBackWall/RestCorner_UpperLeft_v5");
 
                 // Stale baked layout check: the current layout adds counter_west_3 and moves the
-                // serving window to (0, 0, 4.2). Old baked scenes lack counter_west_3, which leaves
+                // serving window to SERVING_STATION_POS. Old baked scenes lack counter_west_3, which leaves
                 // the serving station where bots/nav can never reach it.
                 bool layoutOutdated = true;
                 foreach (var st in GetComponentsInChildren<StationBase>(true))
@@ -755,7 +759,7 @@ namespace TwoLadles.Kitchen
             // Send-Out Table next to the North Door for BOTH Linh and Jiwon to submit food
             var servingStation = CreateStation<ServingStation>(
                 "serving_station", "SERVING COUNTER (Send-Out Window)", "shared",
-                new Vector3(0.0f, 0.0f, 4.2f), new Vector3(1.8f, 0.9f, 2.2f),
+                SERVING_STATION_POS, new Vector3(1.8f, 0.9f, 2.2f),
                 new Color(0.75f, 0.78f, 0.82f), "table_double_vertical", null
             );
 
@@ -925,7 +929,7 @@ namespace TwoLadles.Kitchen
             AddDecorSprite("door_double_closed", new Vector3(0.0f, 0.0f, 5.55f), Vector3.one * 1.45f, 0, -6);
 
             // 2. Gap-Free Center Divider Counters along X=0 (Continuous stainless-steel counter column splitting West & East, stopping above Trash Can at -6.0f)
-            float[] dividerZ = new float[] { 4.45f, 3.40f, 2.35f, -1.45f, -2.50f, -3.55f, -4.55f };
+            float[] dividerZ = DIVIDER_DECOR_Z; // tables in front of the double door removed
             foreach (float dz in dividerZ)
             {
                 AddDecorSprite("table_single_vertical", new Vector3(0.0f, 0.0f, dz), Vector3.one * 1.35f, 0);

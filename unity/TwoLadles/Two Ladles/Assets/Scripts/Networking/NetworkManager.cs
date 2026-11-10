@@ -52,6 +52,14 @@ namespace TwoLadles.Networking
         public event Action<string> OnReturnedToMenu;
         public event Action<int, GameMode> OnShiftStartReceived;
         public event Action<List<LanRoomInfo>> OnLanRoomsUpdated;
+        /// <summary>Guest: host ended the day; payload is the host's results summary.</summary>
+        public event Action<Dictionary<string, object>> OnDayReportReceived;
+        /// <summary>Both sides: end-of-day ready flags changed (host, guest).</summary>
+        public event Action<bool, bool> OnDayReadyChanged;
+
+        /// <summary>End-of-day ready flags; next day starts only when both are true (host decides).</summary>
+        public bool hostDayReady = false;
+        public bool guestDayReady = false;
 
         public bool isLanActive = false;
         public int localPeerId = 1;
@@ -893,6 +901,7 @@ namespace TwoLadles.Networking
                     {
                         int stage = int.Parse(parts[1]);
                         GameMode mode = (GameMode)Enum.Parse(typeof(GameMode), parts[2]);
+                        hostDayReady = false; guestDayReady = false;
                         OnShiftStartReceived?.Invoke(stage, mode);
                         if (ShiftManager.Instance != null)
                         {
@@ -1003,6 +1012,38 @@ namespace TwoLadles.Networking
                     if (!IsHost())
                     {
                         UI.PhoneStoryUI.Close();
+                    }
+                    break;
+
+                case "DAY_REPORT":
+                    // Host ended the day: show results, earn gold, let the guest shop.
+                    if (!IsHost())
+                    {
+                        var report = DecodeDayReport(msg);
+                        if (report != null)
+                        {
+                            hostDayReady = false; guestDayReady = false;
+                            if (ShiftManager.Instance != null) ShiftManager.Instance.ApplyDayReport(report);
+                            OnDayReportReceived?.Invoke(report);
+                        }
+                    }
+                    break;
+
+                case "DAY_READY":
+                    if (IsHost() && parts.Length >= 3)
+                    {
+                        guestDayReady = parts[2] == "1";
+                        BroadcastDayReadyState();
+                        TryStartNextDay();
+                    }
+                    break;
+
+                case "DAY_READY_STATE":
+                    if (!IsHost() && parts.Length >= 3)
+                    {
+                        hostDayReady = parts[1] == "1";
+                        guestDayReady = parts[2] == "1";
+                        OnDayReadyChanged?.Invoke(hostDayReady, guestDayReady);
                     }
                     break;
             }
@@ -1400,6 +1441,96 @@ namespace TwoLadles.Networking
             {
                 SendPacket($"START_SHIFT|{stage}|{mode}", partnerEndPoint);
             }
+        }
+
+        // ------------------------------------------------------------------
+        // LAN end of day: host report -> both shop -> both ready -> next day
+        // ------------------------------------------------------------------
+
+        public static bool BothDayReady(bool host, bool guest) => host && guest;
+
+        public static string EncodeDayReport(int stage, bool victory, float rep, int wavesDone, int totalWaves, int served, int score, int highScore)
+        {
+            return string.Format(CultureInfo.InvariantCulture, "DAY_REPORT|{0}|{1}|{2:0.###}|{3}|{4}|{5}|{6}|{7}",
+                stage, victory ? 1 : 0, rep, wavesDone, totalWaves, served, score, highScore);
+        }
+
+        /// <summary>Parses a DAY_REPORT packet into a results summary, or null if malformed.</summary>
+        public static Dictionary<string, object> DecodeDayReport(string msg)
+        {
+            if (string.IsNullOrEmpty(msg)) return null;
+            var p = msg.Split('|');
+            if (p.Length < 9 || p[0] != "DAY_REPORT") return null;
+            var ci = CultureInfo.InvariantCulture;
+            if (!int.TryParse(p[1], NumberStyles.Integer, ci, out int stage)) return null;
+            if (p[2] != "0" && p[2] != "1") return null;
+            if (!float.TryParse(p[3], NumberStyles.Float, ci, out float rep) || float.IsNaN(rep) || float.IsInfinity(rep)) return null;
+            if (!int.TryParse(p[4], NumberStyles.Integer, ci, out int waves)) return null;
+            if (!int.TryParse(p[5], NumberStyles.Integer, ci, out int total)) return null;
+            if (!int.TryParse(p[6], NumberStyles.Integer, ci, out int served)) return null;
+            if (!int.TryParse(p[7], NumberStyles.Integer, ci, out int score)) return null;
+            if (!int.TryParse(p[8], NumberStyles.Integer, ci, out int high)) return null;
+            return new Dictionary<string, object>
+            {
+                { "stage_id", stage }, { "victory", p[2] == "1" }, { "reputation", Mathf.Clamp(rep, 0f, 100f) },
+                { "waves_completed", waves }, { "total_waves", total },
+                { "orders_served", served }, { "ordersServed", served },
+                { "total_score", score }, { "finalScore", score }, { "high_score", high }
+            };
+        }
+
+        private static int SummaryInt(Dictionary<string, object> d, string k) =>
+            d != null && d.TryGetValue(k, out var v) && v is int i ? i : 0;
+
+        /// <summary>Host: send the finished day's results to the guest and reset ready flags.</summary>
+        public void SendDayReport(Dictionary<string, object> summary)
+        {
+            if (!isLanActive || !IsHost() || summary == null) return;
+            hostDayReady = false; guestDayReady = false;
+            float rep = summary.TryGetValue("reputation", out var r) && r is float f ? f : 0f;
+            bool vic = summary.TryGetValue("victory", out var v) && v is bool b && b;
+            string pkt = EncodeDayReport(SummaryInt(summary, "stage_id"), vic, rep, SummaryInt(summary, "waves_completed"),
+                SummaryInt(summary, "total_waves"), SummaryInt(summary, "ordersServed"), SummaryInt(summary, "total_score"), SummaryInt(summary, "high_score"));
+            if (partnerEndPoint != null) SendPacket(pkt, partnerEndPoint);
+            OnDayReadyChanged?.Invoke(hostDayReady, guestDayReady);
+        }
+
+        /// <summary>Local chef pressed READY on the results screen.</summary>
+        public void SetLocalDayReady(bool ready)
+        {
+            if (!isLanActive) return;
+            if (IsHost())
+            {
+                hostDayReady = ready;
+                BroadcastDayReadyState();
+                TryStartNextDay();
+            }
+            else
+            {
+                guestDayReady = ready;
+                if (partnerEndPoint != null) SendPacket($"DAY_READY|{localPeerId}|{(ready ? 1 : 0)}", partnerEndPoint);
+                OnDayReadyChanged?.Invoke(hostDayReady, guestDayReady);
+            }
+        }
+
+        private void BroadcastDayReadyState()
+        {
+            if (partnerEndPoint != null) SendPacket($"DAY_READY_STATE|{(hostDayReady ? 1 : 0)}|{(guestDayReady ? 1 : 0)}", partnerEndPoint);
+            OnDayReadyChanged?.Invoke(hostDayReady, guestDayReady);
+        }
+
+        /// <summary>Host: start the next day for both once both chefs are ready.</summary>
+        private void TryStartNextDay()
+        {
+            if (!IsHost() || !BothDayReady(hostDayReady, guestDayReady)) return;
+            var sm = ShiftManager.Instance;
+            if (sm == null || sm.shiftActive) return;
+            int next = ShiftManager.ComputeNextStage(sm.currentStageId, sm.levelVictory);
+            GameMode mode = sm.currentMode;
+            hostDayReady = false; guestDayReady = false;
+            BroadcastShiftStart(next, mode);
+            sm.StartShift(next, mode);
+            OnShiftStartReceived?.Invoke(next, mode);
         }
 
         /// <summary>Lobby-only stand-in chef: lets a player step off Linh/Jiwon, but can never be Ready.</summary>

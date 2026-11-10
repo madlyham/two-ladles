@@ -488,7 +488,7 @@ namespace TwoLadles.Core
                     break;
                 case 10:
                     tutorialStepTitle = lm != null ? lm.Get("tutorial.complete_title") : "★ COMPLETE! ★";
-                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.complete_desc") : "You're ready! Park items on holding counters. Once Jiwon reaches Tier 2 press [H] to hire a Part-Timer (costs 20 score). Click 'Lobby' to start Day 1: Tteokbokki!";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.complete_desc") : "You're ready! Park items on holding counters. Once Jiwon reaches Tier 2 press [H] to hire a Part-Timer (costs 20 score). Open the pause menu (⏸) and leave to start Day 1: Tteokbokki!";
                     break;
             }
 
@@ -621,6 +621,8 @@ namespace TwoLadles.Core
         public void EndShift(string endReason = "", bool? explicitVictory = null)
         {
             if (!shiftActive) return;
+            // LAN guest never ends its own day; it waits for the host's DAY_REPORT.
+            if (isNetworkClient && !applyingHostReport) return;
             shiftActive = false;
 
             orderSpawnTimer = 999999.0f;
@@ -952,6 +954,29 @@ namespace TwoLadles.Core
 
         /// <summary>True on a LAN client: the host owns orders, timers and score; this side only displays them.</summary>
         public bool isNetworkClient = false;
+        private bool applyingHostReport = false;
+
+        /// <summary>Next day after a finished one: tutorial leads to Day 1, a win advances (max Day 5), a loss replays.</summary>
+        public static int ComputeNextStage(int stage, bool victory)
+        {
+            if (stage <= 0) return 1;
+            if (victory && stage < 5) return stage + 1;
+            return stage;
+        }
+
+        /// <summary>LAN guest: end the local day using the host's results (gold is earned once per device per shift).</summary>
+        public void ApplyDayReport(Dictionary<string, object> r)
+        {
+            if (r == null || !shiftActive) return;
+            if (r.TryGetValue("reputation", out var rp)) reputation = (float)rp;
+            if (r.TryGetValue("total_score", out var sc)) totalScore = (int)sc;
+            if (r.TryGetValue("ordersServed", out var os)) ordersServed = (int)os;
+            if (r.TryGetValue("waves_completed", out var wc)) wavesClearedCount = (int)wc;
+            bool victory = r.TryGetValue("victory", out var v) && (bool)v;
+            applyingHostReport = true;
+            try { EndShift("Host ended the day", victory); }
+            finally { applyingHostReport = false; }
+        }
 
         public const string ORDERS_PACKET = "ORDERS";
         private const int ORDERS_HEADER_FIELDS = 9; // ORDERS + 8 state fields (last = order count)

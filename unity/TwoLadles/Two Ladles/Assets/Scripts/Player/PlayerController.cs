@@ -66,6 +66,11 @@ namespace TwoLadles.Player
             {
                 HandlePlayerInput(dt);
             }
+            else if (NetworkManager.Instance != null && NetworkManager.Instance.isLanActive)
+            {
+                // LAN partner: animate flip + wobble from received positions
+                UpdateRemoteWalkVisuals(dt);
+            }
 
             UpdateCarriedItemHover(dt);
 
@@ -325,14 +330,13 @@ namespace TwoLadles.Player
             if (clamped.magnitude > 0.08f)
             {
                 walkAnimTime += delta * 14.0f;
-                float tiltDegrees = Mathf.Sin(walkAnimTime) * 7.5f; // 15° total sway arc (-7.5° to +7.5°)
+                float tiltDegrees = ComputeWalkSway(walkAnimTime); // 15° total sway arc (-7.5° to +7.5°)
                 if (characterSpriteRenderer != null)
                 {
                     characterSpriteRenderer.transform.localRotation = Quaternion.Euler(51.0f, 0f, tiltDegrees);
                     // Base character PNG textures face left naturally.
                     // Moving right -> flipX = true (faces right). Moving left -> flipX = false (natural left).
-                    if (clamped.x > 0.05f) characterSpriteRenderer.flipX = true;
-                    else if (clamped.x < -0.05f) characterSpriteRenderer.flipX = false;
+                    characterSpriteRenderer.flipX = ComputeFlipX(clamped.x, characterSpriteRenderer.flipX);
                 }
             }
             else
@@ -345,6 +349,68 @@ namespace TwoLadles.Player
                         Quaternion.Euler(51.0f, 0f, 0f),
                         delta * 14.0f
                     );
+                }
+            }
+        }
+
+        /// <summary>Sprite faces right when moving right, left when moving left, otherwise keeps facing.</summary>
+        public static bool ComputeFlipX(float dx, bool current)
+        {
+            if (dx > 0.05f) return true;
+            if (dx < -0.05f) return false;
+            return current;
+        }
+
+        /// <summary>Walk wobble tilt in degrees (-7.5 to +7.5).</summary>
+        public static float ComputeWalkSway(float t) => Mathf.Sin(t) * 7.5f;
+
+        private Vector3 lastRemotePos;
+        private bool hasLastRemotePos = false;
+        private float remoteMoveGrace = 0.0f;
+        private float remoteAnimTime = 0.0f;
+
+        /// <summary>
+        /// LAN partner chef: derives flip + wobble from network position updates
+        /// (partner input is not simulated locally). Short grace keeps wobble smooth
+        /// between 30Hz packets.
+        /// </summary>
+        public void UpdateRemoteWalkVisuals(float dt)
+        {
+            Vector3 pos = transform.position;
+            if (!hasLastRemotePos)
+            {
+                lastRemotePos = pos;
+                hasLastRemotePos = true;
+                return;
+            }
+
+            Vector3 d = pos - lastRemotePos;
+            d.y = 0.0f;
+            lastRemotePos = pos;
+
+            if (d.magnitude > 0.001f)
+            {
+                remoteMoveGrace = 0.15f;
+                if (characterSpriteRenderer != null)
+                    characterSpriteRenderer.flipX = ComputeFlipX(d.x / Mathf.Max(d.magnitude, 0.0001f), characterSpriteRenderer.flipX);
+            }
+
+            if (remoteMoveGrace > 0.0f)
+            {
+                remoteMoveGrace -= dt;
+                remoteAnimTime += dt * 14.0f;
+                if (characterSpriteRenderer != null)
+                    characterSpriteRenderer.transform.localRotation = Quaternion.Euler(51.0f, 0f, ComputeWalkSway(remoteAnimTime));
+            }
+            else
+            {
+                remoteAnimTime = 0.0f;
+                if (characterSpriteRenderer != null)
+                {
+                    characterSpriteRenderer.transform.localRotation = Quaternion.Lerp(
+                        characterSpriteRenderer.transform.localRotation,
+                        Quaternion.Euler(51.0f, 0f, 0f),
+                        Mathf.Clamp01(dt * 14.0f));
                 }
             }
         }

@@ -2,6 +2,15 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-10 — v1.4.4: Pause Menu & LAN Day Cycle
+
+- **Pause menu**: the HUD "Lobby" button is now ⏸ (or Esc) and opens RESUME / LEAVE GAME. Solo freezes time; LAN keeps the shared kitchen running.
+- **LAN end of day**: the host sends the day report to the guest (`DAY_REPORT`). The guest sees results, earns gold, can shop. Both press READY (toggle, `DAY_READY`); the host then starts the next day for both. LEVEL SELECT is hidden in LAN and closing the shop returns to results.
+- **Guest can no longer end its own shift** (`ShiftManager.EndShift` guard).
+- **LAN partner chef** flips direction and wobbles when walking.
+- **North double door cleared**: decorative divider tables removed; the Serving Counter moved from z 4.2 to z 3.2 (bot nav updated).
+- Tests: Test19 +11, new Test20 (11) — 345 total.
+
 ## 2026-11-10 — v1.4.3: LAN Story Sync & Portrait Fit
 
 - **LAN co-op**: the joining player now sees the dating-app match (swipe) scene too. On Day 1 in LAN both phones always play it, so neither jumps ahead to the notification (`PhoneStoryUI.ShouldShowMatchScene`).

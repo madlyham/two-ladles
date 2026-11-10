@@ -52,7 +52,7 @@ namespace TwoLadles.AI
 
             // Inner West Column (X = -2.2f)
             AddNode("NW_Inner", new Vector3(-2.2f, 0f, 4.6f), "W_Fridge_App", "W_Prep_App", "W_Serving_App");
-            AddNode("W_Serving_App", new Vector3(-1.4f, 0f, 4.2f), "NW_Inner", "W_Prep_App");
+            AddNode("W_Serving_App", new Vector3(-1.4f, 0f, 3.2f), "NW_Inner", "W_Prep_App");
             AddNode("W_Prep_App", new Vector3(-2.2f, 0f, 3.6f), "NW_Inner", "W_Serving_App", "W_Counter1_App");
             AddNode("W_Counter1_App", new Vector3(-2.2f, 0f, 0.8f), "W_Prep_App", "W_Mid_North_Cross", "W_Pass_App", "W_Counter2_App");
             AddNode("W_Pass_App", new Vector3(-1.4f, 0f, 0.5f), "W_Counter1_App", "W_Counter2_App");
@@ -73,7 +73,7 @@ namespace TwoLadles.AI
             // 3. EAST ZONE (Jiwon's Walkways & Stations)
             // Inner East Column (X = +2.2f)
             AddNode("NE_Inner", new Vector3(2.2f, 0f, 4.6f), "E_Fridge_App", "E_Counter1_App", "E_Serving_App");
-            AddNode("E_Serving_App", new Vector3(1.4f, 0f, 4.2f), "NE_Inner", "E_Counter1_App");
+            AddNode("E_Serving_App", new Vector3(1.4f, 0f, 3.2f), "NE_Inner", "E_Counter1_App");
             AddNode("E_Counter1_App", new Vector3(2.2f, 0f, 1.8f), "NE_Inner", "E_Serving_App", "E_Mid_North_Cross", "E_Pass_App", "E_Prep_App");
             AddNode("E_Pass_App", new Vector3(1.4f, 0f, 0.5f), "E_Counter1_App", "E_Mid_North_Cross", "E_Prep_App");
             AddNode("E_Prep_App", new Vector3(2.2f, 0f, -1.6f), "E_Counter1_App", "E_Pass_App", "SE_Inner");

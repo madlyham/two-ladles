@@ -70,7 +70,7 @@ tutorial.step5_desc,Wait for the Stove bar to turn GREEN then press [E] to pick 
 tutorial.step6_title,STEP 6: BOWL IT & SEND IT OUT!,BƯỚC 6: CHO VÀO TÔ & GIAO MÓN!,6단계: 그릇에 담아 내보내기!
 tutorial.step6_desc,Put Tteokbokki in a BOWL (unlimited - no washing) then press [E] at the Send-Out Window by the north door. Tip: use the Pass Counter for +15 Flow or throw with [Q] / right-click.,Cho Tteokbokki vào TÔ (không giới hạn - không cần rửa) rồi nhấn [E] tại Cửa Giao Món gần cửa bắc. Mẹo: dùng Quầy Chuyền để +15 Flow hoặc ném bằng [Q] / chuột phải.,떡볶이를 그릇에 담고 (무제한 - 설거지 없음) 북쪽 문 옆 배식구에서 [E]를 누르세요. 팁: 패스 카운터로 넘기면 +15 Flow / [Q] 또는 우클릭으로 던지기.
 tutorial.complete_title,★ COMPLETE! ★,★ HOÀN THÀNH! ★,★ 튜토리얼 완료! ★
-tutorial.complete_desc,You're ready! Park items on holding counters. At Jiwon Tier 2 press [H] to hire a Part-Timer (20 score). Click 'Lobby' to start Day 1!,Bạn đã sẵn sàng! Đặt đồ lên quầy giữ món. Khi Jiwon đạt Bậc 2 nhấn [H] để thuê Phụ Bếp (20 điểm). Bấm 'Về sảnh' để bắt đầu Ngày 1!,준비 완료! 보관대에 재료를 올려두세요. 지원 2단계부터 [H]로 알바생 고용 (20점). '로비'를 눌러 1일차를 시작하세요!
+tutorial.complete_desc,You're ready! Park items on holding counters. At Jiwon Tier 2 press [H] to hire a Part-Timer (20 score). Open the pause menu (⏸) and leave to start Day 1!,Bạn đã sẵn sàng! Đặt đồ lên quầy giữ món. Khi Jiwon đạt Bậc 2 nhấn [H] để thuê Phụ Bếp (20 điểm). Mở menu tạm dừng (⏸) và rời trận để bắt đầu Ngày 1!,준비 완료! 보관대에 재료를 올려두세요. 지원 2단계부터 [H]로 알바생 고용 (20점). 일시정지 메뉴(⏸)에서 나가면 1일차가 시작됩니다!
 results.victory,DAY {0} COMPLETE!,HOÀN THÀNH NGÀY {0}!,DAY {0} 영업 완료!
 results.game_over,SHIFT FAILED,THẤT BẠI CA BẾP,영업 실패
 results.rep_remaining,Remaining Reputation: {0} / 100,Danh tiếng còn lại: {0} / 100,남은 평판: {0} / 100
@@ -131,3 +131,9 @@ story.day2,Day 2: Bột Chiên — Saigon Heat,Ngày 2: Bột Chiên — Hơi N�
 story.day3,Day 3: K-BBQ Rice — The Rush Begins,Ngày 3: Cơm Bò Nướng — Giờ Cao Điểm Bắt Đầu,3일차: 불고기 덮밥 — 러시의 시작
 story.day4,Day 4: Cơm Tấm Broken Rice — Cross-Town Buzz,Ngày 4: Cơm Tấm — Cả Phố Xôn Xao,4일차: 껌땀 — 온 동네의 화제
 story.day5,Day 5: Bulgogi Bánh Mì — Street Fusion,Ngày 5: Bánh Mì Bulgogi — Hương Vị Giao Thoa,5일차: 불고기 반미 — 길거리 퓨전
+hud.pause,⏸,⏸,⏸
+pause.title,PAUSED,TẠM DỪNG,일시정지
+pause.resume,▶ RESUME,▶ TIẾP TỤC,▶ 계속하기
+pause.leave,✖ LEAVE GAME,✖ RỜI TRẬN,✖ 게임 나가기
+results.ready,✔ READY ({0}/2),✔ SẴN SÀNG ({0}/2),✔ 준비 ({0}/2)
+results.waiting_partner,⏳ WAITING ({0}/2),⏳ ĐANG CHỜ ({0}/2),⏳ 대기 중 ({0}/2)

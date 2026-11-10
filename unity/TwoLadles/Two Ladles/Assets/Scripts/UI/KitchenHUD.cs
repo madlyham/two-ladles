@@ -444,7 +444,7 @@ namespace TwoLadles.UI
             scoreText = CreateLabel("ScoreText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(616f, 0f), new Vector2(120f, 28f), "0 pts", 13, Color.yellow, TextAnchor.MiddleLeft);
 
             // D) Top-Right Utility Buttons: Recipes [R], Touch UI, Mute, Switch Chef [C], Lobby
-            returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 0f), new Vector2(72f, 26f), "Lobby", new Color(0.55f, 0.20f, 0.20f, 0.95f), out _, 11);
+            returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 0f), new Vector2(44f, 26f), "⏸", new Color(0.30f, 0.34f, 0.44f, 0.95f), out _, 14);
             switchChefButton = CreateButton("SwitchChefBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-88f, 0f), new Vector2(115f, 26f), "LINH [C]", new Color(0.18f, 0.42f, 0.65f, 0.95f), out switchChefButtonText, 11);
             recipeBookButton = CreateButton("RecipeBookBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-209f, 0f), new Vector2(100f, 26f), "Recipes [R]", new Color(0.65f, 0.42f, 0.14f, 0.95f), out _, 11);
             touchControlsToggleButton = CreateButton("TouchToggleBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-315f, 0f), new Vector2(72f, 26f), "Joypad", new Color(0.24f, 0.36f, 0.48f, 0.95f), out _, 11);
@@ -665,6 +665,7 @@ namespace TwoLadles.UI
             // 7. LEVEL RESULTS MODAL (Victory / Defeat, Reputation, Gold Reward)
             // =========================================================================
             BuildLevelResultsModal(root);
+            BuildPauseModal(root);
 
             // =========================================================================
             // 8. BETWEEN-LEVEL UPGRADE SHOP MODAL
@@ -847,6 +848,76 @@ namespace TwoLadles.UI
             resultsToLobbyButton = CreateButton("ResultsToLobbyBtn", endShiftModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(138f, 22f), new Vector2(132f, 38f), "LEVEL SELECT", new Color(0.24f, 0.38f, 0.56f, 1f), out _, 11);
 
             endShiftModal.SetActive(false);
+        }
+
+        // ------------------------------------------------------------------
+        // Pause menu: the only way to leave a running game.
+        // ------------------------------------------------------------------
+        private GameObject pauseModal;
+        private Text pauseTitleText, pauseResumeText, pauseLeaveText;
+        public bool IsPaused => pauseModal != null && pauseModal.activeSelf;
+
+        /// <summary>Solo pause freezes time; LAN pause only shows the menu (the shared kitchen keeps running).</summary>
+        public static float PauseTimeScale(bool paused, bool lan) => (paused && !lan) ? 0f : 1f;
+
+        private static bool IsLan() => NetworkManager.Instance != null && NetworkManager.Instance.isLanActive;
+
+        private void BuildPauseModal(Transform root)
+        {
+            pauseModal = new GameObject("PauseModal", typeof(RectTransform));
+            pauseModal.transform.SetParent(root, false);
+            var r = pauseModal.GetComponent<RectTransform>();
+            r.anchorMin = new Vector2(0.5f, 0.5f);
+            r.anchorMax = new Vector2(0.5f, 0.5f);
+            r.pivot = new Vector2(0.5f, 0.5f);
+            r.anchoredPosition = Vector2.zero;
+            r.sizeDelta = new Vector2(320f, 210f);
+            pauseModal.AddComponent<Image>().color = new Color(0.07f, 0.09f, 0.14f, 0.97f);
+
+            pauseTitleText = CreateLabel("PauseTitle", pauseModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(290f, 34f), "PAUSED", 20, Color.white, TextAnchor.MiddleCenter);
+            var resume = CreateButton("PauseResumeBtn", pauseModal.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 4f), new Vector2(220f, 42f), "▶ RESUME", new Color(0.20f, 0.62f, 0.35f, 1f), out pauseResumeText, 13);
+            var leave = CreateButton("PauseLeaveBtn", pauseModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(220f, 42f), "✖ LEAVE GAME", new Color(0.55f, 0.20f, 0.20f, 1f), out pauseLeaveText, 13);
+            resume.onClick.AddListener(() => SetPaused(false));
+            leave.onClick.AddListener(() => { SetPaused(false); OnReturnToLobbyClicked(); });
+            pauseModal.SetActive(false);
+        }
+
+        public void SetPaused(bool paused)
+        {
+            if (pauseModal == null) return;
+            pauseModal.SetActive(paused);
+            if (paused) pauseModal.transform.SetAsLastSibling();
+            Time.timeScale = PauseTimeScale(paused, IsLan());
+        }
+
+        public void TogglePause() => SetPaused(!IsPaused);
+
+        // ------------------------------------------------------------------
+        // LAN end of day: READY button on results/shop; host starts next day.
+        // ------------------------------------------------------------------
+        private void OnDayReadyChanged(bool host, bool guest)
+        {
+            if (!IsLan() || retryShiftButtonText == null) return;
+            var nm = NetworkManager.Instance;
+            bool me = nm.IsHost() ? host : guest;
+            int count = (host ? 1 : 0) + (guest ? 1 : 0);
+            var lm = LocalizationManager.Instance;
+            string txt = me
+                ? (lm != null ? lm.Format("results.waiting_partner", count) : $"✔ WAITING ({count}/2)")
+                : (lm != null ? lm.Format("results.ready", count) : $"✔ READY ({count}/2)");
+            retryShiftButtonText.text = txt;
+            if (shopNextLevelButton != null)
+            {
+                var st = shopNextLevelButton.GetComponentInChildren<Text>();
+                if (st != null) st.text = txt;
+            }
+        }
+
+        private void OnNextDayStarted(int stage, GameMode mode)
+        {
+            if (endShiftModal != null) endShiftModal.SetActive(false);
+            if (upgradeShopModal != null) upgradeShopModal.SetActive(false);
+            SetPaused(false);
         }
 
         private void BuildUpgradeShopModal(Transform root)
@@ -1134,7 +1205,7 @@ namespace TwoLadles.UI
                 hirePrepButton.onClick.AddListener(OnHireCrewClicked);
 
             if (returnToLobbyButton != null)
-                returnToLobbyButton.onClick.AddListener(OnReturnToLobbyClicked);
+                returnToLobbyButton.onClick.AddListener(TogglePause);
 
             if (resultsToLobbyButton != null)
                 resultsToLobbyButton.onClick.AddListener(OnReturnToLobbyClicked);
@@ -1156,13 +1227,17 @@ namespace TwoLadles.UI
                 shopCloseButton.onClick.AddListener(() =>
                 {
                     if (upgradeShopModal != null) upgradeShopModal.SetActive(false);
-                    OnReturnToLobbyClicked();
+                    // LAN: closing the shop never disconnects; go back to the results / READY screen.
+                    if (IsLan()) { if (endShiftModal != null) endShiftModal.SetActive(true); }
+                    else OnReturnToLobbyClicked();
                 });
             }
 
             if (NetworkManager.Instance != null)
             {
                 NetworkManager.Instance.OnReturnedToMenu += OnReturnedToMenuHandler;
+                NetworkManager.Instance.OnDayReadyChanged += OnDayReadyChanged;
+                NetworkManager.Instance.OnShiftStartReceived += OnNextDayStarted;
             }
 
             if (primaryActionButton != null)
@@ -1455,6 +1530,12 @@ namespace TwoLadles.UI
                 ToggleRecipeBook();
             }
 
+            if (Input.GetKeyDown(KeyCode.Escape) && !PhoneStoryUI.IsShowing
+                && ShiftManager.Instance != null && ShiftManager.Instance.shiftActive)
+            {
+                TogglePause();
+            }
+
             if (Input.GetKeyDown(KeyCode.F3) && mobileControlsContainer != null)
             {
                 mobileControlsContainer.SetActive(!mobileControlsContainer.activeSelf);
@@ -1665,6 +1746,10 @@ namespace TwoLadles.UI
 
         private void ShowEndShiftModal(Dictionary<string, object> summary)
         {
+            SetPaused(false);
+            bool lan = IsLan();
+            if (lan && NetworkManager.Instance.IsHost()) NetworkManager.Instance.SendDayReport(summary);
+            if (resultsToLobbyButton != null) resultsToLobbyButton.gameObject.SetActive(!lan); // LAN: leave only via pause menu
             if (endShiftModal != null)
             {
                 endShiftModal.SetActive(true);
@@ -1727,24 +1812,26 @@ namespace TwoLadles.UI
                     }
                 }
             }
+            if (lan && NetworkManager.Instance != null) OnDayReadyChanged(NetworkManager.Instance.hostDayReady, NetworkManager.Instance.guestDayReady);
         }
 
         private void OnNextOrReplayClicked()
         {
+            if (IsLan())
+            {
+                // Both chefs must press READY; the host then starts the next day for both.
+                var nm = NetworkManager.Instance;
+                bool mine = nm.IsHost() ? nm.hostDayReady : nm.guestDayReady;
+                nm.SetLocalDayReady(!mine);
+                return;
+            }
+
             if (endShiftModal != null) endShiftModal.SetActive(false);
             if (upgradeShopModal != null) upgradeShopModal.SetActive(false);
 
             if (ShiftManager.Instance != null)
             {
-                int nextStage = ShiftManager.Instance.currentStageId;
-                if (ShiftManager.Instance.levelVictory && nextStage >= 1 && nextStage < 5)
-                {
-                    nextStage++;
-                }
-                else if (nextStage == 0)
-                {
-                    nextStage = 1;
-                }
+                int nextStage = ShiftManager.ComputeNextStage(ShiftManager.Instance.currentStageId, ShiftManager.Instance.levelVictory);
                 ShiftManager.Instance.StartShift(nextStage, ShiftManager.Instance.currentMode);
             }
         }
@@ -1764,6 +1851,8 @@ namespace TwoLadles.UI
 
         private void OnReturnToLobbyClicked()
         {
+            if (pauseModal != null) pauseModal.SetActive(false);
+            Time.timeScale = 1f;
             if (endShiftModal != null) endShiftModal.SetActive(false);
             if (upgradeShopModal != null) upgradeShopModal.SetActive(false);
             if (recipeBookModal != null) recipeBookModal.SetActive(false);
@@ -1802,7 +1891,13 @@ namespace TwoLadles.UI
             if (returnToLobbyButton != null)
             {
                 var txt = returnToLobbyButton.GetComponentInChildren<Text>();
-                if (txt != null) txt.text = lm.Get("hud.return_lobby");
+                if (txt != null) txt.text = lm.Get("hud.pause", "⏸");
+            }
+            if (pauseModal != null)
+            {
+                if (pauseTitleText != null) pauseTitleText.text = lm.Get("pause.title", "PAUSED");
+                if (pauseResumeText != null) pauseResumeText.text = lm.Get("pause.resume", "▶ RESUME");
+                if (pauseLeaveText != null) pauseLeaveText.text = lm.Get("pause.leave", "✖ LEAVE GAME");
             }
             if (recipeBookButton != null)
             {
@@ -1855,9 +1950,16 @@ namespace TwoLadles.UI
             if (NetworkManager.Instance != null)
             {
                 NetworkManager.Instance.OnReturnedToMenu -= OnReturnedToMenuHandler;
+                NetworkManager.Instance.OnDayReadyChanged -= OnDayReadyChanged;
+                NetworkManager.Instance.OnShiftStartReceived -= OnNextDayStarted;
             }
             if (ShiftManager.Instance != null)
             {
+                ShiftManager.Instance.OnFlowUpdated -= OnFlowUpdated;
+                ShiftManager.Instance.OnRushRhythmChanged -= OnRushRhythmChanged;
+                ShiftManager.Instance.OnOrderQueueUpdated -= RefreshOrders;
+                ShiftManager.Instance.OnFeedbackBanner -= ShowFeedback;
+                ShiftManager.Instance.OnShiftEnded -= ShowEndShiftModal;
                 ShiftManager.Instance.OnTutorialStepChanged -= UpdateTutorialGuidance;
                 ShiftManager.Instance.OnReputationChanged -= OnReputationChanged;
                 ShiftManager.Instance.OnWaveUpdated -= OnWaveUpdated;

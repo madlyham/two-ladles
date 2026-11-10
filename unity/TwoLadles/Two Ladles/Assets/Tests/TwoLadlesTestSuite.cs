@@ -8,6 +8,7 @@ using TwoLadles.Kitchen;
 using TwoLadles.Player;
 using TwoLadles.Networking;
 using TwoLadles.AI;
+using TwoLadles.UI;
 
 namespace TwoLadles.Tests
 {
@@ -87,6 +88,7 @@ namespace TwoLadles.Tests
             Test17_TwoBotQAManagerAndReporting();
             Test18_StoryPhoneAndDayNightCycle();
             Test19_LanSyncTimingAndBotSafety();
+            Test20_PauseAndLanDayCycle();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -1318,6 +1320,33 @@ namespace TwoLadles.Tests
                 && Mathf.Abs(TwoLadles.UI.UIScaleSettings.Clamp(float.NaN) - 1.0f) < 0.001f, "UI scale clamps to safe range (NaN -> 100%)");
             Assert(Mathf.Abs(TwoLadles.UI.UIScaleSettings.ScaledReference(new Vector2(1280f, 720f), 1.25f).x - 1024f) < 0.5f, "Bigger UI scale shrinks the canvas reference resolution");
 
+            // 13. LAN partner chef turns + wobbles like the local chef
+            Assert(PlayerController.ComputeFlipX(0.5f, false) && !PlayerController.ComputeFlipX(-0.5f, true), "Partner chef faces right when moving right, left when moving left");
+            Assert(PlayerController.ComputeFlipX(0.0f, true) && !PlayerController.ComputeFlipX(0.01f, false), "Partner chef keeps facing when moving straight up/down");
+            Assert(Mathf.Abs(PlayerController.ComputeWalkSway(Mathf.PI * 0.5f) - 7.5f) < 0.01f && Mathf.Abs(PlayerController.ComputeWalkSway(0f)) < 0.01f, "Walk wobble sways up to 7.5 degrees");
+            var remChef = new GameObject("RemoteWobbleChef").AddComponent<PlayerController>();
+            var remSpr = new GameObject("RemoteWobbleSprite").AddComponent<SpriteRenderer>();
+            remSpr.transform.SetParent(remChef.transform);
+            remChef.characterSpriteRenderer = remSpr;
+            remChef.isLocalPlayer = false;
+            remChef.transform.position = Vector3.zero;
+            remChef.UpdateRemoteWalkVisuals(0.016f);
+            remChef.transform.position = new Vector3(0.2f, 0f, 0f);
+            remChef.UpdateRemoteWalkVisuals(0.1f);
+            float remTilt = Mathf.DeltaAngle(0f, remSpr.transform.localRotation.eulerAngles.z);
+            Assert(remSpr.flipX && Mathf.Abs(remTilt) > 0.5f, "Partner chef moving right flips and wobbles from position updates");
+            remChef.transform.position = new Vector3(-0.2f, 0f, 0f);
+            remChef.UpdateRemoteWalkVisuals(0.016f);
+            Assert(!remSpr.flipX, "Partner chef moving left faces left");
+            for (int i = 0; i < 60; i++) remChef.UpdateRemoteWalkVisuals(0.05f);
+            Assert(Mathf.Abs(Mathf.DeltaAngle(0f, remSpr.transform.localRotation.eulerAngles.z)) < 0.5f, "Partner chef stands upright again when it stops");
+            UnityEngine.Object.DestroyImmediate(remChef.gameObject);
+
+            // 14. North double door is not blocked by a table
+            foreach (float dz in KitchenController.DIVIDER_DECOR_Z)
+                Assert(dz < 2.0f, $"Divider decor table at z={dz} stays clear of the door area");
+            Assert(KitchenController.SERVING_STATION_POS.z + 1.1f <= 4.3f, "Serving Counter sits south of the double door, leaving the doorway clear");
+
             nmSync.isLanActive = false;
             nmSync.localPeerId = 1;
             if (ShiftManager.Instance != null) ShiftManager.Instance.isAutoplayQAMode = prevQA;
@@ -1327,6 +1356,57 @@ namespace TwoLadles.Tests
             {
                 if (o != null) UnityEngine.Object.DestroyImmediate(o);
             }
+        }
+        private void Test20_PauseAndLanDayCycle()
+        {
+            Debug.Log("[Test 20] Pause Menu & LAN Day Report / Shop / Double-Ready");
+
+            // 1. Day report packet round-trip
+            string pkt = NetworkManager.EncodeDayReport(3, true, 62.5f, 4, 4, 11, 870, 900);
+            var rep = NetworkManager.DecodeDayReport(pkt);
+            Assert(rep != null && (int)rep["stage_id"] == 3 && (bool)rep["victory"] && Mathf.Abs((float)rep["reputation"] - 62.5f) < 0.01f
+                && (int)rep["waves_completed"] == 4 && (int)rep["total_waves"] == 4 && (int)rep["ordersServed"] == 11
+                && (int)rep["total_score"] == 870 && (int)rep["high_score"] == 900, "Day report packet round-trips host stats to the guest");
+
+            // 2. Malformed packets rejected
+            Assert(NetworkManager.DecodeDayReport("junk") == null && NetworkManager.DecodeDayReport("DAY_REPORT|x") == null, "Malformed day report packets are rejected");
+
+            // 3. Next day only starts when both chefs are ready
+            Assert(NetworkManager.BothDayReady(true, true) && !NetworkManager.BothDayReady(true, false)
+                && !NetworkManager.BothDayReady(false, true) && !NetworkManager.BothDayReady(false, false), "Next day needs both chefs ready");
+
+            // 4. Next stage rules
+            Assert(ShiftManager.ComputeNextStage(1, true) == 2 && ShiftManager.ComputeNextStage(5, true) == 5
+                && ShiftManager.ComputeNextStage(2, false) == 2 && ShiftManager.ComputeNextStage(0, false) == 1, "Next day stage: advance on win, replay on loss, tutorial leads to Day 1");
+
+            // 5. Guest cannot end its own day
+            var sm = ShiftManager.Instance;
+            bool prevQA = sm.isAutoplayQAMode;
+            sm.isAutoplayQAMode = true;
+            ProgressionManager.Instance.ResetProgressionForTesting();
+            sm.StartShift(1, GameMode.CAMPAIGN);
+            sm.isNetworkClient = true;
+            sm.EndShift("guest tried");
+            Assert(sm.shiftActive, "LAN guest cannot end the day locally (host decides)");
+
+            // 6. Host report ends guest day and pays gold once
+            int goldBefore = ProgressionManager.Instance.gold;
+            var hostRep = NetworkManager.DecodeDayReport(NetworkManager.EncodeDayReport(1, true, 75f, 3, 3, 8, 600, 600));
+            sm.ApplyDayReport(hostRep);
+            int goldAfter = ProgressionManager.Instance.gold;
+            Assert(!sm.shiftActive && sm.levelVictory && sm.totalScore == 600, "Host day report ends the guest's day with host stats");
+            Assert(goldAfter > goldBefore, "Guest earns gold from the host day report so it can shop");
+            sm.ApplyDayReport(hostRep);
+            Assert(ProgressionManager.Instance.gold == goldAfter, "Repeated day report does not pay gold twice");
+
+            // 7. Pause freezes time in solo only
+            Assert(KitchenHUD.PauseTimeScale(false, false) == 1f, "Unpaused game runs at normal speed");
+            Assert(KitchenHUD.PauseTimeScale(true, true) == 1f, "LAN pause keeps the shared kitchen running");
+            Assert(KitchenHUD.PauseTimeScale(true, false) == 0f, "Solo pause freezes the game");
+
+            sm.isNetworkClient = false;
+            sm.shiftActive = false;
+            sm.isAutoplayQAMode = prevQA;
         }
     }
 }

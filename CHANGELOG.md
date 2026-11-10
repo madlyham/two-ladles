@@ -2,6 +2,14 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-10 — Auto-Scan Prominence, Last-Resort Manual IP & v1.3.0 Web Release
+
+### Changed
+- **Auto-Scan Primary on Join Screen:** Swapped Join Screen layout so automatic Wi-Fi kitchen scanning is front and center with large, easy-to-tap slots (`520x42px`). Found rooms immediately display the room name, host chef, player count, and IP address.
+- **Manual IP as Last Resort:** Direct IP input field relocated to the bottom under an explicit "OR ENTER HOST IP MANUALLY (LAST RESORT)" banner for networks where Wi-Fi broadcast/multicast is restricted.
+- **Version Code Bump (v1.3.0 / Code 130):** Updated Unity PlayerSettings bundle version to `1.3.0` and Android bundle version code to `130`, ensuring Android devices recognize the APK as a genuine update over earlier installs.
+- **Web Download Portal Updated:** Updated `web/index.html` download cards to `v1.3.0` with cache-busting query strings (`?v=1.3.0`) so browsers do not serve stale cached APK files. Added `v1.3.0` version indicator in the lobby menu.
+
 ## 2026-11-10 — Per-Chef Upgrades, Score-Based Hiring & Mobile Polish
 
 ### Added

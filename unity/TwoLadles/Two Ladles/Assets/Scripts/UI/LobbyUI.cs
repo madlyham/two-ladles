@@ -301,6 +301,7 @@ namespace TwoLadles.UI
             // Bottom bar on main menu
             statusText = CreateLabel("StatusText", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(680f, 20f), "Ready to play on Local Wi-Fi.", 11, new Color(0.85f, 0.9f, 0.95f), TextAnchor.MiddleCenter);
             controlsGuideText = CreateLabel("ControlsGuide", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(680f, 20f), "[WASD] Walk  •  [E] Pick / Place  •  [F] Chop / Cook  •  [Q] Throw  •  [R] Recipes", 11, new Color(0.68f, 0.78f, 0.92f), TextAnchor.MiddleCenter);
+            CreateLabel("VersionBadge", mainMenuPanel.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-15f, 15f), new Vector2(120f, 18f), "v1.3.0", 11, new Color(1f, 1f, 1f, 0.5f), TextAnchor.MiddleRight);
 
             // -------------------------------------------------------------
             // SUB-PANEL B: HOST POPUP MODAL (Clean, asks for name & creates room)
@@ -347,41 +348,42 @@ namespace TwoLadles.UI
             var jpBg = joinPopupPanel.AddComponent<Image>();
             jpBg.color = new Color(0.06f, 0.08f, 0.12f, 0.98f);
 
-            CreateLabel("JoinTitle", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -45f), new Vector2(600f, 26f), "JOIN A KITCHEN", 16, new Color(0.35f, 0.75f, 0.98f), TextAnchor.MiddleCenter);
+            CreateLabel("JoinTitle", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(600f, 26f), "JOIN A KITCHEN", 16, new Color(0.35f, 0.75f, 0.98f), TextAnchor.MiddleCenter);
 
-            // PRIMARY PATH: type the IP shown in big yellow numbers on the host's screen
-            CreateLabel("IpPrompt", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -80f), new Vector2(680f, 22f), "Type the IP shown in yellow on the HOST's screen, then press CONNECT:", 13, new Color(1.0f, 0.88f, 0.35f), TextAnchor.MiddleCenter);
+            // PRIMARY PATH: Automatic Wi-Fi kitchen scan
+            lanHeaderLabel = CreateLabel("LanHeader", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -72f), new Vector2(600f, 22f), "OPEN KITCHENS ON YOUR WI-FI (AUTO-SCAN):", 12, new Color(0.4f, 0.95f, 0.75f), TextAnchor.MiddleCenter);
+
+            // Discovered LAN Room Slots (big, prominent, easy to tap)
+            for (int i = 0; i < 2; i++)
+            {
+                int slotIdx = i;
+                float yPos = -106f - (i * 48f);
+                lanRoomButtons[i] = CreateButton($"LanRoomBtn_{i}", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, yPos), new Vector2(520f, 42f),
+                    i == 0 ? "🔍 Scanning your Wi-Fi for open kitchens..." : "🔄 Tap to refresh Wi-Fi scan",
+                    new Color(0.14f, 0.18f, 0.24f, 0.95f), out lanRoomButtonLabels[i], 12);
+                lanRoomButtons[i].onClick.AddListener(() => OnLanRoomSlotClicked(slotIdx));
+            }
+
+            joinStatusText = CreateLabel("JoinStatus", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -208f), new Vector2(680f, 24f), "", 11, new Color(0.85f, 0.95f, 1.0f), TextAnchor.MiddleCenter);
+
+            // LAST RESORT: Manual IP entry
+            CreateLabel("IpPrompt", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -242f), new Vector2(680f, 20f), "─── OR ENTER HOST IP MANUALLY (LAST RESORT) ───", 11, new Color(1.0f, 0.85f, 0.35f), TextAnchor.MiddleCenter);
+
             string savedIp = PlayerPrefs.GetString("TwoLadles_LastJoinedIP", "");
             if (!NetworkManager.IsUsableLanAddress(savedIp))
             {
                 savedIp = NetworkManager.GetSubnetPrefix(NetworkManager.Instance != null ? NetworkManager.Instance.LocalWifiIp : "");
             }
-            ipInput = CreateInputField("IpInput", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-75f, -122f), new Vector2(280f, 42f), savedIp, "e.g. 192.168.1.23");
-            ipInput.textComponent.fontSize = 20;
-            ((Text)ipInput.placeholder).fontSize = 18;
+            ipInput = CreateInputField("IpInput", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-75f, -280f), new Vector2(260f, 38f), savedIp, "Host IP (e.g. 192.168.1.23)");
+            ipInput.textComponent.fontSize = 18;
+            ((Text)ipInput.placeholder).fontSize = 15;
             ipInput.keyboardType = TouchScreenKeyboardType.NumbersAndPunctuation;
             ipInput.characterLimit = 21;
 
-            joinButton = CreateButton("DirectJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(150f, -122f), new Vector2(150f, 42f), "CONNECT", new Color(0.20f, 0.55f, 0.85f, 1f), out joinButtonLabel, 15);
+            joinButton = CreateButton("DirectJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(140f, -280f), new Vector2(130f, 38f), "CONNECT", new Color(0.20f, 0.48f, 0.78f, 1f), out joinButtonLabel, 13);
             joinButton.onClick.AddListener(OnJoinClicked);
 
-            joinStatusText = CreateLabel("JoinStatus", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -165f), new Vector2(680f, 36f), "", 12, new Color(0.85f, 0.95f, 1.0f), TextAnchor.MiddleCenter);
-
-            // SECONDARY PATH: kitchens found automatically (some Wi-Fi networks block this)
-            lanHeaderLabel = CreateLabel("LanHeader", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -205f), new Vector2(600f, 20f), "Or tap a kitchen found automatically (may not appear on some Wi-Fi):", 11, new Color(0.65f, 0.72f, 0.82f), TextAnchor.MiddleCenter);
-
-            // Discovered LAN Room Slots
-            for (int i = 0; i < 2; i++)
-            {
-                int slotIdx = i;
-                float yPos = -238f - (i * 36f);
-                lanRoomButtons[i] = CreateButton($"LanRoomBtn_{i}", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, yPos), new Vector2(480f, 30f),
-                    i == 0 ? "[LAN] Scanning for open kitchens..." : "[LAN] Click to refresh scan",
-                    new Color(0.14f, 0.18f, 0.24f, 0.95f), out lanRoomButtonLabels[i], 11);
-                lanRoomButtons[i].onClick.AddListener(() => OnLanRoomSlotClicked(slotIdx));
-            }
-
-            var cancelJoinBtn = CreateButton("CancelJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 40f), new Vector2(160f, 38f), "BACK", new Color(0.25f, 0.28f, 0.36f, 1f), out _, 12);
+            var cancelJoinBtn = CreateButton("CancelJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 35f), new Vector2(160f, 38f), "BACK", new Color(0.25f, 0.28f, 0.36f, 1f), out _, 12);
             cancelJoinBtn.onClick.AddListener(ShowMainMenu);
 
             joinPopupPanel.SetActive(false);
@@ -781,19 +783,27 @@ namespace TwoLadles.UI
                 if (i < currentDiscoveredRooms.Count)
                 {
                     var r = currentDiscoveredRooms[i];
-                    lanRoomButtonLabels[i].text = $"▶ JOIN: {r.roomName} ({r.hostName}) [{r.playerCount}/2]";
-                    lanRoomButtons[i].GetComponent<Image>().color = new Color(0.16f, 0.55f, 0.35f, 0.95f);
+                    lanRoomButtonLabels[i].text = $"🍲 JOIN: {r.roomName} ({r.hostName}) [{r.playerCount}/2] — {r.hostIp}";
+                    lanRoomButtons[i].GetComponent<Image>().color = new Color(0.16f, 0.62f, 0.35f, 1f);
                 }
                 else
                 {
-                    lanRoomButtonLabels[i].text = i == 0 ? "[LAN] Scanning for open kitchens..." : "[LAN] Click to refresh scan";
+                    lanRoomButtonLabels[i].text = i == 0 ? "🔍 Scanning your Wi-Fi for open kitchens..." : "🔄 Tap to refresh Wi-Fi scan";
                     lanRoomButtons[i].GetComponent<Image>().color = new Color(0.14f, 0.18f, 0.24f, 0.95f);
                 }
             }
 
-            if (currentDiscoveredRooms.Count > 0 && ipInput != null && !NetworkManager.IsUsableLanAddress((ipInput.text ?? "").Trim()))
+            if (currentDiscoveredRooms.Count > 0)
             {
-                ipInput.text = currentDiscoveredRooms[0].hostIp;
+                if (ipInput != null && !NetworkManager.IsUsableLanAddress((ipInput.text ?? "").Trim()))
+                {
+                    ipInput.text = currentDiscoveredRooms[0].hostIp;
+                }
+                if (joinStatusText != null)
+                {
+                    joinStatusText.text = $"Found kitchen: {currentDiscoveredRooms[0].roomName} ({currentDiscoveredRooms[0].hostIp}). Tap button above to join!";
+                    joinStatusText.color = new Color(0.35f, 0.95f, 0.65f);
+                }
             }
         }
 
@@ -1004,7 +1014,7 @@ namespace TwoLadles.UI
             var lm = LocalizationManager.Instance;
 
             if (titleLabel != null) titleLabel.text = lm.Get("menu.title");
-            if (lanHeaderLabel != null) lanHeaderLabel.text = "Or tap a kitchen found automatically (may not appear on some Wi-Fi):";
+            if (lanHeaderLabel != null) lanHeaderLabel.text = "OPEN KITCHENS ON YOUR WI-FI (AUTO-SCAN):";
             if (hostButtonLabel != null) hostButtonLabel.text = lm.Get("menu.host_room");
             if (joinButtonLabel != null) joinButtonLabel.text = "CONNECT";
             if (levelSelectHeaderLabel != null) levelSelectHeaderLabel.text = lm.Get("menu.level_select");

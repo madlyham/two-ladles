@@ -339,7 +339,15 @@ namespace TwoLadles.AI
             int totalOrders = currentReport.totalOrdersServed + currentReport.totalOrdersFailed;
             currentReport.overallSuccessRate = totalOrders > 0 ? (float)currentReport.totalOrdersServed / totalOrders : 0.0f;
 
-            SaveReportsToDisk(currentReport, GetReportsDirectory());
+            try
+            {
+                SaveReportsToDisk(currentReport, GetReportsDirectory());
+            }
+            catch (System.Exception e)
+            {
+                // File errors must never block the on-screen report.
+                Debug.LogWarning($"[TwoBotQAManager] Could not save QA report files: {e.Message}");
+            }
 
             // Report results back to user on-screen
             if (KitchenHUD.Instance != null)
@@ -360,9 +368,19 @@ namespace TwoLadles.AI
             }
         }
 
+        /// <summary>
+        /// Pure path resolver (no disk access). Mobile builds cannot write next to the
+        /// read-only APK, so reports go to the app's persistent storage there.
+        /// </summary>
+        public static string ResolveReportsDirectory(bool isMobile, string dataPath, string persistentDataPath)
+        {
+            if (isMobile) return Path.Combine(persistentDataPath, "qa_reports");
+            return Path.GetFullPath(Path.Combine(dataPath, "../../../qa_reports"));
+        }
+
         public static string GetReportsDirectory()
         {
-            string baseDir = Path.GetFullPath(Path.Combine(Application.dataPath, "../../../qa_reports"));
+            string baseDir = ResolveReportsDirectory(Application.isMobilePlatform, Application.dataPath, Application.persistentDataPath);
             if (!Directory.Exists(baseDir))
             {
                 Directory.CreateDirectory(baseDir);

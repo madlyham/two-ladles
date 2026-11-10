@@ -24,7 +24,9 @@ namespace TwoLadles.AI
         {
             try
             {
-                string logsDir = Path.Combine(Application.dataPath, "../Logs");
+                string logsDir = Application.isMobilePlatform
+                    ? Application.persistentDataPath
+                    : Path.Combine(Application.dataPath, "../Logs");
                 if (!Directory.Exists(logsDir))
                 {
                     Directory.CreateDirectory(logsDir);

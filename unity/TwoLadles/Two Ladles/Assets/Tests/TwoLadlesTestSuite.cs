@@ -943,6 +943,15 @@ namespace TwoLadles.Tests
             var claimedCheck = AI.BotCommunicationHub.GetPendingHandoffFor(1);
             Assert(claimedCheck == null, "Claimed handoff is cleared from pending notifications");
 
+            // 5. Mobile QA: reports must go to writable app storage (APK dataPath is read-only)
+            string mobileDir = AI.TwoBotQAManager.ResolveReportsDirectory(true, "/data/app/base.apk", "/storage/emulated/0/Android/data/twoladles/files");
+            Assert(mobileDir.Replace('\\', '/').StartsWith("/storage/emulated/0/Android/data/twoladles/files"), "Mobile QA reports saved under persistentDataPath");
+            string deskDir = AI.TwoBotQAManager.ResolveReportsDirectory(false, "C:/Game/TwoLadles_Data", "C:/Users/x/AppData");
+            Assert(!deskDir.Replace('\\', '/').StartsWith("C:/Users/x/AppData"), "Desktop QA reports keep project qa_reports folder");
+
+            // 6. Mobile joystick sits further up and right than the old (92,92) corner spot
+            Assert(UI.KitchenHUD.MOBILE_JOYSTICK_POS.x > 92f && UI.KitchenHUD.MOBILE_JOYSTICK_POS.y > 92f, "Mobile joystick moved up and right from the corner");
+
             // Cleanup
             if (System.IO.Directory.Exists(tempReportDir)) System.IO.Directory.Delete(tempReportDir, true);
             DestroyImmediate(linhGo);

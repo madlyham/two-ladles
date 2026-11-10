@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -301,7 +301,7 @@ namespace TwoLadles.UI
             // Bottom bar on main menu
             statusText = CreateLabel("StatusText", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(680f, 20f), "Ready to play on Local Wi-Fi.", 11, new Color(0.85f, 0.9f, 0.95f), TextAnchor.MiddleCenter);
             controlsGuideText = CreateLabel("ControlsGuide", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(680f, 20f), "[WASD] Walk  •  [E] Pick / Place  •  [F] Chop / Cook  •  [Q] Throw  •  [R] Recipes", 11, new Color(0.68f, 0.78f, 0.92f), TextAnchor.MiddleCenter);
-            CreateLabel("VersionBadge", mainMenuPanel.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-15f, 15f), new Vector2(120f, 18f), "v1.4.0", 11, new Color(1f, 1f, 1f, 0.5f), TextAnchor.MiddleRight);
+            CreateLabel("VersionBadge", mainMenuPanel.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-15f, 15f), new Vector2(120f, 18f), "v1.4.1", 11, new Color(1f, 1f, 1f, 0.5f), TextAnchor.MiddleRight);
 
             // -------------------------------------------------------------
             // SUB-PANEL B: HOST POPUP MODAL (Clean, asks for name & creates room)
@@ -477,26 +477,23 @@ namespace TwoLadles.UI
             chefSelectButton.gameObject.SetActive(isSoloMode);
 
             // UI / HUD size: [-] 100% [+]. Saved and applied to every canvas immediately.
-            float uiRowY = Application.isMobilePlatform ? -280f : -370f;
+            float uiRowY = -280f;
             uiSizeText = CreateLabel("UISizeLabel", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, uiRowY), new Vector2(200f, 24f), UISizeLabel(), 12, Color.white, TextAnchor.MiddleCenter);
             var uiMinusBtn = CreateButton("UISizeMinusBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-140f, uiRowY), new Vector2(50f, 32f), "−", new Color(0.15f, 0.18f, 0.24f, 0.9f), out _, 14);
             uiMinusBtn.onClick.AddListener(() => { UIScaleSettings.Step(-1); uiSizeText.text = UISizeLabel(); });
             var uiPlusBtn = CreateButton("UISizePlusBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(140f, uiRowY), new Vector2(50f, 32f), "+", new Color(0.15f, 0.18f, 0.24f, 0.9f), out _, 14);
             uiPlusBtn.onClick.AddListener(() => { UIScaleSettings.Step(1); uiSizeText.text = UISizeLabel(); });
 
-            // 2-Bot QA Test Button: dev tool, lives in Settings, hidden on mobile.
-            twoBotTestButton = CreateButton("TwoBotTestBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -280f), new Vector2(220f, 36f), "🤖 2-BOT TEST RUN", new Color(0.18f, 0.50f, 0.64f, 0.75f), out twoBotTestButtonText, 11);
+            // 2-Bot QA Test Button: dev tool, lives in Settings (desktop and mobile; report shown on screen).
+            twoBotTestButton = CreateButton("TwoBotTestBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -325f), new Vector2(220f, 36f), "🤖 2-BOT TEST RUN", new Color(0.18f, 0.50f, 0.64f, 0.75f), out twoBotTestButtonText, 11);
             twoBotTestButton.onClick.AddListener(OnTwoBotTestClicked);
-            twoBotTestButton.gameObject.SetActive(!Application.isMobilePlatform);
 
             // QA options: which day(s) the bots play, and whether they get every upgrade (temporary, never saved).
-            qaDayButton = CreateButton("QADayBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-110f, -325f), new Vector2(200f, 32f), QADayLabel(), new Color(0.15f, 0.18f, 0.24f, 0.9f), out qaDayText, 11);
+            qaDayButton = CreateButton("QADayBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-110f, -370f), new Vector2(200f, 32f), QADayLabel(), new Color(0.15f, 0.18f, 0.24f, 0.9f), out qaDayText, 11);
             qaDayButton.onClick.AddListener(() => { qaDayOption = (qaDayOption + 1) % 6; qaDayText.text = QADayLabel(); });
-            qaDayButton.gameObject.SetActive(!Application.isMobilePlatform);
 
-            qaUpgradesButton = CreateButton("QAUpgradesBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(110f, -325f), new Vector2(200f, 32f), QAUpgradesLabel(), new Color(0.15f, 0.18f, 0.24f, 0.9f), out qaUpgradesText, 11);
+            qaUpgradesButton = CreateButton("QAUpgradesBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(110f, -370f), new Vector2(200f, 32f), QAUpgradesLabel(), new Color(0.15f, 0.18f, 0.24f, 0.9f), out qaUpgradesText, 11);
             qaUpgradesButton.onClick.AddListener(() => { qaAllUpgrades = !qaAllUpgrades; qaUpgradesText.text = QAUpgradesLabel(); });
-            qaUpgradesButton.gameObject.SetActive(!Application.isMobilePlatform);
 
             var closeSettingsBtn = CreateButton("CloseSettingsBtn", settingsPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 35f), new Vector2(150f, 36f), "CLOSE", new Color(0.25f, 0.28f, 0.36f, 1f), out var closeSettingsT, 12); Reg(closeSettingsT, "menu.close");
             closeSettingsBtn.onClick.AddListener(ShowMainMenu);

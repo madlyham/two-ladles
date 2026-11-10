@@ -13,6 +13,9 @@ namespace TwoLadles.UI
 {
     public class KitchenHUD : MonoBehaviour
     {
+        /// <summary>Mobile joystick centre, anchored bottom-left (moved up/right from 92,92 in v1.4.1).</summary>
+        public static readonly Vector2 MOBILE_JOYSTICK_POS = new Vector2(150f, 140f);
+
         [Header("Top Header & Wave/Reputation Bars")]
         public Text shiftTimerText;
         public Text scoreText;
@@ -555,7 +558,7 @@ namespace TwoLadles.UI
             joystickBackgroundRect.anchorMin = new Vector2(0f, 0f);
             joystickBackgroundRect.anchorMax = new Vector2(0f, 0f);
             joystickBackgroundRect.pivot = new Vector2(0.5f, 0.5f);
-            joystickBackgroundRect.anchoredPosition = new Vector2(92f, 92f);
+            joystickBackgroundRect.anchoredPosition = MOBILE_JOYSTICK_POS;
             joystickBackgroundRect.sizeDelta = new Vector2(128f, 128f);
 
             var joyBgImg = joyBgObj.AddComponent<Image>();

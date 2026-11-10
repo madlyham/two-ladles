@@ -2,6 +2,14 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-10 — v1.4.1: Joystick Placement & Mobile 2-Bot QA Test
+
+- **Mobile joystick moved up and right** (`KitchenHUD.MOBILE_JOYSTICK_POS` = 150,140; was 92,92) so it sits clear of the screen corner.
+- **2-Bot QA test now runs on mobile**: Settings → pick test day / upgrades → 🤖 2-BOT TEST RUN. The report appears on screen at the end. Report files are saved in the app's own storage (`Application.persistentDataPath/qa_reports`) because the APK folder is read-only; a file-save error can no longer block the on-screen report.
+- `BotLogger` writes `bot_qa.log` to app storage on mobile.
+- Settings layout unified: UI size row (-280), 2-bot test (-325), QA day/upgrades (-370) on every platform.
+- Tests: +3 assertions in Test17 (316 total).
+
 ## 2026-11-10 — v1.4.0: Opening Order, UI Size, Placeholder Chef & Fresh Translations
 
 ### Changed

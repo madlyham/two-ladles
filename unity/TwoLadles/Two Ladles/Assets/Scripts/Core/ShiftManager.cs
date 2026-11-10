@@ -464,12 +464,12 @@ namespace TwoLadles.Core
                     tutorialStepInstruction = lm != null ? lm.Get("tutorial.step1_desc") : "Use [WASD] or Joystick to walk up to the Fridge.";
                     break;
                 case 2:
-                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step2_title") : "STEP 2: GET TOBOKI PORTION";
-                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step2_desc") : "Walk to Fridge -> Press [E] (INTERACT) -> Select 'Toboki Portion'.";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step2_title") : "STEP 2: GET RICE CAKE PORTION";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step2_desc") : "Walk to Fridge -> Press [E] (INTERACT) -> Select 'Rice Cake Portion'.";
                     break;
                 case 3:
                     tutorialStepTitle = lm != null ? lm.Get("tutorial.step3_title") : "STEP 3: GET GOCHUJANG";
-                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step3_desc") : "Place Toboki in Stove/Counter [E], then grab 'Gochujang' from Shelf [E].";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step3_desc") : "Place Rice Cake in Stove/Counter [E], then grab 'Gochujang' from Shelf [E].";
                     break;
                 case 4:
                     tutorialStepTitle = lm != null ? lm.Get("tutorial.step4_title") : "STEP 4: COOK TTEOKBOKKI";

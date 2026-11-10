@@ -691,7 +691,7 @@ namespace TwoLadles.UI
 
             var recipeRows = new (string dayKey, string fallbackTitle, string dishIcon, (string icon, string tag)[] steps)[]
             {
-                ("day.1", "Day 1: Tteokbokki", "tteokbokki", new[] { ("tteok_portioned", "Toboki Portion"), ("gochujang", "+ Gochujang"), ("tteokbokki", "Cook Together!") }),
+                ("day.1", "Day 1: Tteokbokki", "tteokbokki", new[] { ("tteok_portioned", "Rice Cake Portion"), ("gochujang", "+ Gochujang"), ("tteokbokki", "Cook Together!") }),
                 ("day.2", "Day 2: + Bột Chiên", "bot_chien", new[] { ("flour", "Cook Flour"), ("egg_raw", "+ Egg & Cook"), ("bot_chien", "Bột Chiên!") }),
                 ("day.3", "Day 3: + K-BBQ Rice", "korean_bbq_rice", new[] { ("unprocessed_raw_meat", "Cut 1x➔Cook"), ("cooked_rice", "Cook Rice"), ("korean_bbq_rice", "Assemble [E]") }),
                 ("day.4", "Day 4: + Broken Rice", "viet_broken_rice", new[] { ("rice_portioned", "Cook Rice"), ("bulgogi", "+ BBQ Beef"), ("egg_raw", "+ Egg [E]") }),

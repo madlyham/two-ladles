@@ -56,6 +56,7 @@ namespace TwoLadles.Core
                 scaler.matchWidthOrHeight = 0.5f;
                 canvasObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
             }
+            UIScaleSettings.Apply(); // apply saved UI / HUD size to the main canvas
 
             if (Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {

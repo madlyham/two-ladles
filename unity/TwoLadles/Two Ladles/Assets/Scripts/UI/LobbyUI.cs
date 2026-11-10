@@ -277,13 +277,13 @@ namespace TwoLadles.UI
             mmRect.anchorMax = Vector2.one;
             mmRect.sizeDelta = Vector2.zero;
 
-            CreateLabel("WelcomeSub", mainMenuPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(680f, 20f), "Authentic Street Food Cooperative Cooking", 12, new Color(0.75f, 0.82f, 0.92f), TextAnchor.MiddleCenter);
+            Reg(CreateLabel("WelcomeSub", mainMenuPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(680f, 20f), "Authentic Street Food Cooperative Cooking", 12, new Color(0.75f, 0.82f, 0.92f), TextAnchor.MiddleCenter), "menu.welcome_sub");
 
             // Big Action Buttons for Non-Tech Players
-            openHostPopupButton = CreateButton("OpenHostBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 85f), new Vector2(340f, 48f), "👨‍🍳  HOST A KITCHEN", new Color(0.18f, 0.62f, 0.35f, 1f), out _, 14);
+            openHostPopupButton = CreateButton("OpenHostBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 85f), new Vector2(340f, 48f), "👨‍🍳  HOST A KITCHEN", new Color(0.18f, 0.62f, 0.35f, 1f), out var hostKitchenT, 14); Reg(hostKitchenT, "menu.host_kitchen");
             openHostPopupButton.onClick.AddListener(ShowHostPopup);
 
-            openJoinPopupButton = CreateButton("OpenJoinBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 25f), new Vector2(340f, 48f), "🍲  JOIN KITCHEN (LAN)", new Color(0.20f, 0.48f, 0.78f, 1f), out _, 14);
+            openJoinPopupButton = CreateButton("OpenJoinBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 25f), new Vector2(340f, 48f), "🍲  JOIN KITCHEN (LAN)", new Color(0.20f, 0.48f, 0.78f, 1f), out var joinKitchenT, 14); Reg(joinKitchenT, "menu.join_kitchen");
             openJoinPopupButton.onClick.AddListener(ShowJoinPopup);
 
             playTutorialButton = CreateButton("PlayTutorialBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-90f, -38f), new Vector2(160f, 42f), "★ TUTORIAL ★", new Color(0.18f, 0.55f, 0.42f, 1f), out playTutorialButtonLabel, 12);
@@ -292,7 +292,7 @@ namespace TwoLadles.UI
             openShopButton = CreateButton("OpenShopBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(90f, -38f), new Vector2(160f, 42f), "★ UPGRADES ★", new Color(0.75f, 0.52f, 0.12f, 1f), out openShopButtonLabel, 12);
             openShopButton.onClick.AddListener(OnOpenShopClicked);
 
-            openSettingsPopupButton = CreateButton("OpenSettingsBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-90f, -88f), new Vector2(160f, 38f), "⚙️  SETTINGS", new Color(0.22f, 0.25f, 0.34f, 0.95f), out _, 12);
+            openSettingsPopupButton = CreateButton("OpenSettingsBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-90f, -88f), new Vector2(160f, 38f), "⚙️  SETTINGS", new Color(0.22f, 0.25f, 0.34f, 0.95f), out var settingsT, 12); Reg(settingsT, "menu.settings");
             openSettingsPopupButton.onClick.AddListener(ShowSettingsPopup);
 
             openStoryPopupButton = CreateButton("OpenStoryBtn", mainMenuPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(90f, -88f), new Vector2(160f, 38f), "📖  STORIES", new Color(0.42f, 0.25f, 0.52f, 1f), out openStoryButtonLabel, 12);
@@ -301,7 +301,7 @@ namespace TwoLadles.UI
             // Bottom bar on main menu
             statusText = CreateLabel("StatusText", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(680f, 20f), "Ready to play on Local Wi-Fi.", 11, new Color(0.85f, 0.9f, 0.95f), TextAnchor.MiddleCenter);
             controlsGuideText = CreateLabel("ControlsGuide", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(680f, 20f), "[WASD] Walk  •  [E] Pick / Place  •  [F] Chop / Cook  •  [Q] Throw  •  [R] Recipes", 11, new Color(0.68f, 0.78f, 0.92f), TextAnchor.MiddleCenter);
-            CreateLabel("VersionBadge", mainMenuPanel.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-15f, 15f), new Vector2(120f, 18f), "v1.3.0", 11, new Color(1f, 1f, 1f, 0.5f), TextAnchor.MiddleRight);
+            CreateLabel("VersionBadge", mainMenuPanel.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-15f, 15f), new Vector2(120f, 18f), "v1.4.0", 11, new Color(1f, 1f, 1f, 0.5f), TextAnchor.MiddleRight);
 
             // -------------------------------------------------------------
             // SUB-PANEL B: HOST POPUP MODAL (Clean, asks for name & creates room)
@@ -316,21 +316,21 @@ namespace TwoLadles.UI
             var hpBg = hostPopupPanel.AddComponent<Image>();
             hpBg.color = new Color(0.06f, 0.08f, 0.12f, 0.98f);
 
-            CreateLabel("HostTitle", hostPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(600f, 26f), "HOST A NEW KITCHEN", 16, new Color(0.35f, 0.95f, 0.65f), TextAnchor.MiddleCenter);
-            CreateLabel("HostDesc", hostPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -80f), new Vector2(600f, 20f), "Choose your chef name and kitchen name. Your friend can join on the same Wi-Fi!", 11, new Color(0.75f, 0.82f, 0.90f), TextAnchor.MiddleCenter);
+            Reg(CreateLabel("HostTitle", hostPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(600f, 26f), "HOST A NEW KITCHEN", 16, new Color(0.35f, 0.95f, 0.65f), TextAnchor.MiddleCenter), "menu.host_title");
+            Reg(CreateLabel("HostDesc", hostPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -80f), new Vector2(600f, 20f), "Choose your chef name and kitchen name. Your friend can join on the same Wi-Fi!", 11, new Color(0.75f, 0.82f, 0.90f), TextAnchor.MiddleCenter), "menu.host_desc");
 
-            CreateLabel("NamePrompt", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-110f, 50f), new Vector2(220f, 20f), "Your Chef Name:", 12, Color.white, TextAnchor.MiddleRight);
+            Reg(CreateLabel("NamePrompt", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-110f, 50f), new Vector2(220f, 20f), "Your Chef Name:", 12, Color.white, TextAnchor.MiddleRight), "menu.name_prompt");
             string savedHostName = PlayerPrefs.GetString("TwoLadles_PlayerName", "Chef Linh");
             nameInput = CreateInputField("NameInput", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(60f, 50f), new Vector2(200f, 32f), savedHostName, "Your Chef Name");
 
-            CreateLabel("RoomPrompt", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-110f, 5f), new Vector2(220f, 20f), "Kitchen Room Name:", 12, Color.white, TextAnchor.MiddleRight);
+            Reg(CreateLabel("RoomPrompt", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-110f, 5f), new Vector2(220f, 20f), "Kitchen Room Name:", 12, Color.white, TextAnchor.MiddleRight), "menu.room_prompt");
             string savedRoomName = PlayerPrefs.GetString("TwoLadles_RoomName", "Two Ladles Bistro");
             roomNameInput = CreateInputField("RoomNameInput", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(60f, 5f), new Vector2(200f, 32f), savedRoomName, "Kitchen Name");
 
             hostButton = CreateButton("StartHostBtn", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(85f, -70f), new Vector2(170f, 44f), "START HOSTING", new Color(0.18f, 0.62f, 0.35f, 1f), out hostButtonLabel, 13);
             hostButton.onClick.AddListener(OnHostClicked);
 
-            var cancelHostBtn = CreateButton("CancelHostBtn", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-85f, -70f), new Vector2(140f, 44f), "CANCEL", new Color(0.25f, 0.28f, 0.36f, 1f), out _, 12);
+            var cancelHostBtn = CreateButton("CancelHostBtn", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-85f, -70f), new Vector2(140f, 44f), "CANCEL", new Color(0.25f, 0.28f, 0.36f, 1f), out var cancelT, 12); Reg(cancelT, "menu.cancel");
             cancelHostBtn.onClick.AddListener(ShowMainMenu);
 
             hostPopupPanel.SetActive(false);
@@ -348,7 +348,7 @@ namespace TwoLadles.UI
             var jpBg = joinPopupPanel.AddComponent<Image>();
             jpBg.color = new Color(0.06f, 0.08f, 0.12f, 0.98f);
 
-            CreateLabel("JoinTitle", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(600f, 26f), "JOIN A KITCHEN", 16, new Color(0.35f, 0.75f, 0.98f), TextAnchor.MiddleCenter);
+            Reg(CreateLabel("JoinTitle", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -38f), new Vector2(600f, 26f), "JOIN A KITCHEN", 16, new Color(0.35f, 0.75f, 0.98f), TextAnchor.MiddleCenter), "menu.join_title");
 
             // PRIMARY PATH: Automatic Wi-Fi kitchen scan
             lanHeaderLabel = CreateLabel("LanHeader", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -72f), new Vector2(600f, 22f), "OPEN KITCHENS ON YOUR WI-FI (AUTO-SCAN):", 12, new Color(0.4f, 0.95f, 0.75f), TextAnchor.MiddleCenter);
@@ -359,7 +359,7 @@ namespace TwoLadles.UI
                 int slotIdx = i;
                 float yPos = -106f - (i * 48f);
                 lanRoomButtons[i] = CreateButton($"LanRoomBtn_{i}", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, yPos), new Vector2(520f, 42f),
-                    i == 0 ? "🔍 Scanning your Wi-Fi for open kitchens..." : "🔄 Tap to refresh Wi-Fi scan",
+                    i == 0 ? Tr("menu.lan_scanning", "🔍 Scanning your Wi-Fi for open kitchens...") : Tr("menu.lan_refresh", "🔄 Tap to refresh Wi-Fi scan"),
                     new Color(0.14f, 0.18f, 0.24f, 0.95f), out lanRoomButtonLabels[i], 12);
                 lanRoomButtons[i].onClick.AddListener(() => OnLanRoomSlotClicked(slotIdx));
             }
@@ -367,7 +367,7 @@ namespace TwoLadles.UI
             joinStatusText = CreateLabel("JoinStatus", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -208f), new Vector2(680f, 24f), "", 11, new Color(0.85f, 0.95f, 1.0f), TextAnchor.MiddleCenter);
 
             // LAST RESORT: Manual IP entry
-            CreateLabel("IpPrompt", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -242f), new Vector2(680f, 20f), "─── OR ENTER HOST IP MANUALLY (LAST RESORT) ───", 11, new Color(1.0f, 0.85f, 0.35f), TextAnchor.MiddleCenter);
+            Reg(CreateLabel("IpPrompt", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -242f), new Vector2(680f, 20f), "─── OR ENTER HOST IP MANUALLY (LAST RESORT) ───", 11, new Color(1.0f, 0.85f, 0.35f), TextAnchor.MiddleCenter), "menu.ip_prompt");
 
             string savedIp = PlayerPrefs.GetString("TwoLadles_LastJoinedIP", "");
             if (!NetworkManager.IsUsableLanAddress(savedIp))
@@ -383,7 +383,7 @@ namespace TwoLadles.UI
             joinButton = CreateButton("DirectJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(140f, -280f), new Vector2(130f, 38f), "CONNECT", new Color(0.20f, 0.48f, 0.78f, 1f), out joinButtonLabel, 13);
             joinButton.onClick.AddListener(OnJoinClicked);
 
-            var cancelJoinBtn = CreateButton("CancelJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 35f), new Vector2(160f, 38f), "BACK", new Color(0.25f, 0.28f, 0.36f, 1f), out _, 12);
+            var cancelJoinBtn = CreateButton("CancelJoinBtn", joinPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 35f), new Vector2(160f, 38f), "BACK", new Color(0.25f, 0.28f, 0.36f, 1f), out var backT, 12); Reg(backT, "menu.back");
             cancelJoinBtn.onClick.AddListener(ShowMainMenu);
 
             joinPopupPanel.SetActive(false);
@@ -423,6 +423,10 @@ namespace TwoLadles.UI
             endlessModeButton = CreateButton("EndlessBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -210f), new Vector2(240f, 34f), "∞ ENDLESS SURVIVAL MODE", new Color(0.48f, 0.25f, 0.58f, 1f), out endlessModeButtonLabel, 11);
             endlessModeButton.onClick.AddListener(OnSelectEndlessClicked);
 
+            // Chef switch: Linh -> Jiwon -> placeholder (???) -> Linh. Placeholder can never Ready.
+            chefCycleButton = CreateButton("ChefCycleBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-250f, -210f), new Vector2(160f, 34f), "CHEF: LINH ⟳", new Color(0.22f, 0.5f, 0.45f, 1f), out chefCycleText, 11);
+            chefCycleButton.onClick.AddListener(OnChefCycleClicked);
+
             // Room Action Row: Ready, Start Level, Leave
             readyButton = CreateButton("ReadyBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-210f, -252f), new Vector2(150f, 44f), "READY: NO", new Color(0.25f, 0.45f, 0.68f, 1f), out readyButtonText, 12);
             readyButton.onClick.AddListener(OnReadyClicked);
@@ -430,7 +434,7 @@ namespace TwoLadles.UI
             startShiftButton = CreateButton("StartShiftBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(15f, -252f), new Vector2(260f, 44f), "▶ START LEVEL 1 (3 WAVES)", new Color(0.88f, 0.42f, 0.14f, 1f), out startShiftButtonText, 13);
             startShiftButton.onClick.AddListener(OnStartShiftClicked);
 
-            leaveRoomButton = CreateButton("LeaveRoomBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(215f, -252f), new Vector2(110f, 44f), "LEAVE", new Color(0.68f, 0.22f, 0.25f, 1f), out _, 12);
+            leaveRoomButton = CreateButton("LeaveRoomBtn", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(215f, -252f), new Vector2(110f, 44f), "LEAVE", new Color(0.68f, 0.22f, 0.25f, 1f), out var leaveT, 12); Reg(leaveT, "menu.leave");
             leaveRoomButton.onClick.AddListener(OnLeaveRoomClicked);
 
             roomStatusText = CreateLabel("RoomStatus", roomPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -312f), new Vector2(680f, 36f), "", 12, new Color(0.85f, 0.95f, 1.0f), TextAnchor.MiddleCenter);
@@ -450,10 +454,10 @@ namespace TwoLadles.UI
             var spBg = settingsPopupPanel.AddComponent<Image>();
             spBg.color = new Color(0.06f, 0.08f, 0.12f, 0.98f);
 
-            CreateLabel("SettingsTitle", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -45f), new Vector2(600f, 26f), "SETTINGS & OPTIONS", 16, new Color(1.0f, 0.85f, 0.35f), TextAnchor.MiddleCenter);
+            Reg(CreateLabel("SettingsTitle", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -45f), new Vector2(600f, 26f), "SETTINGS & OPTIONS", 16, new Color(1.0f, 0.85f, 0.35f), TextAnchor.MiddleCenter), "menu.settings_title");
 
             // Language Selection
-            CreateLabel("LangHeader", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -95f), new Vector2(600f, 20f), "Display Language:", 12, Color.white, TextAnchor.MiddleCenter);
+            Reg(CreateLabel("LangHeader", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -95f), new Vector2(600f, 20f), "Display Language:", 12, Color.white, TextAnchor.MiddleCenter), "menu.lang_header");
             langEnButton = CreateButton("LangEnBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-110f, -135f), new Vector2(100f, 32f), "English", new Color(0.15f, 0.18f, 0.24f, 0.9f), out langEnText, 11);
             langEnButton.onClick.AddListener(() => SetAppLanguage(LocalizationManager.LANG_EN));
 
@@ -464,13 +468,21 @@ namespace TwoLadles.UI
             langKoButton.onClick.AddListener(() => SetAppLanguage(LocalizationManager.LANG_KO));
 
             // Solo / AI Mode Toggle
-            CreateLabel("ModeHeader", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -185f), new Vector2(600f, 20f), "Cooperative or Solo Mode:", 12, Color.white, TextAnchor.MiddleCenter);
+            Reg(CreateLabel("ModeHeader", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -185f), new Vector2(600f, 20f), "Cooperative or Solo Mode:", 12, Color.white, TextAnchor.MiddleCenter), "menu.mode_header");
             modeToggleButton = CreateButton("ModeToggleBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-95f, -225f), new Vector2(170f, 34f), "MODE: LAN CO-OP", new Color(0.18f, 0.35f, 0.55f, 0.95f), out modeToggleText, 11);
             modeToggleButton.onClick.AddListener(OnToggleModeClicked);
 
             chefSelectButton = CreateButton("ChefSelectBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(95f, -225f), new Vector2(180f, 34f), "YOU: LINH (AI: JIWON)", new Color(0.24f, 0.28f, 0.38f, 0.95f), out chefSelectText, 11);
             chefSelectButton.onClick.AddListener(OnToggleChefSelectClicked);
             chefSelectButton.gameObject.SetActive(isSoloMode);
+
+            // UI / HUD size: [-] 100% [+]. Saved and applied to every canvas immediately.
+            float uiRowY = Application.isMobilePlatform ? -280f : -370f;
+            uiSizeText = CreateLabel("UISizeLabel", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, uiRowY), new Vector2(200f, 24f), UISizeLabel(), 12, Color.white, TextAnchor.MiddleCenter);
+            var uiMinusBtn = CreateButton("UISizeMinusBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-140f, uiRowY), new Vector2(50f, 32f), "−", new Color(0.15f, 0.18f, 0.24f, 0.9f), out _, 14);
+            uiMinusBtn.onClick.AddListener(() => { UIScaleSettings.Step(-1); uiSizeText.text = UISizeLabel(); });
+            var uiPlusBtn = CreateButton("UISizePlusBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(140f, uiRowY), new Vector2(50f, 32f), "+", new Color(0.15f, 0.18f, 0.24f, 0.9f), out _, 14);
+            uiPlusBtn.onClick.AddListener(() => { UIScaleSettings.Step(1); uiSizeText.text = UISizeLabel(); });
 
             // 2-Bot QA Test Button: dev tool, lives in Settings, hidden on mobile.
             twoBotTestButton = CreateButton("TwoBotTestBtn", settingsPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -280f), new Vector2(220f, 36f), "🤖 2-BOT TEST RUN", new Color(0.18f, 0.50f, 0.64f, 0.75f), out twoBotTestButtonText, 11);
@@ -486,7 +498,7 @@ namespace TwoLadles.UI
             qaUpgradesButton.onClick.AddListener(() => { qaAllUpgrades = !qaAllUpgrades; qaUpgradesText.text = QAUpgradesLabel(); });
             qaUpgradesButton.gameObject.SetActive(!Application.isMobilePlatform);
 
-            var closeSettingsBtn = CreateButton("CloseSettingsBtn", settingsPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 35f), new Vector2(150f, 36f), "CLOSE", new Color(0.25f, 0.28f, 0.36f, 1f), out _, 12);
+            var closeSettingsBtn = CreateButton("CloseSettingsBtn", settingsPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 35f), new Vector2(150f, 36f), "CLOSE", new Color(0.25f, 0.28f, 0.36f, 1f), out var closeSettingsT, 12); Reg(closeSettingsT, "menu.close");
             closeSettingsBtn.onClick.AddListener(ShowMainMenu);
 
             settingsPopupPanel.SetActive(false);
@@ -504,10 +516,10 @@ namespace TwoLadles.UI
             var stBg = storyPopupPanel.AddComponent<Image>();
             stBg.color = new Color(0.06f, 0.08f, 0.12f, 0.98f);
 
-            CreateLabel("StoryTitle", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -42f), new Vector2(600f, 26f), "STORY & CUTSCENES", 16, new Color(0.95f, 0.75f, 0.35f), TextAnchor.MiddleCenter);
-            CreateLabel("StoryDesc", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -70f), new Vector2(600f, 20f), "Replay chef conversations, text messages, and recipe intros:", 11, new Color(0.75f, 0.82f, 0.90f), TextAnchor.MiddleCenter);
+            Reg(CreateLabel("StoryTitle", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -42f), new Vector2(600f, 26f), "STORY & CUTSCENES", 16, new Color(0.95f, 0.75f, 0.35f), TextAnchor.MiddleCenter), "story.title");
+            Reg(CreateLabel("StoryDesc", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -70f), new Vector2(600f, 20f), "Replay chef conversations, text messages, and recipe intros:", 11, new Color(0.75f, 0.82f, 0.90f), TextAnchor.MiddleCenter), "story.desc");
 
-            var openingBtn = CreateButton("StoryOpeningBtn", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -108f), new Vector2(360f, 34f), "✨ OPENING: FIRST ENCOUNTER", new Color(0.72f, 0.28f, 0.45f, 1f), out _, 11);
+            var openingBtn = CreateButton("StoryOpeningBtn", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -108f), new Vector2(360f, 34f), "✨ OPENING: FIRST ENCOUNTER", new Color(0.72f, 0.28f, 0.45f, 1f), out var openingT, 11); Reg(openingT, "story.opening");
             openingBtn.onClick.AddListener(() =>
             {
                 PlayerPrefs.DeleteKey(PhoneStoryUI.OPENING_SEEN_PREF);
@@ -526,14 +538,14 @@ namespace TwoLadles.UI
             {
                 int dayNum = i + 1;
                 float yPos = -152f - (i * 38f);
-                var dayBtn = CreateButton($"StoryDayBtn_{dayNum}", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, yPos), new Vector2(360f, 32f), $"📖  {dayTitles[i]}", new Color(0.18f, 0.25f, 0.38f, 0.95f), out _, 11);
+                var dayBtn = CreateButton($"StoryDayBtn_{dayNum}", storyPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, yPos), new Vector2(360f, 32f), $"📖  {dayTitles[i]}", new Color(0.18f, 0.25f, 0.38f, 0.95f), out var dayT, 11); Reg(dayT, $"story.day{dayNum}", "📖  ");
                 dayBtn.onClick.AddListener(() =>
                 {
                     PhoneStoryUI.Show(dayNum, null, false);
                 });
             }
 
-            var closeStoryBtn = CreateButton("CloseStoryBtn", storyPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 35f), new Vector2(150f, 36f), "CLOSE", new Color(0.25f, 0.28f, 0.36f, 1f), out _, 12);
+            var closeStoryBtn = CreateButton("CloseStoryBtn", storyPopupPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 35f), new Vector2(150f, 36f), "CLOSE", new Color(0.25f, 0.28f, 0.36f, 1f), out var closeStoryT, 12); Reg(closeStoryT, "menu.close");
             closeStoryBtn.onClick.AddListener(ShowMainMenu);
 
             storyPopupPanel.SetActive(false);
@@ -627,6 +639,20 @@ namespace TwoLadles.UI
             }
         }
 
+        // Static labels that only need a translation lookup when the language changes.
+        private readonly List<(Text text, string key, string prefix)> staticLocTexts = new List<(Text, string, string)>();
+        private Text Reg(Text t, string key, string prefix = "")
+        {
+            if (t != null) staticLocTexts.Add((t, key, prefix));
+            return t;
+        }
+
+        private static string Tr(string key, string fallback)
+        {
+            var lm = LocalizationManager.Instance;
+            return lm != null ? lm.Get(key, fallback) : fallback;
+        }
+
         public void ToggleMenuVisibility()
         {
             if (modalPanel != null)
@@ -635,7 +661,7 @@ namespace TwoLadles.UI
                 modalPanel.SetActive(newState);
                 if (toggleMenuButtonText != null)
                 {
-                    toggleMenuButtonText.text = newState ? "Hide Menu [ESC]" : "Show Menu [ESC]";
+                    toggleMenuButtonText.text = newState ? Tr("menu.hide_menu", "Hide Menu [ESC]") : Tr("menu.show_menu", "Show Menu [ESC]");
                 }
                 if (newState)
                 {
@@ -788,7 +814,7 @@ namespace TwoLadles.UI
                 }
                 else
                 {
-                    lanRoomButtonLabels[i].text = i == 0 ? "🔍 Scanning your Wi-Fi for open kitchens..." : "🔄 Tap to refresh Wi-Fi scan";
+                    lanRoomButtonLabels[i].text = i == 0 ? Tr("menu.lan_scanning", "🔍 Scanning your Wi-Fi for open kitchens...") : Tr("menu.lan_refresh", "🔄 Tap to refresh Wi-Fi scan");
                     lanRoomButtons[i].GetComponent<Image>().color = new Color(0.14f, 0.18f, 0.24f, 0.95f);
                 }
             }
@@ -813,8 +839,39 @@ namespace TwoLadles.UI
             int localId = NetworkManager.Instance.localPeerId;
             if (NetworkManager.Instance.players.TryGetValue(localId, out var p))
             {
-                NetworkManager.Instance.SetPlayerReady(localId, !p.ready);
+                var res = NetworkManager.Instance.SetPlayerReady(localId, !p.ready);
+                if (!res.ok) UpdateStatus(res.reason, true);
             }
+        }
+
+        private Button chefCycleButton;
+        private Text chefCycleText;
+
+        /// <summary>Cycles local chef Linh -> Jiwon -> placeholder, skipping a chef the partner already holds.</summary>
+        private void OnChefCycleClicked()
+        {
+            var nm = NetworkManager.Instance;
+            if (nm == null) return;
+            int localId = nm.localPeerId;
+            if (!nm.players.TryGetValue(localId, out var p)) return;
+
+            string[] order = { "linh", "jiwon", NetworkManager.PLACEHOLDER_CHAR };
+            int idx = System.Array.IndexOf(order, p.character);
+            for (int step = 1; step <= order.Length; step++)
+            {
+                string next = order[(idx + step + order.Length) % order.Length];
+                var res = nm.ApplyPlayerSelection(localId, next, p.specialization);
+                if (res.ok) return;
+            }
+            UpdateStatus("Could not switch chef.", true);
+        }
+
+        private static string ChefDisplayName(string characterId)
+        {
+            var lm = LocalizationManager.Instance;
+            if (characterId == NetworkManager.PLACEHOLDER_CHAR) return lm != null ? lm.Get("char.placeholder", "???") : "???";
+            string key = "char.short_" + characterId;
+            return lm != null ? lm.Get(key, characterId.ToUpper()) : characterId.ToUpper();
         }
 
         private void OnPlayTutorialClicked()
@@ -891,6 +948,16 @@ namespace TwoLadles.UI
         private string QADayLabel() => qaDayOption == 0 ? "TEST DAY: ALL (1-5)" : "TEST DAY: " + qaDayOption;
         private string QAUpgradesLabel() => qaAllUpgrades ? "ALL UPGRADES: ON" : "ALL UPGRADES: OFF";
 
+        // UI / HUD size option (Settings popup)
+        private Text uiSizeText;
+        private static string UISizeLabel()
+        {
+            int pct = Mathf.RoundToInt(UIScaleSettings.Get() * 100f);
+            var lm = LocalizationManager.Instance;
+            string fmt = lm != null ? lm.Get("menu.ui_size", "UI SIZE: {0}%") : "UI SIZE: {0}%";
+            try { return string.Format(fmt, pct); } catch (FormatException) { return $"UI SIZE: {pct}%"; }
+        }
+
         private void OnTwoBotTestClicked()
         {
             if (TwoLadles.AI.TwoBotQAManager.Instance == null)
@@ -927,29 +994,43 @@ namespace TwoLadles.UI
 
         private void RefreshLobbyDisplay(Dictionary<int, PlayerLobbyInfo> players)
         {
+            var lm = LocalizationManager.Instance;
+            string L(string key, string fb) => lm != null ? lm.Get(key, fb) : fb;
+
             if (playersListText != null)
             {
                 if (players == null || players.Count == 0)
                 {
-                    playersListText.text = "Room Chefs: Linh (West) & Jiwon (East)";
+                    playersListText.text = L("menu.room_chefs_default", "Room Chefs: Linh (West) & Jiwon (East)");
                 }
                 else
                 {
                     var parts = new List<string>();
                     foreach (var p in players.Values)
                     {
-                        string readyMark = p.ready ? "READY ✓" : "WAITING...";
-                        parts.Add($"{p.name} ({p.character.ToUpper()}): [{readyMark}]");
+                        string readyMark = p.ready ? L("menu.ready_mark", "READY ✓") : L("menu.waiting_mark", "WAITING...");
+                        parts.Add($"{p.name} ({ChefDisplayName(p.character)}): [{readyMark}]");
                     }
-                    playersListText.text = "Chefs in Kitchen: " + string.Join("  •  ", parts);
+                    playersListText.text = L("menu.chefs_in_kitchen", "Chefs in Kitchen: ") + string.Join("  •  ", parts);
                 }
             }
 
+            bool lanRoom = !isSoloMode && NetworkManager.Instance != null && NetworkManager.Instance.isLanActive;
+            if (chefCycleButton != null) chefCycleButton.gameObject.SetActive(lanRoom);
+
             if (NetworkManager.Instance != null && NetworkManager.Instance.players.TryGetValue(NetworkManager.Instance.localPeerId, out var localP))
             {
+                bool canReady = NetworkManager.CanReadyAs(localP.character);
+                if (readyButton != null) readyButton.interactable = canReady;
                 if (readyButtonText != null)
                 {
-                    readyButtonText.text = localP.ready ? "READY: YES ✓" : "READY: NO";
+                    if (!canReady) readyButtonText.text = L("menu.pick_chef", "PICK A CHEF");
+                    else readyButtonText.text = localP.ready ? L("menu.ready_yes", "READY: YES") + " ✓" : L("menu.ready_no", "READY: NO");
+                }
+                if (chefCycleText != null)
+                {
+                    string name = ChefDisplayName(localP.character);
+                    chefCycleText.text = lm != null ? lm.Format("menu.chef_cycle", name) : $"CHEF: {name} ⟳";
                 }
             }
 
@@ -1014,15 +1095,16 @@ namespace TwoLadles.UI
             var lm = LocalizationManager.Instance;
 
             if (titleLabel != null) titleLabel.text = lm.Get("menu.title");
-            if (lanHeaderLabel != null) lanHeaderLabel.text = "OPEN KITCHENS ON YOUR WI-FI (AUTO-SCAN):";
-            if (hostButtonLabel != null) hostButtonLabel.text = lm.Get("menu.host_room");
-            if (joinButtonLabel != null) joinButtonLabel.text = "CONNECT";
+            if (lanHeaderLabel != null) lanHeaderLabel.text = lm.Get("menu.lan_header", "OPEN KITCHENS ON YOUR WI-FI (AUTO-SCAN):");
+            if (hostButtonLabel != null) hostButtonLabel.text = lm.Get("menu.start_hosting", "START HOSTING");
+            if (joinButtonLabel != null) joinButtonLabel.text = lm.Get("menu.connect", "CONNECT");
             if (levelSelectHeaderLabel != null) levelSelectHeaderLabel.text = lm.Get("menu.level_select");
             if (playTutorialButtonLabel != null) playTutorialButtonLabel.text = lm.Get("menu.play_tutorial");
             if (endlessModeButtonLabel != null) endlessModeButtonLabel.text = lm.Get("menu.endless_mode");
             if (openShopButtonLabel != null) openShopButtonLabel.text = lm.Get("menu.upgrade_shop");
-            if (openStoryButtonLabel != null) openStoryButtonLabel.text = "📖  STORIES";
+            if (openStoryButtonLabel != null) openStoryButtonLabel.text = lm.Get("menu.stories", "📖  STORIES");
             if (twoBotTestButtonText != null) twoBotTestButtonText.text = lm.Get("menu.two_bot_test");
+            if (uiSizeText != null) uiSizeText.text = UISizeLabel();
             if (controlsGuideText != null) controlsGuideText.text = lm.Get("menu.controls_guide");
             if (toggleMenuButtonText != null)
             {
@@ -1039,6 +1121,12 @@ namespace TwoLadles.UI
             {
                 chefSelectText.text = (humanChefPeerId == 1) ? lm.Get("menu.human_linh") : lm.Get("menu.human_jiwon");
             }
+
+            foreach (var e in staticLocTexts)
+            {
+                if (e.text != null) e.text.text = e.prefix + lm.Get(e.key, e.text.text);
+            }
+            if (playersListText != null && NetworkManager.Instance != null) RefreshLobbyDisplay(NetworkManager.Instance.players);
 
             string curLang = lm.CurrentLanguage;
             UpdateLangBtnHighlight(langEnButton, langEnText, curLang == LocalizationManager.LANG_EN);
@@ -1072,6 +1160,7 @@ namespace TwoLadles.UI
                 careerScoreText.text = lm != null ? lm.Format("menu.score", ProgressionManager.Instance.totalCareerScore) : $"SCORE: {ProgressionManager.Instance.totalCareerScore}";
 
             string[] lvlNames = new string[] { "Tteokbokki", "+ Bột Chiên", "+ K-BBQ Rice", "+ Broken Rice", "3m Banh Mi" };
+            for (int n = 0; n < lvlNames.Length; n++) lvlNames[n] = Tr($"menu.lvl{n + 1}", lvlNames[n]);
             for (int i = 0; i < 5; i++)
             {
                 int lvlId = i + 1;
@@ -1081,8 +1170,9 @@ namespace TwoLadles.UI
                 bool completed = ProgressionManager.Instance.IsLevelCompleted(lvlId);
                 bool isSelected = (!isEndlessSelected && selectedLevelId == lvlId);
 
-                string statusTag = completed ? "★ COMPLETED ★" : (unlocked ? (lm != null ? lm.Get("menu.unlocked") : "UNLOCKED") : (lm != null ? lm.Get("menu.locked") : "LOCKED"));
-                levelSelectLabels[i].text = $"DAY {lvlId}\n{lvlNames[i]}\n[{statusTag}]";
+                string statusTag = completed ? Tr("menu.completed", "★ COMPLETED ★") : (unlocked ? (lm != null ? lm.Get("menu.unlocked") : "UNLOCKED") : (lm != null ? lm.Get("menu.locked") : "LOCKED"));
+                string dayLabel = lm != null ? lm.Format("menu.day_n", lvlId) : $"DAY {lvlId}";
+                levelSelectLabels[i].text = $"{dayLabel}\n{lvlNames[i]}\n[{statusTag}]";
 
                 if (!unlocked)
                 {

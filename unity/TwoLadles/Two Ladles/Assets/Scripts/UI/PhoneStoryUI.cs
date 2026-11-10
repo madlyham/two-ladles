@@ -12,8 +12,8 @@ namespace TwoLadles.UI
 {
     /// <summary>
     /// Start-of-day story phone. Built fully in code (no prefab).
-    /// Flow: screen off -> wakes -> (first time only: swipe right on Jiwon -> opening chat)
-    /// -> day chat -> dish card -> Start Shift. SKIP button / Esc always closes it.
+    /// Flow: screen off -> wakes -> (first time only: swipe right on Jiwon) -> lock screen
+    /// notification -> day chat (Day 1 = opening chat) -> dish card -> Start Shift. SKIP button / Esc always closes it.
     /// Uses unscaled time so it works while gameplay is paused.
     /// </summary>
     public class PhoneStoryUI : MonoBehaviour
@@ -111,6 +111,7 @@ namespace TwoLadles.UI
         private RectTransform chatContent;
         private ScrollRect chatScroll;
         private RectTransform swipeCard;
+        private float swipeCardY = -230f; // card centre offset from the match panel top
 
         // ---------------------------------------------------------------- lifecycle
         private void Awake()
@@ -168,20 +169,22 @@ namespace TwoLadles.UI
             yield return Fade(blackout, 1f, 0f, 0.5f);
             blackout.blocksRaycasts = false;
 
-            // 2) Lock screen with clock + notification.
-            yield return Wait(1.4f);
-            lockPanel.SetActive(false);
-
-            // 3) First time only: swipe right on Jiwon.
+            // 2) First time only: the dating-app swipe on Jiwon plays BEFORE the notification.
             if (openingShown)
             {
+                lockPanel.SetActive(false);
                 matchPanel.SetActive(true);
                 float t = 0f;
                 while (!swiped && t < 6f) { t += Time.unscaledDeltaTime; yield return null; }
                 yield return FlyCardRight();
                 yield return Wait(1.0f);
                 matchPanel.SetActive(false);
+                lockPanel.SetActive(true);
             }
+
+            // 3) Lock screen with clock + "1 new message" notification.
+            yield return Wait(1.4f);
+            lockPanel.SetActive(false);
 
             // 4) Today's chat. Day 1 always replays the opening chat (it is Day 1's story),
             //    so replays no longer jump straight to the dish card.
@@ -399,6 +402,7 @@ namespace TwoLadles.UI
             scaler.referenceResolution = new Vector2(1280, 720);
             scaler.matchWidthOrHeight = 1f;
             gameObject.AddComponent<GraphicRaycaster>();
+            UIScaleSettings.Apply(); // honour saved UI / HUD size
 
             // Dim background (also blocks clicks to the HUD behind).
             var dim = Panel(transform, "Dim", new Color(0, 0, 0, 0.78f));
@@ -495,7 +499,10 @@ namespace TwoLadles.UI
             // Swipeable Jiwon card.
             var card = Box(bg.transform, "SwipeCard", Color.white, 0.5f);
             swipeCard = card.rectTransform;
-            Place(swipeCard, 0, -60, 260, 380);
+            // Card is centre-pivoted: y -60 put its top edge ~130px above the screen top (head cut off).
+            // Lower the whole card so its top sits below the phone's top edge (a bit more on mobile).
+            swipeCardY = Application.isMobilePlatform ? -250f : -230f;
+            Place(swipeCard, 0, swipeCardY, 260, 380);
             // Head-and-shoulders crop: a masked frame shows only the top of the full-body sprite (legs cut off).
             var frame = new GameObject("PortraitFrame", typeof(RectTransform), typeof(RectMask2D));
             frame.transform.SetParent(card.transform, false);
@@ -520,10 +527,10 @@ namespace TwoLadles.UI
             swipe.owner = this;
 
             var hint = MakeText(bg.transform, () => L("swipe"), 18, Ink, TextAnchor.MiddleCenter);
-            Place(hint.rectTransform, 0, -470, 300, 30);
+            Place(hint.rectTransform, 0, swipeCardY - 215f, 300, 30);
 
             var go = MakeButton(bg.transform, () => ">>", HeartRed, () => swiped = true);
-            Place((RectTransform)go.transform, 0, -530, 90, 50);
+            Place((RectTransform)go.transform, 0, swipeCardY - 272f, 90, 50);
 
             // Shown after swipe.
             var match = new GameObject("MatchText", typeof(RectTransform));
@@ -798,7 +805,7 @@ namespace TwoLadles.UI
                 float scale = canvas != null ? canvas.scaleFactor : 1f;
                 dragX = Mathf.Max(0f, dragX + e.delta.x / scale);
                 var rt = (RectTransform)transform;
-                rt.anchoredPosition = new Vector2(dragX, -60f);
+                rt.anchoredPosition = new Vector2(dragX, owner.swipeCardY);
                 rt.localRotation = Quaternion.Euler(0, 0, -dragX * 0.08f);
             }
 
@@ -810,7 +817,7 @@ namespace TwoLadles.UI
                 {
                     dragX = 0f;
                     var rt = (RectTransform)transform;
-                    rt.anchoredPosition = new Vector2(0f, -60f);
+                    rt.anchoredPosition = new Vector2(0f, owner.swipeCardY);
                     rt.localRotation = Quaternion.identity;
                 }
             }

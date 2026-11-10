@@ -1402,14 +1402,23 @@ namespace TwoLadles.Networking
             }
         }
 
+        /// <summary>Lobby-only stand-in chef: lets a player step off Linh/Jiwon, but can never be Ready.</summary>
+        public const string PLACEHOLDER_CHAR = "placeholder";
+
+        /// <summary>True when a player using this character may mark themselves Ready.</summary>
+        public static bool CanReadyAs(string characterId) => characterId != PLACEHOLDER_CHAR;
+
         public (bool ok, string reason) ApplyPlayerSelection(int peerId, string characterId, string specializationId)
         {
             if (!players.ContainsKey(peerId))
                 return (false, "Unknown player peer ID.");
 
+            if (characterId != "linh" && characterId != "jiwon" && characterId != PLACEHOLDER_CHAR)
+                return (false, "Unknown character.");
+
             foreach (var kvp in players)
             {
-                if (kvp.Key != peerId && kvp.Value.character == characterId)
+                if (characterId != PLACEHOLDER_CHAR && kvp.Key != peerId && kvp.Value.character == characterId)
                 {
                     return (false, $"{characterId.ToUpper()} is already selected by your partner! Choose the other chef.");
                 }
@@ -1443,6 +1452,9 @@ namespace TwoLadles.Networking
             if (!players.ContainsKey(peerId))
                 return (false, "Unknown player peer ID.");
 
+            if (isReady && !CanReadyAs(players[peerId].character))
+                return (false, "Pick Linh or Jiwon before readying up (placeholder chef cannot Ready).");
+
             players[peerId].ready = isReady;
 
             if (!IsHost() && partnerEndPoint != null)
@@ -1468,6 +1480,9 @@ namespace TwoLadles.Networking
             {
                 if (!p.ready)
                     return (false, $"{p.name} is not Ready yet.");
+
+                if (!CanReadyAs(p.character))
+                    return (false, $"{p.name} is using the placeholder chef. Pick Linh or Jiwon.");
 
                 if (seenChars.Contains(p.character))
                     return (false, "Linh and Jiwon must both be represented (no duplicate characters).");

@@ -395,6 +395,27 @@ namespace TwoLadles.Tests
 
             var startBlocked = NetworkManager.Instance.CanStartShift(true);
             Assert(!startBlocked.ok, "Host cannot start shift after a player's Ready status was reset");
+
+            // Placeholder chef: selectable, never ready-able, never blocks the other chef.
+            NetworkManager.Instance.players[1].ready = true;
+            var phSel = NetworkManager.Instance.ApplyPlayerSelection(2, "placeholder", "prep_master");
+            Assert(phSel.ok, "Lobby allows switching to the PLACEHOLDER character");
+            Assert(!NetworkManager.Instance.players[2].ready, "Switching to the placeholder resets Ready to false");
+            var phReady = NetworkManager.Instance.SetPlayerReady(2, true);
+            Assert(!phReady.ok, "SetPlayerReady rejects a player using the placeholder character");
+            Assert(!NetworkManager.Instance.players[2].ready, "Placeholder player's Ready stays false after a rejected ready");
+            Assert(!NetworkManager.CanReadyAs("placeholder") && NetworkManager.CanReadyAs("linh") && NetworkManager.CanReadyAs("jiwon"),
+                "CanReadyAs blocks only the placeholder character");
+            var phBoth = NetworkManager.Instance.ApplyPlayerSelection(1, "placeholder", "prep_master");
+            Assert(phBoth.ok, "Both players may sit on the placeholder at once (no exclusivity)");
+            NetworkManager.Instance.players[1].ready = true; NetworkManager.Instance.players[2].ready = true; // forced (e.g. stale packet)
+            Assert(!NetworkManager.Instance.CanStartShift(true).ok, "Shift cannot start while any player uses the placeholder");
+            NetworkManager.Instance.ApplyPlayerSelection(1, "linh", "prep_master");
+            NetworkManager.Instance.ApplyPlayerSelection(2, "jiwon", "flame_keeper");
+            var backReady1 = NetworkManager.Instance.SetPlayerReady(1, true);
+            var backReady2 = NetworkManager.Instance.SetPlayerReady(2, true);
+            Assert(backReady1.ok && backReady2.ok && NetworkManager.Instance.CanStartShift(true).ok,
+                "After leaving the placeholder, both chefs can Ready and the shift can start");
         }
 
         // Suite 9: Progression System (14 assertions)
@@ -1272,6 +1293,12 @@ namespace TwoLadles.Tests
             Assert(wkPrep.strikesCompleted == 0, "Client part-timer only animates (host owns chopping)");
             Assert(!NetworkManager.ApplyWorkerPacket("WORKER|w|prep_assistant|no_such_station", kcSync) && !NetworkManager.ApplyWorkerPacket("junk", kcSync), "Bad WORKER packets ignored");
             nmSync.localPeerId = 1;
+
+            // 12. UI / HUD size option stays in a safe readable range
+            Assert(Mathf.Abs(TwoLadles.UI.UIScaleSettings.Clamp(2.0f) - TwoLadles.UI.UIScaleSettings.MAX) < 0.001f
+                && Mathf.Abs(TwoLadles.UI.UIScaleSettings.Clamp(0.1f) - TwoLadles.UI.UIScaleSettings.MIN) < 0.001f
+                && Mathf.Abs(TwoLadles.UI.UIScaleSettings.Clamp(float.NaN) - 1.0f) < 0.001f, "UI scale clamps to safe range (NaN -> 100%)");
+            Assert(Mathf.Abs(TwoLadles.UI.UIScaleSettings.ScaledReference(new Vector2(1280f, 720f), 1.25f).x - 1024f) < 0.5f, "Bigger UI scale shrinks the canvas reference resolution");
 
             nmSync.isLanActive = false;
             nmSync.localPeerId = 1;

@@ -1,15 +1,11 @@
 key,en,vi,ko
 menu.title,TWO LADLES: VIETNAM & KOREA CO-OP,TWO LADLES: HỢP TÁC BẾP VIỆT & HÀN,투 레들: 베트남 & 한국 코옵
-menu.subtitle,Korea Game Week 2026,Korea Game Week 2026,코리아 게임 위크 2026
 menu.gold,GOLD: {0}g,VÀNG: {0}g,골드: {0}g
 menu.score,SCORE: {0},ĐIỂM: {0},점수: {0}
-menu.lan_header,LAN MULTIPLAYER — CREATE A ROOM OR CLICK A DISCOVERED ROOM TO JOIN,CHƠI MẠNG LAN — TẠO PHÒNG HOẶC CHỌN PHÒNG ĐÃ TÌM THẤY,LAN 멀티플레이어 — 방을 생성하거나 검색된 방을 클릭하여 참가
-menu.host_room,HOST ROOM,TẠO PHÒNG,방 만들기
-menu.auto_join,AUTO-JOIN LAN,TỰ ĐỘNG THAM GIA,자동 참가
-menu.lan_scanning,[LAN] Scanning for open kitchens...,[LAN] Đang quét tìm bếp mở...,[LAN] 열린 주방 검색 중...
-menu.lan_refresh,[LAN] Click to refresh scan,[LAN] Nhấp để quét lại,[LAN] 클릭하여 새로고침
-menu.lan_active,LAN Auto-Scanner Active.,Bộ quét tự động mạng LAN đang hoạt động.,LAN 자동 검색기 활성 상태.
-menu.level_select,SELECT LEVEL (REPLAY COMPLETED LEVELS ANYTIME FOR EXTRA GOLD),CHỌN MÀN CHƠI (CHƠI LẠI ĐỂ KIẾM THÊM VÀNG),레벨 선택 (완료한 레벨을 다시 플레이하여 골드 획득)
+menu.lan_header,OPEN KITCHENS ON YOUR WI-FI (AUTO-SCAN):,BẾP ĐANG MỞ TRÊN WI-FI CỦA BẠN (TỰ QUÉT):,내 와이파이의 열린 주방 (자동 검색):
+menu.lan_scanning,🔍 Scanning your Wi-Fi for open kitchens...,🔍 Đang quét Wi-Fi tìm bếp đang mở...,🔍 와이파이에서 열린 주방 검색 중...
+menu.lan_refresh,🔄 Tap to refresh Wi-Fi scan,🔄 Chạm để quét lại Wi-Fi,🔄 눌러서 와이파이 다시 검색
+menu.level_select,SELECT LEVEL (REPLAY COMPLETED LEVELS ANYTIME),CHỌN MÀN CHƠI (CÓ THỂ CHƠI LẠI MÀN ĐÃ QUA),레벨 선택 (완료한 레벨은 언제든 다시 플레이)
 menu.play_tutorial,★ PLAY TUTORIAL ★,★ CHƠI HƯỚNG DẪN ★,★ 튜토리얼 플레이 ★
 menu.endless_mode,∞ ENDLESS MODE,∞ CHẾ ĐỘ VÔ TẬN,∞ 무한 모드
 menu.upgrade_shop,★ UPGRADE SHOP ★,★ CỬA HÀNG NÂNG CẤP ★,★ 업그레이드 상점 ★
@@ -17,25 +13,16 @@ menu.ready_yes,READY: YES,SẴN SÀNG: CÓ,준비 완료: 예
 menu.ready_no,READY: NO,SẴN SÀNG: CHƯA,준비 완료: 아니오
 menu.start_level,▶ START LEVEL {0} ({1} WAVES),▶ BẮT ĐẦU MÀN {0} ({1} ĐỢT),▶ 레벨 {0} 시작 ({1} 웨이브)
 menu.start_endless,▶ START ENDLESS RUSH,▶ BẮT ĐẦU CAO TRÀO VÔ TẬN,▶ 무한 러시 시작
-menu.chefs_default,Chefs: Linh (West) & Jiwon (East),Đầu bếp: Linh (Tây) & Jiwon (Đông),셰프: 린 (웨스트) & 지원 (이스트)
-menu.controls_guide,[WASD] Move • [TAB] Ingredient Wheel • [E] Use • [F] Chop/Action • [C] Switch Chef • [R] Recipe Book,[WASD] Di chuyển • [TAB] Bánh xe • [E] Dùng • [F] Chặt/Hành động • [C] Đổi đầu bếp • [R] Sách công thức,[WASD] 이동 • [TAB] 재료 휠 • [E] 사용/조합 • [F] 손질/행동 • [C] 셰프 전환 • [R] 레시피 북
+menu.controls_guide,[WASD] Walk • [E] Pick / Place • [F] Chop / Cook • [Q] Throw • [R] Recipes,[WASD] Đi • [E] Lấy / Đặt • [F] Chặt / Nấu • [Q] Ném • [R] Công thức,[WASD] 이동 • [E] 집기 / 놓기 • [F] 손질 / 조리 • [Q] 던지기 • [R] 레시피
 menu.hide_menu,Hide Menu [ESC],Ẩn Menu [ESC],메뉴 숨기기 [ESC]
 menu.show_menu,Show Menu [ESC],Hiện Menu [ESC],메뉴 표시 [ESC]
 menu.mode_coop,MODE: LAN CO-OP,CHẾ ĐỘ: CO-OP QUA LAN,모드: LAN 코옵
 menu.mode_solo,MODE: SOLO + AI,CHẾ ĐỘ: CHƠI ĐƠN + AI,모드: 솔로 + AI
-menu.select_chef,SELECT CHEF,CHỌN ĐẦU BẾP,셰프 선택
 menu.human_linh,YOU: LINH (AI: JIWON),BẠN: LINH (AI: JIWON),플레이어: 린 (AI: 지원)
 menu.human_jiwon,YOU: JIWON (AI: LINH),BẠN: JIWON (AI: LINH),플레이어: 지원 (AI: 린)
-menu.language_label,Language: ,Ngôn ngữ: ,언어: 
-menu.lang_en,English,Tiếng Anh,영어
-menu.lang_vi,Tiếng Việt,Tiếng Việt,베트남어
-menu.lang_ko,한국어,Tiếng Hàn,한국어
 menu.locked,LOCKED,ĐÃ KHÓA,잠김
 menu.unlocked,UNLOCKED,MỞ KHÓA,해금됨
 menu.two_bot_test,🤖 2-BOT TEST RUN,🤖 CHẠY THỬ 2 BOT,🤖 2봇 테스트 실행
-hud.reputation,REP,UY TÍN,평판
-hud.flow,FLOW,NHỊP,플로우
-hud.rush,RUSH RHYTHM! 1.5x,CAO TRÀO! x1.5,러시 리듬! 1.5배
 hud.return_lobby,Return to Lobby,Về sảnh chờ,로비로 돌아가기
 hud.recipes,Recipes [R],Công thức [R],레시피 [R]
 hud.bgm_on,BGM: ON,BGM: BẬT,BGM: 켜짐
@@ -51,24 +38,11 @@ hud.pass_counter,Pass Counter • [E] Handoff Item,Quầy chuyền đồ • [E]
 hud.prep_station,Cutting Board • [F] Chop Ingredients,Thớt sơ chế • [F] Sơ chế nguyên liệu,조리대 • [F] 재료 손질
 hud.cooking_station,Cooking Stove • Pan Sizzle,Bếp nấu • Chảo xèo xèo,가스레인지 • 팬 조리
 hud.trash_station,Trash Bin • [E] Discard Item,Thùng rác • [E] Vứt đồ,쓰레기통 • [E] 버리기
-hud.shelf_station,Ingredient Shelf • Hold [TAB] for Wheel,Kệ nguyên liệu • Giữ [TAB] mở bánh xe,재료 선반 • [TAB] 길게 눌러 선택
-hud.fridge_station,Refrigerator • Hold [TAB] for Wheel,Tủ lạnh • Giữ [TAB] mở bánh xe,냉장고 • [TAB] 길게 눌러 선택
-hud.hire_prep,Hire Prep Assistant ({0}g),Thuê phụ bếp ({0}g),보조 요리사 고용 ({0}g)
-hud.hire_dishwasher,Hire Stocker ({0}g),Thuê tiếp liệu ({0}g),재고 보급원 고용 ({0}g)
-hud.cooldown,{0}s Cooldown,Hồi chiêu {0}s,쿨다운 {0}초
-hud.waves_progress,Wave {0} of {1},Đợt {0} / {1},웨이브 {0} / {1}
-hud.final_wave,FINAL WAVE!,ĐỢT CUỐI CÙNG!,파이널 웨이브!
-hud.orders_waiting,Waiting for tickets...,Đang chờ gọi món...,주문 대기 중...
 dish.tteokbokki.name,Tteokbokki (떡볶이),Tteokbokki (떡볶이),떡볶이 (Tteokbokki)
-dish.tteokbokki.desc,Chewy rice cakes simmered in sweet-spicy Gochujang paste.,Bánh gạo dẻo nấu cùng sốt ớt Gochujang cay ngọt đậm đà.,쫄깃한 쌀떡을 매콤달콤한 고추장 양념에 끓여낸 분식 대표 메뉴.
 dish.bot_chien.name,Bột Chiên (Saigon Fried Cake),Bột Chiên Sài Gòn,보찌엔 (베트남식 쌀떡 튀김)
-dish.bot_chien.desc,Savory rice flour cubes pan-fried with a fresh egg.,Bột gạo hấp chiên giòn rụm cùng trứng tươi trên chảo nóng.,쌀가루 반죽 큐브를 바삭하게 부치고 달걀을 더해 노릇하게 구워낸 요리.
 dish.korean_bbq_rice.name,Korean BBQ on Rice (불고기 덮밥),Cơm Bò Nướng Hàn Quốc (불고기 덮밥),불고기 덮밥 (Korean BBQ on Rice)
-dish.korean_bbq_rice.desc,Sliced meat seared on high heat and served over steamed rice.,Thịt thái mỏng áp chảo sốt BBQ đậm vị ăn cùng cơm dẻo.,얇게 썬 고기를 센 불에 볶아 따끈한 밥 위에 얹은 정갈한 덮밥.
 dish.viet_broken_rice.name,Viet Broken Rice (Cơm Tấm),Cơm Tấm Sườn Trứng,껌땀 (베트남 쇄미 갈비 덮밥)
-dish.viet_broken_rice.desc,Aromatic broken rice served with BBQ beef and a sunny fried egg.,Cơm tấm hạt thơm ăn kèm thịt nướng đậm đà và trứng ốp la.,부드러운 쇄미밥에 양념 소고기 구이와 계란후라이를 곁들인 전통 요리.
 dish.bulgogi_banh_mi.name,Bulgogi Bánh Mì (Bánh Mì Thịt Nướng),Bánh Mì Bulgogi Thịt Nướng,불고기 반미 (Bulgogi Bánh Mì)
-dish.bulgogi_banh_mi.desc,Crispy baguette with Vietnamese pickled veg and Korean seared bulgogi.,Bánh mì giòn rụm với đồ chua thanh mát và thịt bò bulgogi đậm vị.,바삭한 바게트에 새콤한 무당근 피클과 불고기를 듬뿍 채운 퓨전 걸작.
 item.tteok_portioned,Rice Cake Portion,Phần bánh gạo,쌀떡 조각
 item.Gochujang,Gochujang Paste,Sốt Gochujang,고추장
 item.flour,Rice Flour,Bột gạo,쌀가루
@@ -83,13 +57,12 @@ item.cooked_rice,Steamed Rice,Cơm chín,지은 밥
 item.radish_carrot,Radish & Carrot,Củ cải & Cà rốt,무 & 당근
 item.pickled_veg,Pickled Veg (Đồ Chua),Đồ chua,무당근 절임
 item.baguette,Crusty Baguette,Ổ bánh mì,바삭한 바게트
-tutorial.title,HOW TO COOK: {0},HƯỚNG DẪN NẤU: {0},요리 튜토리얼: {0}
 tutorial.step1_title,STEP 1: MOVE TO FRIDGE,BƯỚC 1: ĐẾN GẦN TỦ LẠNH,1단계: 냉장고로 이동
 tutorial.step1_desc,Use [WASD] or Joystick to walk up to the Fridge.,Dùng [WASD] hoặc Joystick để đi đến gần tủ lạnh.,[WASD] 또는 조이스틱으로 냉장고로 이동하세요.
-tutorial.step2_title,STEP 2: GET TOBOKI PORTION,BƯỚC 2: LẤY PHẦN BÁNH GẠO,2단계: 쌀떡 조각 꺼내기
-tutorial.step2_desc,Walk to Fridge -> Press [E] (INTERACT) -> Select 'Toboki Portion'.,Đến tủ lạnh -> Nhấn [E] (TƯƠNG TÁC) -> Chọn 'Phần bánh gạo'.,냉장고로 이동 -> [E] (상호작용) -> '쌀떡 조각' 선택.
+tutorial.step2_title,STEP 2: GET RICE CAKE PORTION,BƯỚC 2: LẤY PHẦN BÁNH GẠO,2단계: 쌀떡 조각 꺼내기
+tutorial.step2_desc,Walk to Fridge -> Press [E] (INTERACT) -> Select 'Rice Cake Portion'.,Đến tủ lạnh -> Nhấn [E] (TƯƠNG TÁC) -> Chọn 'Phần bánh gạo'.,냉장고로 이동 -> [E] (상호작용) -> '쌀떡 조각' 선택.
 tutorial.step3_title,STEP 3: GET GOCHUJANG,BƯỚC 3: LẤY SỐT GOCHUJANG,3단계: 고추장 꺼내기
-tutorial.step3_desc,Place Toboki in Stove/Counter [E] then grab 'Gochujang' from Shelf [E].,Đặt bánh gạo lên bếp/bàn [E] sau đó lấy 'Gochujang' từ kệ [E].,가스레인지/보관대에 쌀떡을 놓고 [E] 선반에서 '고추장'을 집으세요 [E].
+tutorial.step3_desc,Place Rice Cake in Stove/Counter [E] then grab 'Gochujang' from Shelf [E].,Đặt bánh gạo lên bếp/bàn [E] sau đó lấy 'Gochujang' từ kệ [E].,가스레인지/보관대에 쌀떡을 놓고 [E] 선반에서 '고추장'을 집으세요 [E].
 tutorial.step4_title,STEP 4: COOK TTEOKBOKKI,BƯỚC 4: NẤU TTEOKBOKKI,4단계: 떡볶이 조리
 tutorial.step4_desc,Press [E] with Gochujang at the Stove to combine & cook Tteokbokki!,Cầm Gochujang nhấn [E] ở bếp để kết hợp & nấu Tteokbokki!,가스레인지에서 고추장을 들고 [E]를 눌러 떡볶이를 조리하세요!
 tutorial.step5_title,STEP 5: PICK UP AT GREEN BAR,BƯỚC 5: NHẤC MÓN KHI THANH XANH,5단계: 게이지가 초록색일 때 픽업
@@ -98,18 +71,6 @@ tutorial.step6_title,STEP 6: BOWL IT & SEND IT OUT!,BƯỚC 6: CHO VÀO TÔ & GI
 tutorial.step6_desc,Put Tteokbokki in a BOWL (unlimited - no washing) then press [E] at the Send-Out Window by the north door. Tip: use the Pass Counter for +15 Flow or throw with [Q] / right-click.,Cho Tteokbokki vào TÔ (không giới hạn - không cần rửa) rồi nhấn [E] tại Cửa Giao Món gần cửa bắc. Mẹo: dùng Quầy Chuyền để +15 Flow hoặc ném bằng [Q] / chuột phải.,떡볶이를 그릇에 담고 (무제한 - 설거지 없음) 북쪽 문 옆 배식구에서 [E]를 누르세요. 팁: 패스 카운터로 넘기면 +15 Flow / [Q] 또는 우클릭으로 던지기.
 tutorial.complete_title,★ COMPLETE! ★,★ HOÀN THÀNH! ★,★ 튜토리얼 완료! ★
 tutorial.complete_desc,You're ready! Park items on holding counters. At Jiwon Tier 2 press [H] to hire a Part-Timer (20 score). Click 'Lobby' to start Day 1!,Bạn đã sẵn sàng! Đặt đồ lên quầy giữ món. Khi Jiwon đạt Bậc 2 nhấn [H] để thuê Phụ Bếp (20 điểm). Bấm 'Về sảnh' để bắt đầu Ngày 1!,준비 완료! 보관대에 재료를 올려두세요. 지원 2단계부터 [H]로 알바생 고용 (20점). '로비'를 눌러 1일차를 시작하세요!
-shop.title,KITCHEN UPGRADE WORKSHOP,XƯỞNG NÂNG CẤP NHÀ BẾP,주방 업그레이드 공방
-shop.gold_balance,RESTAURANT GOLD: {0}g,QUỸ TIỆM: {0}g,보유 골드: {0}g
-shop.buy,BUY ({0}g),MUA ({0}g),구매 ({0}g)
-shop.max,MAX LEVEL,CẤP TỐI ĐA,최대 레벨
-shop.knives_name,Sharp Santoku Knives,Dao Santoku Sắc Bén,날카로운 산토쿠 식도
-shop.knives_desc,+20% cutting & prep speed for all cutting boards.,Tăng 20% tốc độ sơ chế trên thớt.,조리대 손질 속도 20% 증가.
-shop.boots_name,Ergonomic Kitchen Boots,Giày Bếp Công Thái Học,주방용 기능성 조리화
-shop.boots_desc,+15% chef movement speed across the kitchen floor.,Tăng 15% tốc độ di chuyển trong bếp.,주방 내 셰프 이동 속도 15% 증가.
-shop.pan_name,Non-Stick Cast Iron Pans,Chảo Gang Chống Dính,논스틱 주물 프라이팬
-shop.pan_desc,+25% cooking & frying speed on all stoves.,Tăng 25% tốc độ nấu chín trên bếp.,모든 가스레인지 조리 속도 25% 증가.
-shop.pass_name,Insulated Pass Counter,Quầy Chuyền Giữ Nhiệt,보온 패스 카운터
-shop.pass_desc,+50% longer bonus window for pass counter handoffs.,Tăng 50% thời gian nhận thưởng chuyền đồ.,패스 카운터 보너스 유효 시간 50% 연장.
 results.victory,DAY {0} COMPLETE!,HOÀN THÀNH NGÀY {0}!,DAY {0} 영업 완료!
 results.game_over,SHIFT FAILED,THẤT BẠI CA BẾP,영업 실패
 results.rep_remaining,Remaining Reputation: {0} / 100,Danh tiếng còn lại: {0} / 100,남은 평판: {0} / 100
@@ -118,21 +79,55 @@ results.gold_earned,Gold Earned: +{0}g,Vàng kiếm được: +{0}g,획득 골�
 results.gold_balance,Total Balance: {0}g,Tổng quỹ tiệm: {0}g,총 보유액: {0}g
 results.next_level,▶ NEXT LEVEL,▶ MÀN TIẾP THEO,▶ 다음 레벨
 results.retry_level,↻ RETRY LEVEL,↻ CHƠI LẠI,↻ 다시 시도
-results.open_shop,★ UPGRADE CHEFS ★,★ NÂNG CẤP ĐẦU BẾP ★,★ 셰프 업그레이드 ★
-results.return_lobby,RETURN TO LOBBY,TRỞ VỀ SẢNH,로비로 이동
 day.1,Day 1: Tteokbokki Only,Ngày 1: Chỉ Tteokbokki,1일차: 떡볶이 개시
 day.2,Day 2: + Bột Chiên,Ngày 2: + Bột Chiên,2일차: + 보찌엔
 day.3,Day 3: + Korean BBQ on Rice,Ngày 3: + Cơm Bò Nướng Hàn Quốc,3일차: + 불고기 덮밥
 day.4,Day 4: + Viet Broken Rice,Ngày 4: + Cơm Tấm Sườn Trứng,4일차: + 껌땀
 day.5,Day 5: 3-Min Bulgogi Bánh Mì Rush,Ngày 5: Cao trào 3 phút Bánh Mì Bulgogi,5일차: 3분 불고기 반미 러시
-day.endless,Endless Survival Rush,Cao trào Sinh tồn Vô tận,무한 서바이벌 러시
 char.linh,Chef Linh,Đầu bếp Linh,셰프 린
-char.linh_title,Execution Specialist (West Zone),Chuyên gia Thực thi (Khu Tây),집행 스페셜리스트 (웨스트 존)
 char.jiwon,Chef Jiwon,Đầu bếp Jiwon,셰프 지원
-char.jiwon_title,Multitasking Strategist (East Zone),Chiến lược gia Đa nhiệm (Khu Đông),멀티태스킹 전략가 (이스트 존)
-feedback.order_expired,Order expired! Lost reputation.,Hết giờ gọi món! Mất danh tiếng.,주문 시간 초과! 평판이 감소했습니다.
-feedback.pan_burned,Pan burned! Clean it up.,Chảo bị cháy! Mau dọn dẹp.,팬이 탔습니다! 팬을 비우세요.
-feedback.pass_bonus,Great Pass Handoff! +15 Flow,Chuyền đồ chuẩn xác! +15 Nhịp độ,완벽한 패스 전달! +15 플로우
-feedback.combo,Rhythm Combo! +{0} Bonus,Chuỗi nhịp điệu! Thưởng +{0},리듬 콤보! +{0} 보너스
-feedback.need_empty_hands,Hands are full!,Hai tay đang bận đồ!,손에 이미 재료가 있습니다!
-feedback.invalid_station,Cannot use that item here.,Không thể dùng món này ở đây.,여기서 사용할 수 없는 아이템입니다.
+menu.welcome_sub,Authentic Street Food Cooperative Cooking,Nấu ăn hợp tác món đường phố chính gốc,정통 길거리 음식 협동 요리
+menu.host_kitchen,👨‍🍳  HOST A KITCHEN,👨‍🍳  MỞ BẾP,👨‍🍳  주방 열기
+menu.join_kitchen,🍲  JOIN KITCHEN (LAN),🍲  VÀO BẾP (LAN),🍲  주방 참가 (LAN)
+menu.settings,⚙️  SETTINGS,⚙️  CÀI ĐẶT,⚙️  설정
+menu.stories,📖  STORIES,📖  CỐT TRUYỆN,📖  스토리
+menu.host_title,HOST A NEW KITCHEN,MỞ BẾP MỚI,새 주방 열기
+menu.host_desc,Choose your chef name and kitchen name. Your friend can join on the same Wi-Fi!,Chọn tên đầu bếp và tên bếp. Bạn bè vào cùng Wi-Fi là tham gia được!,셰프 이름과 주방 이름을 정하세요. 친구는 같은 와이파이에서 참가할 수 있어요!
+menu.name_prompt,Your Chef Name:,Tên đầu bếp:,셰프 이름:
+menu.room_prompt,Kitchen Room Name:,Tên phòng bếp:,주방 이름:
+menu.start_hosting,START HOSTING,BẮT ĐẦU MỞ BẾP,주방 열기 시작
+menu.cancel,CANCEL,HỦY,취소
+menu.back,BACK,QUAY LẠI,뒤로
+menu.close,CLOSE,ĐÓNG,닫기
+menu.leave,LEAVE,RỜI ĐI,나가기
+menu.connect,CONNECT,KẾT NỐI,연결
+menu.join_title,JOIN A KITCHEN,VÀO MỘT BẾP,주방 참가
+menu.ip_prompt,─── OR ENTER HOST IP MANUALLY (LAST RESORT) ───,─── HOẶC NHẬP IP CHỦ PHÒNG (CÁCH CUỐI CÙNG) ───,─── 또는 호스트 IP 직접 입력 (최후의 수단) ───
+menu.chefs_in_kitchen,Chefs in kitchen: ,Đầu bếp trong bếp: ,주방의 셰프: 
+menu.room_chefs_default,Waiting for chefs...,Đang chờ đầu bếp...,셰프를 기다리는 중...
+menu.ready_mark,READY,SẴN SÀNG,준비 완료
+menu.waiting_mark,WAITING,ĐANG CHỜ,대기 중
+menu.pick_chef,PICK A CHEF FIRST,CHỌN ĐẦU BẾP TRƯỚC,먼저 셰프를 고르세요
+menu.chef_cycle,CHEF: {0} ⟳,ĐẦU BẾP: {0} ⟳,셰프: {0} ⟳
+menu.lvl1,Tteokbokki,Tteokbokki,떡볶이
+menu.lvl2,+ Bột Chiên,+ Bột Chiên,+ 보찌엔
+menu.lvl3,+ K-BBQ Rice,+ Cơm Bò Nướng,+ 불고기 덮밥
+menu.lvl4,+ Broken Rice,+ Cơm Tấm,+ 껌땀
+menu.lvl5,Bulgogi Bánh Mì,Bánh Mì Bulgogi,불고기 반미
+menu.completed,★ COMPLETED ★,★ ĐÃ HOÀN THÀNH ★,★ 완료 ★
+menu.day_n,DAY {0},NGÀY {0},{0}일차
+menu.settings_title,SETTINGS & OPTIONS,CÀI ĐẶT & TÙY CHỌN,설정 및 옵션
+menu.lang_header,Display Language:,Ngôn ngữ hiển thị:,표시 언어:
+menu.mode_header,Cooperative or Solo Mode:,Chơi hợp tác hoặc chơi đơn:,협동 또는 솔로 모드:
+menu.ui_size,UI SIZE: {0}%,CỠ GIAO DIỆN: {0}%,UI 크기: {0}%
+char.placeholder,???,???,???
+char.short_linh,LINH,LINH,린
+char.short_jiwon,JIWON,JIWON,지원
+story.title,STORY & CUTSCENES,CỐT TRUYỆN & PHÂN CẢNH,스토리 & 컷신
+story.desc,"Replay chef conversations, text messages, and recipe intros:","Xem lại hội thoại, tin nhắn và giới thiệu món ăn:","셰프 대화, 문자 메시지, 요리 소개를 다시 보기:"
+story.opening,✨ OPENING: FIRST ENCOUNTER,✨ MỞ ĐẦU: LẦN ĐẦU GẶP GỠ,✨ 오프닝: 첫 만남
+story.day1,Day 1: Tteokbokki — First Shift,Ngày 1: Tteokbokki — Ca Đầu Tiên,1일차: 떡볶이 — 첫 근무
+story.day2,Day 2: Bột Chiên — Saigon Heat,Ngày 2: Bột Chiên — Hơi Nóng Sài Gòn,2일차: 보찌엔 — 사이공의 열기
+story.day3,Day 3: K-BBQ Rice — The Rush Begins,Ngày 3: Cơm Bò Nướng — Giờ Cao Điểm Bắt Đầu,3일차: 불고기 덮밥 — 러시의 시작
+story.day4,Day 4: Cơm Tấm Broken Rice — Cross-Town Buzz,Ngày 4: Cơm Tấm — Cả Phố Xôn Xao,4일차: 껌땀 — 온 동네의 화제
+story.day5,Day 5: Bulgogi Bánh Mì — Street Fusion,Ngày 5: Bánh Mì Bulgogi — Hương Vị Giao Thoa,5일차: 불고기 반미 — 길거리 퓨전

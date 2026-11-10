@@ -2,6 +2,21 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-10 — v1.4.0: Opening Order, UI Size, Placeholder Chef & Fresh Translations
+
+### Changed
+- **Opening order:** Dating swipe card now plays before the notification lock screen (blackout → swipe → lock screen → chat).
+- **Opening card lowered:** Whole Jiwon swipe card moved down on the phone screen (`-250` mobile / `-230` desktop) so it no longer hugs the top edge; portrait framing unchanged.
+- **Translations refreshed:** `Localization.csv` rebuilt (132 keys); deleted dead keys, rewrote LAN/controls/level text, added keys for menu, popups, lobby, levels, settings and story. Lobby static labels now switch language live. Tutorial text uses "Rice Cake" instead of "Toboki".
+- **Version bump:** `1.4.0` / Android code `140`; web download links use `?v=1.4.0`.
+
+### Added
+- **UI / HUD size option:** Settings → `[−] UI SIZE: 100% [+]` (80%–160%, 10% steps). Saved in PlayerPrefs and applied to every canvas (`UIScaleSettings.cs`).
+- **Placeholder chef:** Chef switch in a LAN room cycles Linh → Jiwon → Placeholder. Placeholder never blocks the other player's pick, but cannot press READY and the shift cannot start while anyone uses it.
+
+### Tests
+- 10 new assertions (placeholder lobby rules, UI-size clamping) → **313 / 313 passed**.
+
 ## 2026-11-10 — Auto-Scan Prominence, Last-Resort Manual IP & v1.3.0 Web Release
 
 ### Changed

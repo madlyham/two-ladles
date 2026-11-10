@@ -786,6 +786,7 @@ namespace TwoLadles.Core
                     int finalScore = baseScore + tip;
 
                     totalScore += finalScore;
+                    if (KitchenController.Instance != null) KitchenController.Instance.OpenDoorBriefly();
 
                     float flowBonus = dish.quality == QualityTier.OPTIMAL ? 20.0f : 12.0f;
                     AddKitchenFlow(flowBonus);
@@ -1104,6 +1105,9 @@ namespace TwoLadles.Core
 
             float prevRep = reputation;
             bool prevRush = rushRhythmActive;
+
+            // Score only rises when the host serves a dish: swing the guest's door open too.
+            if (st.score > totalScore && KitchenController.Instance != null) KitchenController.Instance.OpenDoorBriefly();
 
             totalScore = st.score;
             reputation = st.reputation;

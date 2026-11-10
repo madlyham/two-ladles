@@ -1433,6 +1433,24 @@ namespace TwoLadles.Tests
             Assert(!QuickSelectWheelUI.ShouldAutoClose(2.0f), "Wheel stays open while the chef stands at the station");
             Assert(QuickSelectWheelUI.ShouldAutoClose(4.0f), "Wheel closes when the chef walks away from the station");
 
+            // Double door swings open for 1 second whenever a dish is served
+            var doorKcObj = new GameObject("KitchenControllerDoorTest");
+            var doorKc = doorKcObj.AddComponent<KitchenController>();
+            doorKc.autoBuildKitchenOnStart = false;
+            var prevKc = KitchenController.Instance;
+            KitchenController.Instance = doorKc;
+            sm.activeOrders.Clear();
+            sm.activeOrders.Add(new OrderTicket("ord_door_test", "banh_mi_thit", "plate", 60.0f));
+            var doorServe = sm.DeliverDish(new KitchenItem("banh_mi_thit", "Banh Mi", "plate"), 1);
+            Assert(Mathf.Approximately(KitchenController.DOOR_OPEN_SECONDS, 1.0f), "Door stays open for exactly 1 second");
+            Assert(doorServe.success && doorKc.DoorOpen, "Serving a dish swings the double door open");
+            doorKc.TickDoor(0.5f);
+            Assert(doorKc.DoorOpen, "Door is still open half a second after serving");
+            doorKc.TickDoor(0.6f);
+            Assert(!doorKc.DoorOpen, "Door closes again after 1 second");
+            KitchenController.Instance = prevKc;
+            UnityEngine.Object.DestroyImmediate(doorKcObj);
+
             sm.isNetworkClient = false;
             sm.shiftActive = false;
             sm.isAutoplayQAMode = prevQA;

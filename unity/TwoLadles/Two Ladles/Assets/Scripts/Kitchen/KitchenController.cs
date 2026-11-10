@@ -20,6 +20,39 @@ namespace TwoLadles.Kitchen
         public static readonly Vector3 SERVING_STATION_POS = new Vector3(0.0f, 0.0f, 3.2f);
         /// <summary>Decor divider tables along x=0 (none near the North double door).</summary>
         public static readonly float[] DIVIDER_DECOR_Z = new float[] { -1.45f, -2.50f, -3.55f, -4.55f };
+        /// <summary>How long the North double door shows its open sprite after a dish is served.</summary>
+        public const float DOOR_OPEN_SECONDS = 1.0f;
+        private float _doorOpenTimer = 0f;
+        private SpriteRenderer _doorRenderer;
+        /// <summary>True while the double door is showing its open sprite.</summary>
+        public bool DoorOpen => _doorOpenTimer > 0f;
+
+        /// <summary>Swing the double door open for DOOR_OPEN_SECONDS (called when a dish is served).</summary>
+        public void OpenDoorBriefly()
+        {
+            _doorOpenTimer = DOOR_OPEN_SECONDS;
+            ApplyDoorSprite();
+        }
+
+        /// <summary>Count down the open-door timer and swap back to the closed sprite when it runs out.</summary>
+        public void TickDoor(float dt)
+        {
+            if (_doorOpenTimer <= 0f) return;
+            _doorOpenTimer = Mathf.Max(0f, _doorOpenTimer - dt);
+            if (_doorOpenTimer <= 0f) ApplyDoorSprite();
+        }
+
+        private void ApplyDoorSprite()
+        {
+            if (_doorRenderer == null)
+            {
+                Transform t = transform.Find("Decor_door_double_closed");
+                if (t != null) _doorRenderer = t.GetComponent<SpriteRenderer>();
+            }
+            if (_doorRenderer == null) return;
+            Sprite s = GetStationSprite(DoorOpen ? "door_double_open" : "door_double_closed");
+            if (s != null) _doorRenderer.sprite = s;
+        }
 
         public event Action<string, Color> OnStatusToast;
         public event Action<string> OnPromptChanged;
@@ -168,6 +201,9 @@ namespace TwoLadles.Kitchen
 
             // 4. Update Tutorial 3D Target Arrow
             UpdateTutorialArrow();
+
+            // 5. Close the double door again after a serve
+            TickDoor(dt);
         }
 
         private static Sprite GetTutorialArrowSprite()

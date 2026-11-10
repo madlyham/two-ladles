@@ -2,6 +2,11 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-11 — v1.4.8: Swinging Door on Serve
+
+- **Double door swings open for 1 second** whenever a dish is served (host, solo, and LAN guest), then closes again.
+- Tests: Test20 +4 — 360 total.
+
 ## 2026-11-11 — v1.4.7: Face-Friendly Carry & Smaller Portrait
 
 - **Carried item floats higher** (1.85 → 2.3) so the chef's face stays visible.

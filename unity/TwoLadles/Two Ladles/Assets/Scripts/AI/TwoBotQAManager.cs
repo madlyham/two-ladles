@@ -323,6 +323,45 @@ namespace TwoLadles.AI
             LaunchDay(currentDayRunning);
         }
 
+        /// <summary>
+        /// Stops a QA run early (user left mid-run). Restores speed and real save,
+        /// clears QA mode and switches every bot off so the next game is played by humans.
+        /// No report is saved or shown.
+        /// </summary>
+        public void AbortQARun()
+        {
+            StopAllCoroutines();
+            isQARunning = false;
+            Time.timeScale = 1.0f;
+            ProgressionManager.Instance?.EndQASandbox();
+
+            if (ShiftManager.Instance != null)
+            {
+                ShiftManager.Instance.isAutoplayQAMode = false;
+                ShiftManager.Instance.OnShiftEnded -= HandleShiftEnded;
+            }
+            BotCommunicationHub.Reset();
+            KitchenHUD.Instance?.SetQAModeBanner(false, 0, 0, 1.0f);
+
+            var kc = KitchenController.Instance;
+            if (kc != null)
+            {
+                foreach (var p in kc.playersByPeer.Values)
+                {
+                    if (p == null) continue;
+                    var bot = p.GetComponent<BotController>();
+                    if (bot != null) bot.botActive = false;
+                }
+            }
+        }
+
+        /// <summary>Call before leaving or starting any normal game: ends any QA run and clears QA mode.</summary>
+        public static void AbortIfRunning()
+        {
+            if (Instance != null && Instance.isQARunning) Instance.AbortQARun();
+            if (ShiftManager.Instance != null) ShiftManager.Instance.isAutoplayQAMode = false;
+        }
+
         public void FinishQARun()
         {
             isQARunning = false;

@@ -2,6 +2,15 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-11 — v1.4.9: Bot Cleanup, PAUSE Button & Greener Yard
+
+- **QA bots fully stop** after the 2-bot QA test: leaving, closing the report, or starting any other mode aborts the QA run and turns the bots off.
+- **Pause button** is now the word PAUSE, moved left so rounded phone corners don't hide it. Pause menu buttons are plain words (RESUME / SETTINGS / LEAVE / BACK).
+- **No emojis/special symbols** anywhere in UI text (they did not render).
+- **Mobile camera zoomed in** a bit more (ortho 9.6 vs 11.2 on desktop).
+- **Yard decor**: trees, bushes, flowers and rocks on the grass outside the building.
+- Tests: Test20 +9 — 369 total.
+
 ## 2026-11-11 — v1.4.8: Swinging Door on Serve
 
 - **Double door swings open for 1 second** whenever a dish is served (host, solo, and LAN guest), then closes again.

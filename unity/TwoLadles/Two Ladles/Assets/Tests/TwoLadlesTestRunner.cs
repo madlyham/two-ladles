@@ -35,7 +35,7 @@ namespace TwoLadles.Tests
             }
         }
 
-        [MenuItem("Two Ladles/🤖 Run Two-Bot QA Test")]
+        [MenuItem("Two Ladles/Run Two-Bot QA Test")]
         public static void RunTwoBotQATest()
         {
             if (!Application.isPlaying)

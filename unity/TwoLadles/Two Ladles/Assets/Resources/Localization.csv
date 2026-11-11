@@ -3,16 +3,16 @@ menu.title,TWO LADLES: VIETNAM & KOREA CO-OP,TWO LADLES: HỢP TÁC BẾP VIỆT
 menu.gold,GOLD: {0}g,VÀNG: {0}g,골드: {0}g
 menu.score,SCORE: {0},ĐIỂM: {0},점수: {0}
 menu.lan_header,OPEN KITCHENS ON YOUR WI-FI (AUTO-SCAN):,BẾP ĐANG MỞ TRÊN WI-FI CỦA BẠN (TỰ QUÉT):,내 와이파이의 열린 주방 (자동 검색):
-menu.lan_scanning,🔍 Scanning your Wi-Fi for open kitchens...,🔍 Đang quét Wi-Fi tìm bếp đang mở...,🔍 와이파이에서 열린 주방 검색 중...
-menu.lan_refresh,🔄 Tap to refresh Wi-Fi scan,🔄 Chạm để quét lại Wi-Fi,🔄 눌러서 와이파이 다시 검색
+menu.lan_scanning,Scanning your Wi-Fi for open kitchens...,Đang quét Wi-Fi tìm bếp đang mở...,와이파이에서 열린 주방 검색 중...
+menu.lan_refresh,Tap to refresh Wi-Fi scan,Chạm để quét lại Wi-Fi,눌러서 와이파이 다시 검색
 menu.level_select,SELECT LEVEL (REPLAY COMPLETED LEVELS ANYTIME),CHỌN MÀN CHƠI (CÓ THỂ CHƠI LẠI MÀN ĐÃ QUA),레벨 선택 (완료한 레벨은 언제든 다시 플레이)
-menu.play_tutorial,★ PLAY TUTORIAL ★,★ CHƠI HƯỚNG DẪN ★,★ 튜토리얼 플레이 ★
-menu.endless_mode,∞ ENDLESS MODE,∞ CHẾ ĐỘ VÔ TẬN,∞ 무한 모드
-menu.upgrade_shop,★ UPGRADE SHOP ★,★ CỬA HÀNG NÂNG CẤP ★,★ 업그레이드 상점 ★
+menu.play_tutorial,PLAY TUTORIAL,CHƠI HƯỚNG DẪN,튜토리얼 플레이
+menu.endless_mode,ENDLESS MODE,CHẾ ĐỘ VÔ TẬN,무한 모드
+menu.upgrade_shop,UPGRADE SHOP,CỬA HÀNG NÂNG CẤP,업그레이드 상점
 menu.ready_yes,READY: YES,SẴN SÀNG: CÓ,준비 완료: 예
 menu.ready_no,READY: NO,SẴN SÀNG: CHƯA,준비 완료: 아니오
-menu.start_level,▶ START LEVEL {0} ({1} WAVES),▶ BẮT ĐẦU MÀN {0} ({1} ĐỢT),▶ 레벨 {0} 시작 ({1} 웨이브)
-menu.start_endless,▶ START ENDLESS RUSH,▶ BẮT ĐẦU CAO TRÀO VÔ TẬN,▶ 무한 러시 시작
+menu.start_level,START LEVEL {0} ({1} WAVES),BẮT ĐẦU MÀN {0} ({1} ĐỢT),레벨 {0} 시작 ({1} 웨이브)
+menu.start_endless,START ENDLESS RUSH,BẮT ĐẦU CAO TRÀO VÔ TẬN,무한 러시 시작
 menu.controls_guide,[WASD] Walk • [E] Pick / Place • [F] Chop / Cook • [Q] Throw • [R] Recipes,[WASD] Đi • [E] Lấy / Đặt • [F] Chặt / Nấu • [Q] Ném • [R] Công thức,[WASD] 이동 • [E] 집기 / 놓기 • [F] 손질 / 조리 • [Q] 던지기 • [R] 레시피
 menu.hide_menu,Hide Menu [ESC],Ẩn Menu [ESC],메뉴 숨기기 [ESC]
 menu.show_menu,Show Menu [ESC],Hiện Menu [ESC],메뉴 표시 [ESC]
@@ -22,7 +22,7 @@ menu.human_linh,YOU: LINH (AI: JIWON),BẠN: LINH (AI: JIWON),플레이어: 린 
 menu.human_jiwon,YOU: JIWON (AI: LINH),BẠN: JIWON (AI: LINH),플레이어: 지원 (AI: 린)
 menu.locked,LOCKED,ĐÃ KHÓA,잠김
 menu.unlocked,UNLOCKED,MỞ KHÓA,해금됨
-menu.two_bot_test,🤖 2-BOT TEST RUN,🤖 CHẠY THỬ 2 BOT,🤖 2봇 테스트 실행
+menu.two_bot_test,2-BOT TEST RUN,CHẠY THỬ 2 BOT,2봇 테스트 실행
 hud.return_lobby,Return to Lobby,Về sảnh chờ,로비로 돌아가기
 hud.recipes,Recipes [R],Công thức [R],레시피 [R]
 hud.bgm_on,BGM: ON,BGM: BẬT,BGM: 켜짐
@@ -69,16 +69,16 @@ tutorial.step5_title,STEP 5: PICK UP AT GREEN BAR,BƯỚC 5: NHẤC MÓN KHI THA
 tutorial.step5_desc,Wait for the Stove bar to turn GREEN then press [E] to pick up!,Đợi thanh tiến độ bếp chuyển sang XANH rồi nhấn [E] để nhấc món!,게이지가 초록색이 되면 [E]를 눌러 완성된 요리를 집으세요!
 tutorial.step6_title,STEP 6: BOWL IT & SEND IT OUT!,BƯỚC 6: CHO VÀO TÔ & GIAO MÓN!,6단계: 그릇에 담아 내보내기!
 tutorial.step6_desc,Put Tteokbokki in a BOWL (unlimited - no washing) then press [E] at the Send-Out Window by the north door. Tip: use the Pass Counter for +15 Flow or throw with [Q] / right-click.,Cho Tteokbokki vào TÔ (không giới hạn - không cần rửa) rồi nhấn [E] tại Cửa Giao Món gần cửa bắc. Mẹo: dùng Quầy Chuyền để +15 Flow hoặc ném bằng [Q] / chuột phải.,떡볶이를 그릇에 담고 (무제한 - 설거지 없음) 북쪽 문 옆 배식구에서 [E]를 누르세요. 팁: 패스 카운터로 넘기면 +15 Flow / [Q] 또는 우클릭으로 던지기.
-tutorial.complete_title,★ COMPLETE! ★,★ HOÀN THÀNH! ★,★ 튜토리얼 완료! ★
-tutorial.complete_desc,You're ready! Park items on holding counters. At Jiwon Tier 2 press [H] to hire a Part-Timer (20 score). Open the pause menu (⏸) and leave to start Day 1!,Bạn đã sẵn sàng! Đặt đồ lên quầy giữ món. Khi Jiwon đạt Bậc 2 nhấn [H] để thuê Phụ Bếp (20 điểm). Mở menu tạm dừng (⏸) và rời trận để bắt đầu Ngày 1!,준비 완료! 보관대에 재료를 올려두세요. 지원 2단계부터 [H]로 알바생 고용 (20점). 일시정지 메뉴(⏸)에서 나가면 1일차가 시작됩니다!
+tutorial.complete_title,COMPLETE!,HOÀN THÀNH!,튜토리얼 완료!
+tutorial.complete_desc,You're ready! Park items on holding counters. At Jiwon Tier 2 press [H] to hire a Part-Timer (20 score). Open the pause menu (PAUSE) and leave to start Day 1!,Bạn đã sẵn sàng! Đặt đồ lên quầy giữ món. Khi Jiwon đạt Bậc 2 nhấn [H] để thuê Phụ Bếp (20 điểm). Mở menu tạm dừng (PAUSE) và rời trận để bắt đầu Ngày 1!,준비 완료! 보관대에 재료를 올려두세요. 지원 2단계부터 [H]로 알바생 고용 (20점). 일시정지 메뉴(PAUSE)에서 나가면 1일차가 시작됩니다!
 results.victory,DAY {0} COMPLETE!,HOÀN THÀNH NGÀY {0}!,DAY {0} 영업 완료!
 results.game_over,SHIFT FAILED,THẤT BẠI CA BẾP,영업 실패
 results.rep_remaining,Remaining Reputation: {0} / 100,Danh tiếng còn lại: {0} / 100,남은 평판: {0} / 100
 results.waves_done,Waves Cleared: {0} / {1} (Orders: {2}),Đợt đã qua: {0} / {1} (Món giao: {2}),완료한 웨이브: {0} / {1} (서빙 완료: {2})
 results.gold_earned,Gold Earned: +{0}g,Vàng kiếm được: +{0}g,획득 골드: +{0}g
 results.gold_balance,Total Balance: {0}g,Tổng quỹ tiệm: {0}g,총 보유액: {0}g
-results.next_level,▶ NEXT LEVEL,▶ MÀN TIẾP THEO,▶ 다음 레벨
-results.retry_level,↻ RETRY LEVEL,↻ CHƠI LẠI,↻ 다시 시도
+results.next_level,NEXT LEVEL,MÀN TIẾP THEO,다음 레벨
+results.retry_level,RETRY LEVEL,CHƠI LẠI,다시 시도
 day.1,Day 1: Tteokbokki Only,Ngày 1: Chỉ Tteokbokki,1일차: 떡볶이 개시
 day.2,Day 2: + Bột Chiên,Ngày 2: + Bột Chiên,2일차: + 보찌엔
 day.3,Day 3: + Korean BBQ on Rice,Ngày 3: + Cơm Bò Nướng Hàn Quốc,3일차: + 불고기 덮밥
@@ -87,10 +87,10 @@ day.5,Day 5: 3-Min Bulgogi Bánh Mì Rush,Ngày 5: Cao trào 3 phút Bánh Mì B
 char.linh,Chef Linh,Đầu bếp Linh,셰프 린
 char.jiwon,Chef Jiwon,Đầu bếp Jiwon,셰프 지원
 menu.welcome_sub,Authentic Street Food Cooperative Cooking,Nấu ăn hợp tác món đường phố chính gốc,정통 길거리 음식 협동 요리
-menu.host_kitchen,👨‍🍳  HOST A KITCHEN,👨‍🍳  MỞ BẾP,👨‍🍳  주방 열기
-menu.join_kitchen,🍲  JOIN KITCHEN (LAN),🍲  VÀO BẾP (LAN),🍲  주방 참가 (LAN)
-menu.settings,⚙️  SETTINGS,⚙️  CÀI ĐẶT,⚙️  설정
-menu.stories,📖  STORIES,📖  CỐT TRUYỆN,📖  스토리
+menu.host_kitchen,HOST A KITCHEN,MỞ BẾP,주방 열기
+menu.join_kitchen,JOIN KITCHEN (LAN),VÀO BẾP (LAN),주방 참가 (LAN)
+menu.settings,SETTINGS,CÀI ĐẶT,설정
+menu.stories,STORIES,CỐT TRUYỆN,스토리
 menu.host_title,HOST A NEW KITCHEN,MỞ BẾP MỚI,새 주방 열기
 menu.host_desc,Choose your chef name and kitchen name. Your friend can join on the same Wi-Fi!,Chọn tên đầu bếp và tên bếp. Bạn bè vào cùng Wi-Fi là tham gia được!,셰프 이름과 주방 이름을 정하세요. 친구는 같은 와이파이에서 참가할 수 있어요!
 menu.name_prompt,Your Chef Name:,Tên đầu bếp:,셰프 이름:
@@ -102,19 +102,19 @@ menu.close,CLOSE,ĐÓNG,닫기
 menu.leave,LEAVE,RỜI ĐI,나가기
 menu.connect,CONNECT,KẾT NỐI,연결
 menu.join_title,JOIN A KITCHEN,VÀO MỘT BẾP,주방 참가
-menu.ip_prompt,─── OR ENTER HOST IP MANUALLY (LAST RESORT) ───,─── HOẶC NHẬP IP CHỦ PHÒNG (CÁCH CUỐI CÙNG) ───,─── 또는 호스트 IP 직접 입력 (최후의 수단) ───
+menu.ip_prompt,-- OR ENTER HOST IP MANUALLY (LAST RESORT) --,-- HOẶC NHẬP IP CHỦ PHÒNG (CÁCH CUỐI CÙNG) --,-- 또는 호스트 IP 직접 입력 (최후의 수단) --
 menu.chefs_in_kitchen,Chefs in kitchen: ,Đầu bếp trong bếp: ,주방의 셰프: 
 menu.room_chefs_default,Waiting for chefs...,Đang chờ đầu bếp...,셰프를 기다리는 중...
 menu.ready_mark,READY,SẴN SÀNG,준비 완료
 menu.waiting_mark,WAITING,ĐANG CHỜ,대기 중
 menu.pick_chef,PICK A CHEF FIRST,CHỌN ĐẦU BẾP TRƯỚC,먼저 셰프를 고르세요
-menu.chef_cycle,CHEF: {0} ⟳,ĐẦU BẾP: {0} ⟳,셰프: {0} ⟳
+menu.chef_cycle,CHEF: {0},ĐẦU BẾP: {0},셰프: {0}
 menu.lvl1,Tteokbokki,Tteokbokki,떡볶이
 menu.lvl2,+ Bột Chiên,+ Bột Chiên,+ 보찌엔
 menu.lvl3,+ K-BBQ Rice,+ Cơm Bò Nướng,+ 불고기 덮밥
 menu.lvl4,+ Broken Rice,+ Cơm Tấm,+ 껌땀
 menu.lvl5,Bulgogi Bánh Mì,Bánh Mì Bulgogi,불고기 반미
-menu.completed,★ COMPLETED ★,★ ĐÃ HOÀN THÀNH ★,★ 완료 ★
+menu.completed,COMPLETED,ĐÃ HOÀN THÀNH,완료
 menu.day_n,DAY {0},NGÀY {0},{0}일차
 menu.settings_title,SETTINGS & OPTIONS,CÀI ĐẶT & TÙY CHỌN,설정 및 옵션
 menu.lang_header,Display Language:,Ngôn ngữ hiển thị:,표시 언어:
@@ -125,18 +125,18 @@ char.short_linh,LINH,LINH,린
 char.short_jiwon,JIWON,JIWON,지원
 story.title,STORY & CUTSCENES,CỐT TRUYỆN & PHÂN CẢNH,스토리 & 컷신
 story.desc,"Replay chef conversations, text messages, and recipe intros:","Xem lại hội thoại, tin nhắn và giới thiệu món ăn:","셰프 대화, 문자 메시지, 요리 소개를 다시 보기:"
-story.opening,✨ OPENING: FIRST ENCOUNTER,✨ MỞ ĐẦU: LẦN ĐẦU GẶP GỠ,✨ 오프닝: 첫 만남
+story.opening,OPENING: FIRST ENCOUNTER,MỞ ĐẦU: LẦN ĐẦU GẶP GỠ,오프닝: 첫 만남
 story.day1,Day 1: Tteokbokki — First Shift,Ngày 1: Tteokbokki — Ca Đầu Tiên,1일차: 떡볶이 — 첫 근무
 story.day2,Day 2: Bột Chiên — Saigon Heat,Ngày 2: Bột Chiên — Hơi Nóng Sài Gòn,2일차: 보찌엔 — 사이공의 열기
 story.day3,Day 3: K-BBQ Rice — The Rush Begins,Ngày 3: Cơm Bò Nướng — Giờ Cao Điểm Bắt Đầu,3일차: 불고기 덮밥 — 러시의 시작
 story.day4,Day 4: Cơm Tấm Broken Rice — Cross-Town Buzz,Ngày 4: Cơm Tấm — Cả Phố Xôn Xao,4일차: 껌땀 — 온 동네의 화제
 story.day5,Day 5: Bulgogi Bánh Mì — Street Fusion,Ngày 5: Bánh Mì Bulgogi — Hương Vị Giao Thoa,5일차: 불고기 반미 — 길거리 퓨전
-hud.pause,⏸,⏸,⏸
+hud.pause,PAUSE,TẠM DỪNG,일시정지
 pause.title,PAUSED,TẠM DỪNG,일시정지
-pause.resume,▶ RESUME,▶ TIẾP TỤC,▶ 계속하기
-pause.leave,✖ LEAVE GAME,✖ RỜI TRẬN,✖ 게임 나가기
-pause.settings,⚙ SETTINGS,⚙ CÀI ĐẶT,⚙ 설정
+pause.resume,RESUME,TIẾP TỤC,계속하기
+pause.leave,LEAVE,RỜI TRẬN,나가기
+pause.settings,SETTINGS,CÀI ĐẶT,설정
 pause.settings_title,SETTINGS,CÀI ĐẶT,설정
-pause.back,◀ BACK,◀ QUAY LẠI,◀ 뒤로
-results.ready,✔ READY ({0}/2),✔ SẴN SÀNG ({0}/2),✔ 준비 ({0}/2)
-results.waiting_partner,⏳ WAITING ({0}/2),⏳ ĐANG CHỜ ({0}/2),⏳ 대기 중 ({0}/2)
+pause.back,BACK,QUAY LẠI,뒤로
+results.ready,READY ({0}/2),SẴN SÀNG ({0}/2),준비 ({0}/2)
+results.waiting_partner,WAITING ({0}/2),ĐANG CHỜ ({0}/2),대기 중 ({0}/2)

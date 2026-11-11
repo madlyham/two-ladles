@@ -15,6 +15,9 @@ namespace TwoLadles.UI
     {
         /// <summary>Mobile joystick centre, anchored bottom-left (moved up/right from 92,92 in v1.4.1).</summary>
         public static readonly Vector2 MOBILE_JOYSTICK_POS = new Vector2(150f, 140f);
+        // Pause button: plain word, inset from the right edge so rounded phone corners do not hide it
+        public const string PAUSE_LABEL = "PAUSE";
+        public const float PAUSE_BUTTON_X = -70f;
 
         [Header("Top Header & Wave/Reputation Bars")]
         public Text shiftTimerText;
@@ -444,11 +447,11 @@ namespace TwoLadles.UI
             scoreText = CreateLabel("ScoreText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(616f, 0f), new Vector2(120f, 28f), "0 pts", 13, Color.yellow, TextAnchor.MiddleLeft);
 
             // D) Top-Right Utility Buttons: Recipes [R], Touch UI, Switch Chef [C], Pause (BGM toggle lives in Pause > Settings)
-            returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-10f, 0f), new Vector2(48f, 28f), "⏸", new Color(1.0f, 0.82f, 0.10f, 1f), out var pauseBtnText, 16);
+            returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(PAUSE_BUTTON_X, 0f), new Vector2(84f, 28f), PAUSE_LABEL, new Color(1.0f, 0.82f, 0.10f, 1f), out var pauseBtnText, 13);
             if (pauseBtnText != null) { pauseBtnText.color = new Color(0.08f, 0.08f, 0.10f, 1f); pauseBtnText.fontStyle = FontStyle.Bold; }
-            switchChefButton = CreateButton("SwitchChefBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-88f, 0f), new Vector2(115f, 26f), "LINH [C]", new Color(0.18f, 0.42f, 0.65f, 0.95f), out switchChefButtonText, 11);
-            recipeBookButton = CreateButton("RecipeBookBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-209f, 0f), new Vector2(100f, 26f), "Recipes [R]", new Color(0.65f, 0.42f, 0.14f, 0.95f), out _, 11);
-            touchControlsToggleButton = CreateButton("TouchToggleBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-315f, 0f), new Vector2(72f, 26f), "Joypad", new Color(0.24f, 0.36f, 0.48f, 0.95f), out _, 11);
+            switchChefButton = CreateButton("SwitchChefBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-164f, 0f), new Vector2(115f, 26f), "LINH [C]", new Color(0.18f, 0.42f, 0.65f, 0.95f), out switchChefButtonText, 11);
+            recipeBookButton = CreateButton("RecipeBookBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-285f, 0f), new Vector2(100f, 26f), "Recipes [R]", new Color(0.65f, 0.42f, 0.14f, 0.95f), out _, 11);
+            touchControlsToggleButton = CreateButton("TouchToggleBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-391f, 0f), new Vector2(72f, 26f), "Joypad", new Color(0.24f, 0.36f, 0.48f, 0.95f), out _, 11);
 
             // =========================================================================
             // 2. TUTORIAL GUIDANCE CARD (Non-Overlapping, Compact Top-Center)
@@ -566,10 +569,10 @@ namespace TwoLadles.UI
 
             // Directional D-Pad sub-buttons around the joystick rim
             Color dpadCol = new Color(0.22f, 0.25f, 0.32f, 0.70f);
-            dpadUpButton = CreateButton("DpadUp", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 44f), new Vector2(32f, 28f), "▲", dpadCol, out _, 10);
-            dpadDownButton = CreateButton("DpadDown", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -44f), new Vector2(32f, 28f), "▼", dpadCol, out _, 10);
-            dpadLeftButton = CreateButton("DpadLeft", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-44f, 0f), new Vector2(28f, 32f), "◀", dpadCol, out _, 10);
-            dpadRightButton = CreateButton("DpadRight", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(44f, 0f), new Vector2(28f, 32f), "▶", dpadCol, out _, 10);
+            dpadUpButton = CreateButton("DpadUp", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 44f), new Vector2(32f, 28f), "^", dpadCol, out _, 10);
+            dpadDownButton = CreateButton("DpadDown", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -44f), new Vector2(32f, 28f), "v", dpadCol, out _, 10);
+            dpadLeftButton = CreateButton("DpadLeft", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-44f, 0f), new Vector2(28f, 32f), "<", dpadCol, out _, 10);
+            dpadRightButton = CreateButton("DpadRight", joyBgObj.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(44f, 0f), new Vector2(28f, 32f), ">", dpadCol, out _, 10);
 
             // Draggable Center Joystick Knob
             GameObject knobObj = new GameObject("JoystickKnob", typeof(RectTransform));
@@ -645,7 +648,7 @@ namespace TwoLadles.UI
             qbRect.sizeDelta = new Vector2(460f, 22f);
             var qbImg = qaModeBannerObj.AddComponent<Image>();
             qbImg.color = new Color(0.10f, 0.35f, 0.50f, 0.92f);
-            qaModeBannerText = CreateLabel("QABannerText", qaModeBannerObj.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, "🤖 TWO-BOT QA PLAYTEST ACTIVE", 11, new Color(0.9f, 0.98f, 1.0f), TextAnchor.MiddleCenter);
+            qaModeBannerText = CreateLabel("QABannerText", qaModeBannerObj.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, "TWO-BOT QA PLAYTEST ACTIVE", 11, new Color(0.9f, 0.98f, 1.0f), TextAnchor.MiddleCenter);
             qaModeBannerObj.SetActive(false);
 
             // Quick-Select Radial Ingredient Wheel
@@ -691,15 +694,15 @@ namespace TwoLadles.UI
             var rbImg = recipeBookModal.AddComponent<Image>();
             rbImg.color = new Color(0.08f, 0.10f, 0.15f, 0.96f);
 
-            recipeBookTitleText = CreateLabel("RBTitle", recipeBookModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(560f, 26f), "📖 5-DAY RECIPE BOOK — PRESS [E] ON COUNTER/PAN TO SELF-ASSEMBLE!", 14, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
+            recipeBookTitleText = CreateLabel("RBTitle", recipeBookModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -12f), new Vector2(560f, 26f), "5-DAY RECIPE BOOK — PRESS [E] ON COUNTER/PAN TO SELF-ASSEMBLE!", 14, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
 
             var recipeRows = new (string dayKey, string fallbackTitle, string dishIcon, (string icon, string tag)[] steps)[]
             {
                 ("day.1", "Day 1: Tteokbokki", "tteokbokki", new[] { ("tteok_portioned", "Rice Cake Portion"), ("gochujang", "+ Gochujang"), ("tteokbokki", "Cook Together!") }),
                 ("day.2", "Day 2: + Bột Chiên", "bot_chien", new[] { ("flour", "Cook Flour"), ("egg_raw", "+ Egg & Cook"), ("bot_chien", "Bột Chiên!") }),
-                ("day.3", "Day 3: + K-BBQ Rice", "korean_bbq_rice", new[] { ("unprocessed_raw_meat", "Cut 1x➔Cook"), ("cooked_rice", "Cook Rice"), ("korean_bbq_rice", "Assemble [E]") }),
+                ("day.3", "Day 3: + K-BBQ Rice", "korean_bbq_rice", new[] { ("unprocessed_raw_meat", "Cut 1x->Cook"), ("cooked_rice", "Cook Rice"), ("korean_bbq_rice", "Assemble [E]") }),
                 ("day.4", "Day 4: + Broken Rice", "viet_broken_rice", new[] { ("rice_portioned", "Cook Rice"), ("bulgogi", "+ BBQ Beef"), ("egg_raw", "+ Egg [E]") }),
-                ("day.5", "Day 5: Bulgogi Bánh Mì", "bulgogi_banh_mi", new[] { ("baguette", "Cook Flour+Egg"), ("pickled_veg", "Cut Radish"), ("bulgogi", "Cut 2x➔Cook") })
+                ("day.5", "Day 5: Bulgogi Bánh Mì", "bulgogi_banh_mi", new[] { ("baguette", "Cook Flour+Egg"), ("pickled_veg", "Cut Radish"), ("bulgogi", "Cut 2x->Cook") })
             };
             recipeRowTitleTexts = new Text[recipeRows.Length];
             recipeRowObjects = new GameObject[recipeRows.Length];
@@ -840,11 +843,11 @@ namespace TwoLadles.UI
             var esmImg = endShiftModal.AddComponent<Image>();
             esmImg.color = new Color(0.07f, 0.09f, 0.14f, 0.97f);
 
-            endShiftTitleText = CreateLabel("EndShiftTitle", endShiftModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -18f), new Vector2(420f, 32f), "★ LEVEL COMPLETE! ★", 18, new Color(0.3f, 1.0f, 0.5f), TextAnchor.MiddleCenter);
+            endShiftTitleText = CreateLabel("EndShiftTitle", endShiftModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -18f), new Vector2(420f, 32f), "LEVEL COMPLETE!", 18, new Color(0.3f, 1.0f, 0.5f), TextAnchor.MiddleCenter);
             endShiftDetailsText = CreateLabel("EndShiftDetails", endShiftModal.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 14f), new Vector2(410f, 150f), "Remaining Reputation: 100 / 100\nGold Earned: +200g", 14, Color.white, TextAnchor.MiddleCenter);
 
-            openShopFromResultsButton = CreateButton("OpenShopResultsBtn", endShiftModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-138f, 22f), new Vector2(132f, 38f), "🛒 UPGRADE SHOP", new Color(0.80f, 0.55f, 0.14f, 1f), out _, 11);
-            retryShiftButton = CreateButton("RetryShiftBtn", endShiftModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(132f, 38f), "▶ NEXT LEVEL", new Color(0.20f, 0.62f, 0.35f, 1f), out retryShiftButtonText, 11);
+            openShopFromResultsButton = CreateButton("OpenShopResultsBtn", endShiftModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-138f, 22f), new Vector2(132f, 38f), "UPGRADE SHOP", new Color(0.80f, 0.55f, 0.14f, 1f), out _, 11);
+            retryShiftButton = CreateButton("RetryShiftBtn", endShiftModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(132f, 38f), "NEXT LEVEL", new Color(0.20f, 0.62f, 0.35f, 1f), out retryShiftButtonText, 11);
             resultsToLobbyButton = CreateButton("ResultsToLobbyBtn", endShiftModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(138f, 22f), new Vector2(132f, 38f), "LEVEL SELECT", new Color(0.24f, 0.38f, 0.56f, 1f), out _, 11);
 
             endShiftModal.SetActive(false);
@@ -880,9 +883,9 @@ namespace TwoLadles.UI
             pauseMainPanel = new GameObject("PauseMainPanel", typeof(RectTransform));
             pauseMainPanel.transform.SetParent(pauseModal.transform, false);
             StretchFull(pauseMainPanel.GetComponent<RectTransform>());
-            var resume = CreateButton("PauseResumeBtn", pauseMainPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 30f), new Vector2(220f, 42f), "▶ RESUME", new Color(0.20f, 0.62f, 0.35f, 1f), out pauseResumeText, 13);
-            var settings = CreateButton("PauseSettingsBtn", pauseMainPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(220f, 42f), "⚙ SETTINGS", new Color(0.24f, 0.36f, 0.58f, 1f), out pauseSettingsText, 13);
-            var leave = CreateButton("PauseLeaveBtn", pauseMainPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(220f, 42f), "✖ LEAVE GAME", new Color(0.55f, 0.20f, 0.20f, 1f), out pauseLeaveText, 13);
+            var resume = CreateButton("PauseResumeBtn", pauseMainPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 30f), new Vector2(220f, 42f), "RESUME", new Color(0.20f, 0.62f, 0.35f, 1f), out pauseResumeText, 13);
+            var settings = CreateButton("PauseSettingsBtn", pauseMainPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(220f, 42f), "SETTINGS", new Color(0.24f, 0.36f, 0.58f, 1f), out pauseSettingsText, 13);
+            var leave = CreateButton("PauseLeaveBtn", pauseMainPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(220f, 42f), "LEAVE", new Color(0.55f, 0.20f, 0.20f, 1f), out pauseLeaveText, 13);
             resume.onClick.AddListener(() => SetPaused(false));
             settings.onClick.AddListener(() => ShowPauseSettings(true));
             leave.onClick.AddListener(() => { SetPaused(false); OnReturnToLobbyClicked(); });
@@ -892,7 +895,7 @@ namespace TwoLadles.UI
             pauseSettingsPanel.transform.SetParent(pauseModal.transform, false);
             StretchFull(pauseSettingsPanel.GetComponent<RectTransform>());
             audioMuteButton = CreateButton("AudioMuteBtn", pauseSettingsPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(220f, 42f), "BGM: ON", new Color(0.22f, 0.45f, 0.55f, 1f), out audioMuteButtonText, 13);
-            var back = CreateButton("PauseSettingsBackBtn", pauseSettingsPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(220f, 42f), "◀ BACK", new Color(0.30f, 0.34f, 0.44f, 1f), out pauseBackText, 13);
+            var back = CreateButton("PauseSettingsBackBtn", pauseSettingsPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(220f, 42f), "BACK", new Color(0.30f, 0.34f, 0.44f, 1f), out pauseBackText, 13);
             back.onClick.AddListener(() => ShowPauseSettings(false));
             pauseSettingsPanel.SetActive(false);
 
@@ -947,8 +950,8 @@ namespace TwoLadles.UI
             int count = (host ? 1 : 0) + (guest ? 1 : 0);
             var lm = LocalizationManager.Instance;
             string txt = me
-                ? (lm != null ? lm.Format("results.waiting_partner", count) : $"✔ WAITING ({count}/2)")
-                : (lm != null ? lm.Format("results.ready", count) : $"✔ READY ({count}/2)");
+                ? (lm != null ? lm.Format("results.waiting_partner", count) : $"WAITING ({count}/2)")
+                : (lm != null ? lm.Format("results.ready", count) : $"READY ({count}/2)");
             retryShiftButtonText.text = txt;
             if (shopNextLevelButton != null)
             {
@@ -977,7 +980,7 @@ namespace TwoLadles.UI
             var usImg = upgradeShopModal.AddComponent<Image>();
             usImg.color = new Color(0.07f, 0.09f, 0.14f, 0.98f);
 
-            CreateLabel("ShopTitle", upgradeShopModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -14f), new Vector2(450f, 26f), "🛒 BETWEEN-LEVEL UPGRADE SHOP", 16, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
+            CreateLabel("ShopTitle", upgradeShopModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -14f), new Vector2(450f, 26f), "BETWEEN-LEVEL UPGRADE SHOP", 16, new Color(1.0f, 0.88f, 0.25f), TextAnchor.MiddleCenter);
             shopGoldText = CreateLabel("ShopGoldText", upgradeShopModal.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-24f, -14f), new Vector2(180f, 26f), "GOLD: 150g", 14, new Color(1.0f, 0.85f, 0.2f), TextAnchor.MiddleRight);
             shopFeedbackText = CreateLabel("ShopFeedbackText", upgradeShopModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(620f, 20f), "Spend Gold on permanent character & kitchen upgrades!", 12, new Color(0.75f, 0.90f, 1.0f), TextAnchor.MiddleCenter);
 
@@ -1043,7 +1046,7 @@ namespace TwoLadles.UI
                 shopBuyLabels[uKey] = buyLbl;
             }
 
-            shopNextLevelButton = CreateButton("ShopNextLevelBtn", upgradeShopModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-115f, 16f), new Vector2(210f, 36f), "▶ CONTINUE TO NEXT LEVEL", new Color(0.20f, 0.62f, 0.35f, 1f), out _, 12);
+            shopNextLevelButton = CreateButton("ShopNextLevelBtn", upgradeShopModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-115f, 16f), new Vector2(210f, 36f), "CONTINUE TO NEXT LEVEL", new Color(0.20f, 0.62f, 0.35f, 1f), out _, 12);
             shopCloseButton = CreateButton("ShopCloseBtn", upgradeShopModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(115f, 16f), new Vector2(210f, 36f), "LEVEL SELECT / CLOSE", new Color(0.26f, 0.38f, 0.54f, 1f), out _, 12);
 
             upgradeShopModal.SetActive(false);
@@ -1062,7 +1065,7 @@ namespace TwoLadles.UI
             var img = qaReportModal.AddComponent<Image>();
             img.color = new Color(0.06f, 0.08f, 0.13f, 0.75f); // test UI: see-through so game stays visible
 
-            qaReportTitleText = CreateLabel("QATitle", qaReportModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(540f, 32f), "🤖 TWO-BOT QA AUTOPLAY REPORT", 17, new Color(0.2f, 0.9f, 1.0f), TextAnchor.MiddleCenter);
+            qaReportTitleText = CreateLabel("QATitle", qaReportModal.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(540f, 32f), "TWO-BOT QA AUTOPLAY REPORT", 17, new Color(0.2f, 0.9f, 1.0f), TextAnchor.MiddleCenter);
 
             qaReportDetailsText = CreateLabel("QADetails", qaReportModal.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 10f), new Vector2(540f, 240f), "Running simulation...", 12, Color.white, TextAnchor.MiddleLeft);
 
@@ -1070,6 +1073,7 @@ namespace TwoLadles.UI
             qaReportCloseButton.onClick.AddListener(() =>
             {
                 qaReportModal.SetActive(false);
+                TwoLadles.AI.TwoBotQAManager.AbortIfRunning();
                 var lobby = FindObjectOfType<LobbyUI>(true);
                 if (lobby != null)
                 {
@@ -1077,7 +1081,7 @@ namespace TwoLadles.UI
                 }
             });
 
-            qaReportRerunButton = CreateButton("QARerunBtn", qaReportModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(120f, 24f), new Vector2(210f, 38f), "▶ RERUN 2-BOT TEST", new Color(0.18f, 0.58f, 0.42f, 1f), out _, 12);
+            qaReportRerunButton = CreateButton("QARerunBtn", qaReportModal.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(120f, 24f), new Vector2(210f, 38f), "RERUN 2-BOT TEST", new Color(0.18f, 0.58f, 0.42f, 1f), out _, 12);
             qaReportRerunButton.onClick.AddListener(() =>
             {
                 qaReportModal.SetActive(false);
@@ -1102,7 +1106,7 @@ namespace TwoLadles.UI
             if (qaReportTitleText != null)
             {
                 bool allCleared = report.daysCleared == report.daysAttempted && report.daysCleared > 0;
-                qaReportTitleText.text = allCleared ? "★ 2-BOT QA REPORT: ALL DAYS CLEARED! ★" : "⚠ 2-BOT QA REPORT: TEST INCOMPLETE ⚠";
+                qaReportTitleText.text = allCleared ? "2-BOT QA REPORT: ALL DAYS CLEARED!" : "2-BOT QA REPORT: TEST INCOMPLETE";
                 qaReportTitleText.color = allCleared ? new Color(0.3f, 1.0f, 0.55f) : new Color(1.0f, 0.45f, 0.45f);
             }
 
@@ -1130,7 +1134,7 @@ namespace TwoLadles.UI
                 qaModeBannerObj.SetActive(active);
                 if (qaModeBannerText != null && active)
                 {
-                    qaModeBannerText.text = $"🤖 TWO-BOT QA TEST MODE — DAY {day} OF {totalDays} — {speed:F1}x SPEED";
+                    qaModeBannerText.text = $"TWO-BOT QA TEST MODE — DAY {day} OF {totalDays} — {speed:F1}x SPEED";
                 }
             }
         }
@@ -1377,7 +1381,7 @@ namespace TwoLadles.UI
                 {
                     if (up.purchased)
                     {
-                        lvlTxt.text = "OWNED ✓";
+                        lvlTxt.text = "OWNED";
                         lvlTxt.color = new Color(0.35f, 1.0f, 0.55f);
                     }
                     else if (isLocked)
@@ -1413,7 +1417,7 @@ namespace TwoLadles.UI
             {
                 if (res.ok && ProgressionManager.Instance.catalogUpgrades.TryGetValue(upgradeId, out var up))
                 {
-                    shopFeedbackText.text = $"★ Purchased {up.displayName}! Stat upgraded immediately. ★";
+                    shopFeedbackText.text = $"Purchased {up.displayName}! Stat upgraded immediately.";
                     shopFeedbackText.color = new Color(0.35f, 1.0f, 0.55f);
                 }
                 else
@@ -1630,7 +1634,7 @@ namespace TwoLadles.UI
                 {
                     int m = Mathf.FloorToInt(ShiftManager.Instance.shiftElapsedSeconds / 60.0f);
                     int s = Mathf.FloorToInt(ShiftManager.Instance.shiftElapsedSeconds % 60.0f);
-                    shiftTimerText.text = $"∞ {m:D2}:{s:D2}";
+                    shiftTimerText.text = $"ENDLESS {m:D2}:{s:D2}";
                 }
             }
 
@@ -1810,8 +1814,8 @@ namespace TwoLadles.UI
                     if (endShiftTitleText != null)
                     {
                         endShiftTitleText.text = victory 
-                            ? (lm != null ? lm.Format("results.victory", ShiftManager.Instance != null ? ShiftManager.Instance.currentStageId : 1) : "★ VICTORY! LEVEL COMPLETE ★")
-                            : (lm != null ? lm.Get("results.game_over") : "✖ DEFEAT — REPUTATION LOST ✖");
+                            ? (lm != null ? lm.Format("results.victory", ShiftManager.Instance != null ? ShiftManager.Instance.currentStageId : 1) : "VICTORY! LEVEL COMPLETE")
+                            : (lm != null ? lm.Get("results.game_over") : "DEFEAT — REPUTATION LOST");
                         endShiftTitleText.color = victory ? new Color(0.30f, 1.0f, 0.50f) : new Color(1.0f, 0.35f, 0.35f);
                     }
 
@@ -1851,8 +1855,8 @@ namespace TwoLadles.UI
                     if (retryShiftButtonText != null)
                     {
                         retryShiftButtonText.text = victory 
-                            ? (lm != null ? lm.Get("results.next_level") : "▶ NEXT LEVEL")
-                            : (lm != null ? lm.Get("results.retry_level") : "↻ RETRY LEVEL");
+                            ? (lm != null ? lm.Get("results.next_level") : "NEXT LEVEL")
+                            : (lm != null ? lm.Get("results.retry_level") : "RETRY LEVEL");
                     }
                 }
             }
@@ -1895,6 +1899,7 @@ namespace TwoLadles.UI
 
         private void OnReturnToLobbyClicked()
         {
+            TwoLadles.AI.TwoBotQAManager.AbortIfRunning(); // leaving mid QA run must switch the bots off
             if (pauseModal != null) pauseModal.SetActive(false);
             Time.timeScale = 1f;
             if (endShiftModal != null) endShiftModal.SetActive(false);
@@ -1935,15 +1940,15 @@ namespace TwoLadles.UI
             if (returnToLobbyButton != null)
             {
                 var txt = returnToLobbyButton.GetComponentInChildren<Text>();
-                if (txt != null) txt.text = lm.Get("hud.pause", "⏸");
+                if (txt != null) txt.text = lm.Get("hud.pause", PAUSE_LABEL);
             }
             if (pauseModal != null)
             {
                 if (pauseTitleText != null) pauseTitleText.text = lm.Get("pause.title", "PAUSED");
-                if (pauseResumeText != null) pauseResumeText.text = lm.Get("pause.resume", "▶ RESUME");
-                if (pauseLeaveText != null) pauseLeaveText.text = lm.Get("pause.leave", "✖ LEAVE GAME");
-                if (pauseSettingsText != null) pauseSettingsText.text = lm.Get("pause.settings", "⚙ SETTINGS");
-                if (pauseBackText != null) pauseBackText.text = lm.Get("pause.back", "◀ BACK");
+                if (pauseResumeText != null) pauseResumeText.text = lm.Get("pause.resume", "RESUME");
+                if (pauseLeaveText != null) pauseLeaveText.text = lm.Get("pause.leave", "LEAVE");
+                if (pauseSettingsText != null) pauseSettingsText.text = lm.Get("pause.settings", "SETTINGS");
+                if (pauseBackText != null) pauseBackText.text = lm.Get("pause.back", "BACK");
             }
             if (recipeBookButton != null)
             {

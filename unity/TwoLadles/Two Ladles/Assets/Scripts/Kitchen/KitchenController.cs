@@ -16,6 +16,25 @@ namespace TwoLadles.Kitchen
 
         /// <summary>World height (units) of hired part-timer sprites. Chefs are ~1.9; part-timers slightly smaller but readable.</summary>
         public const float PART_TIMER_HEIGHT = 1.75f;
+        public const float CAMERA_ORTHO_SIZE = 11.2f;
+        public const float MOBILE_CAMERA_ORTHO_SIZE = 9.6f; // phones: zoom in a bit more
+        public static float CameraOrthoSize(bool mobile) => mobile ? MOBILE_CAMERA_ORTHO_SIZE : CAMERA_ORTHO_SIZE;
+
+        // Yard decor on the grass outside the building (kept out of the walkable kitchen/dining box)
+        public static readonly (string sprite, Vector3 pos)[] YARD_DECOR = new (string, Vector3)[] {
+            ("yard_tree", new Vector3(-14.0f, 0f, 6.0f)),  ("yard_tree", new Vector3(14.0f, 0f, 6.0f)),
+            ("yard_tree", new Vector3(-16.5f, 0f, -2.0f)), ("yard_tree", new Vector3(16.5f, 0f, -2.0f)),
+            ("yard_tree", new Vector3(-13.5f, 0f, -10.0f)), ("yard_tree", new Vector3(13.5f, 0f, -10.0f)),
+            ("yard_tree", new Vector3(-18.0f, 0f, 11.0f)), ("yard_tree", new Vector3(18.0f, 0f, 11.0f)),
+            ("yard_tree", new Vector3(-21.0f, 0f, 3.0f)),  ("yard_tree", new Vector3(21.0f, 0f, -7.0f)),
+            ("yard_bush", new Vector3(-12.6f, 0f, 2.0f)),  ("yard_bush", new Vector3(12.6f, 0f, 1.0f)),
+            ("yard_bush", new Vector3(-6.0f, 0f, -9.5f)),  ("yard_bush", new Vector3(6.5f, 0f, -10.5f)),
+            ("yard_bush", new Vector3(-17.5f, 0f, -12.0f)), ("yard_bush", new Vector3(19.0f, 0f, 7.5f)),
+            ("yard_flowers", new Vector3(-2.5f, 0f, -11.0f)), ("yard_flowers", new Vector3(10.0f, 0f, -12.5f)),
+            ("yard_flowers", new Vector3(-15.0f, 0f, 9.0f)), ("yard_flowers", new Vector3(15.5f, 0f, -5.0f)),
+            ("yard_rock", new Vector3(-15.0f, 0f, -6.0f)), ("yard_rock", new Vector3(3.0f, 0f, -12.0f)),
+            ("yard_rock", new Vector3(17.0f, 0f, 13.5f)),
+        };
         /// <summary>Serving Counter sits south of the North double door so the doorway stays clear.</summary>
         public static readonly Vector3 SERVING_STATION_POS = new Vector3(0.0f, 0.0f, 3.2f);
         /// <summary>Decor divider tables along x=0 (none near the North double door).</summary>
@@ -420,14 +439,14 @@ namespace TwoLadles.Kitchen
                 camObj.tag = "MainCamera";
                 Camera cam = camObj.AddComponent<Camera>();
                 cam.orthographic = true;
-                cam.orthographicSize = 11.2f;
+                cam.orthographicSize = CameraOrthoSize(Application.isMobilePlatform);
                 camObj.transform.position = new Vector3(0.0f, 15.0f, -9.0f);
                 camObj.transform.LookAt(new Vector3(0.0f, 0.0f, 2.8f), Vector3.up);
             }
             else
             {
                 Camera.main.orthographic = true;
-                Camera.main.orthographicSize = 11.2f;
+                Camera.main.orthographicSize = CameraOrthoSize(Application.isMobilePlatform);
                 Camera.main.transform.position = new Vector3(0.0f, 15.0f, -9.0f);
                 Camera.main.transform.LookAt(new Vector3(0.0f, 0.0f, 2.8f), Vector3.up);
             }
@@ -1002,6 +1021,12 @@ namespace TwoLadles.Kitchen
             SpawnRestaurantCustomer("Customer_HanoiDiner", "customer_1", new Vector3(-6.1f, 0.0f, 9.35f), true);
             SpawnRestaurantCustomer("Customer_SeoulFoodie", "customer_2", new Vector3(6.1f, 0.0f, 9.35f), false);
             SpawnRestaurantCustomer("Customer_RegularGuest", "customer_3", new Vector3(-3.6f, 0.0f, 10.7f), true);
+
+            // 5. Yard trees, bushes, flowers and rocks so the grass is not bland (above grass -55, below building walls)
+            foreach (var d in YARD_DECOR)
+            {
+                AddDecorSprite(d.sprite, d.pos, Vector3.one * 1.35f, 0, -40);
+            }
         }
 
         private void SpawnRestaurantCustomer(string objName, string charSpriteName, Vector3 pos, bool flipX)

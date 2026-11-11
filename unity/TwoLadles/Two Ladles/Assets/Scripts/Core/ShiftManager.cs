@@ -487,8 +487,8 @@ namespace TwoLadles.Core
                     tutorialStepInstruction = lm != null ? lm.Get("tutorial.step6_desc") : "Put Tteokbokki in a BOWL (bowls are unlimited - no washing) then press [E] at the Send-Out Window by the north door. Tip: hand food over on the Pass Counter for +15 Flow or throw it with [Q] / right-click.";
                     break;
                 case 10:
-                    tutorialStepTitle = lm != null ? lm.Get("tutorial.complete_title") : "★ COMPLETE! ★";
-                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.complete_desc") : "You're ready! Park items on holding counters. Once Jiwon reaches Tier 2 press [H] to hire a Part-Timer (costs 20 score). Open the pause menu (⏸) and leave to start Day 1: Tteokbokki!";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.complete_title") : "COMPLETE!";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.complete_desc") : "You're ready! Park items on holding counters. Once Jiwon reaches Tier 2 press [H] to hire a Part-Timer (costs 20 score). Open the pause menu (PAUSE) and leave to start Day 1: Tteokbokki!";
                     break;
             }
 
@@ -734,7 +734,7 @@ namespace TwoLadles.Core
             rushRhythmsTriggered++;
 
             OnRushRhythmChanged?.Invoke(true);
-            OnFeedbackBanner?.Invoke("★ RUSH RHYTHM! 1.5x SCORE ★", new Color(1.0f, 0.85f, 0.2f));
+            OnFeedbackBanner?.Invoke("RUSH RHYTHM! 1.5x SCORE", new Color(1.0f, 0.85f, 0.2f));
             OnFlowUpdated?.Invoke(kitchenFlow, rushRhythmActive, rushRhythmRemaining);
         }
 

@@ -1451,6 +1451,58 @@ namespace TwoLadles.Tests
             KitchenController.Instance = prevKc;
             UnityEngine.Object.DestroyImmediate(doorKcObj);
 
+            // Leaving a 2-bot QA run fully switches the bots off for the next game
+            var abortKcObj = new GameObject("KitchenControllerQAAbortTest");
+            var abortKc = abortKcObj.AddComponent<KitchenController>();
+            abortKc.autoBuildKitchenOnStart = false;
+            var prevKc2 = KitchenController.Instance;
+            KitchenController.Instance = abortKc;
+            var abLinhGo = new GameObject("AbortChef_Linh");
+            var abLinh = abLinhGo.AddComponent<PlayerController>();
+            abLinh.peerId = 1; abLinh.characterId = "linh";
+            abortKc.playersByPeer[1] = abLinh;
+            var abJiwonGo = new GameObject("AbortChef_Jiwon");
+            var abJiwon = abJiwonGo.AddComponent<PlayerController>();
+            abJiwon.peerId = 2; abJiwon.characterId = "jiwon";
+            abortKc.playersByPeer[2] = abJiwon;
+            var abQaGo = new GameObject("AbortQAManager");
+            var abQa = abQaGo.AddComponent<TwoBotQAManager>();
+            abQa.ConfigureTwoBots();
+            abQa.isQARunning = true;
+            sm.isAutoplayQAMode = true;
+            abQa.AbortQARun();
+            bool noBotActive = Array.TrueForAll(new[] { abLinhGo, abJiwonGo }, g => { var b = g.GetComponent<BotController>(); return b == null || !b.botActive; });
+            Assert(!abQa.isQARunning && !sm.isAutoplayQAMode && Time.timeScale == 1f, "Aborting QA clears QA mode and restores normal speed");
+            Assert(noBotActive, "Aborting QA switches off both bot controllers");
+            abortKc.ConfigureSoloAndAIMode(false, 1, BotDifficulty.Standard);
+            noBotActive = Array.TrueForAll(new[] { abLinhGo, abJiwonGo }, g => { var b = g.GetComponent<BotController>(); return b == null || !b.botActive; });
+            Assert(noBotActive && abLinh.isLocalPlayer, "Next normal game after QA has no bots playing for the user");
+            KitchenController.Instance = prevKc2;
+            UnityEngine.Object.DestroyImmediate(abQaGo);
+            UnityEngine.Object.DestroyImmediate(abLinhGo);
+            UnityEngine.Object.DestroyImmediate(abJiwonGo);
+            UnityEngine.Object.DestroyImmediate(abortKcObj);
+
+            // Pause button is a plain word, inset from the rounded phone corner
+            Assert(KitchenHUD.PAUSE_LABEL == "PAUSE", "Pause button shows the word PAUSE");
+            Assert(KitchenHUD.PAUSE_BUTTON_X <= -60f, "Pause button sits away from the rounded screen corner");
+
+            // Mobile camera zooms in closer than desktop
+            Assert(KitchenController.CameraOrthoSize(false) == 11.2f, "Desktop camera zoom unchanged");
+            Assert(KitchenController.CameraOrthoSize(true) < KitchenController.CameraOrthoSize(false), "Mobile camera is zoomed in more");
+
+            // Yard decor: enough trees and bushes, all on grass outside kitchen and dining room
+            var yard = KitchenController.YARD_DECOR;
+            Assert(yard != null && yard.Length >= 12, "Yard has at least 12 decorations");
+            bool allOnGrass = yard != null && Array.TrueForAll(yard, d =>
+            {
+                var p = d.pos;
+                bool inBuilding = Mathf.Abs(p.x) <= 11.5f && p.z >= -6.5f && p.z <= 17f;
+                bool inGrid = Mathf.Abs(p.x) <= 26f && p.z >= -14f && p.z <= 16f;
+                return !inBuilding && inGrid;
+            });
+            Assert(allOnGrass, "Every yard decoration sits on grass outside the building");
+
             sm.isNetworkClient = false;
             sm.shiftActive = false;
             sm.isAutoplayQAMode = prevQA;

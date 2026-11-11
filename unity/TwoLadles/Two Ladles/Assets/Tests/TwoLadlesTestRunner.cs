@@ -7,13 +7,42 @@ namespace TwoLadles.Tests
 {
     public static class TwoLadlesTestRunner
     {
+        [InitializeOnLoadMethod]
+        private static void RegisterPlayModeHooks()
+        {
+            EditorApplication.playModeStateChanged += OnPlayModeChanged;
+        }
+
+        private static void OnPlayModeChanged(PlayModeStateChange state)
+        {
+            if (state == PlayModeStateChange.EnteredPlayMode)
+            {
+                if (EditorPrefs.GetBool("TwoLadles_PendingQA", false))
+                {
+                    EditorPrefs.SetBool("TwoLadles_PendingQA", false);
+                    int day = EditorPrefs.GetInt("TwoLadles_QADay", 1);
+                    var qa = UnityEngine.Object.FindObjectOfType<TwoLadles.AI.TwoBotQAManager>();
+                    if (qa == null)
+                    {
+                        var go = new GameObject("TwoBotQAManager");
+                        qa = go.AddComponent<TwoLadles.AI.TwoBotQAManager>();
+                    }
+                    qa.StartAutoplayRun(day, 5, UnityEngine.Random.Range(10, 9999), 2.0f);
+                }
+            }
+        }
+
         [MenuItem("Two Ladles/Run All Tests")]
         public static void RunAllTestsBatch()
         {
+            var existing = UnityEngine.Object.FindObjectsOfType<TwoLadlesTestSuite>();
+            foreach (var e in existing) UnityEngine.Object.DestroyImmediate(e.gameObject);
+
+            GameObject testObj = null;
             try
             {
                 Debug.Log("[TestRunner] Starting headless Unity test execution...");
-                var testObj = new GameObject("TestRunner");
+                testObj = new GameObject("TestRunner");
                 var suite = testObj.AddComponent<TwoLadlesTestSuite>();
                 suite.RunAllTests();
 
@@ -33,6 +62,13 @@ namespace TwoLadles.Tests
                 Debug.LogError($"[TestRunner] UNHANDLED EXCEPTION IN TEST RUNNER: {ex.Message}\n{ex.StackTrace}");
                 if (Application.isBatchMode) EditorApplication.Exit(1);
             }
+            finally
+            {
+                if (testObj != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(testObj);
+                }
+            }
         }
 
         [MenuItem("Two Ladles/Run Two-Bot QA Test")]
@@ -40,7 +76,9 @@ namespace TwoLadles.Tests
         {
             if (!Application.isPlaying)
             {
+                EditorPrefs.SetBool("TwoLadles_PendingQA", true);
                 EditorApplication.isPlaying = true;
+                return;
             }
 
             var qa = UnityEngine.Object.FindObjectOfType<TwoLadles.AI.TwoBotQAManager>();

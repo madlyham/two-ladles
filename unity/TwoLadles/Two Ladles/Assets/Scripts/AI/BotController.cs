@@ -7,6 +7,7 @@ using TwoLadles.Stations;
 using TwoLadles.Kitchen;
 using TwoLadles.Player;
 using TwoLadles.Networking;
+using TwoLadles.UI;
 
 namespace TwoLadles.AI
 {
@@ -495,7 +496,10 @@ namespace TwoLadles.AI
                                 SetTarget(pass, "Retrieve Ingredient from Pass Counter");
                                 return;
                             }
-                            if (characterId == "linh" && (slot.item.itemId == "bbq_beef" || slot.item.itemId == "bulgogi" || slot.item.itemId == "bulgogi_seared"))
+                            if (characterId == "linh" && (slot.item.itemId == "bbq_beef" || slot.item.itemId == "bulgogi" || slot.item.itemId == "bulgogi_seared" ||
+                                                          slot.item.itemId == "rice_portioned" || slot.item.itemId == "cooked_rice" ||
+                                                          slot.item.itemId == "radish_carrot" || slot.item.itemId == "pickled_veg" ||
+                                                          slot.item.itemId == "baguette"))
                             {
                                 SetTarget(pass, $"Retrieve {slot.item.itemId} from Pass Counter");
                                 return;
@@ -527,6 +531,12 @@ namespace TwoLadles.AI
                     DropOrTrash("Park Item While Waiting for Order");
                 else
                     SetTarget(standby, "Standby for Next Customer Order");
+                BotCommunicationHub.BroadcastIntent(peerId, characterId, currentGoalName, targetStation != null ? targetStation.stationId : null, activeRecipeId);
+                return;
+            }
+
+            if (CheckPartnerSupply())
+            {
                 BotCommunicationHub.BroadcastIntent(peerId, characterId, currentGoalName, targetStation != null ? targetStation.stationId : null, activeRecipeId);
                 return;
             }
@@ -752,8 +762,18 @@ namespace TwoLadles.AI
                                     SetTarget(sauceOnTable, "Pick Up Gochujang from Table");
                                     return;
                                 }
-                                desiredItemId = "gochujang";
-                                SetTarget(shelf, "Get Gochujang for Table Assembly");
+                                if (pass != null)
+                                {
+                                    for (int s = 0; s < pass.slots.Length; s++)
+                                    {
+                                        if (pass.slots[s] != null && pass.slots[s].item != null && pass.slots[s].item.itemId == "gochujang" && pass.slots[s].placedByPeer != peerId)
+                                        {
+                                            SetTarget(pass, "Retrieve Gochujang from Pass Counter");
+                                            return;
+                                        }
+                                    }
+                                }
+                                SetTarget(pass ?? (StationBase)counter, "Wait for gochujang from Partner");
                                 return;
                             }
 
@@ -772,8 +792,18 @@ namespace TwoLadles.AI
                                 SetTarget(sauceOnTable, "Pick Up Gochujang from Table");
                                 return;
                             }
-                            desiredItemId = "gochujang";
-                            SetTarget(shelf, "Get Gochujang for Wok");
+                            if (pass != null)
+                            {
+                                for (int s = 0; s < pass.slots.Length; s++)
+                                {
+                                    if (pass.slots[s] != null && pass.slots[s].item != null && pass.slots[s].item.itemId == "gochujang" && pass.slots[s].placedByPeer != peerId)
+                                    {
+                                        SetTarget(pass, "Retrieve Gochujang from Pass Counter");
+                                        return;
+                                    }
+                                }
+                            }
+                            SetTarget(pass ?? (StationBase)counter, "Wait for gochujang from Partner");
                             return;
                         }
                     }
@@ -788,8 +818,18 @@ namespace TwoLadles.AI
                             SetTarget(sauceOnTable, "Pick Up Gochujang from Table");
                             return;
                         }
-                        desiredItemId = "gochujang";
-                        SetTarget(shelf, "Get Gochujang for Table Assembly");
+                        if (pass != null)
+                        {
+                            for (int s = 0; s < pass.slots.Length; s++)
+                            {
+                                if (pass.slots[s] != null && pass.slots[s].item != null && pass.slots[s].item.itemId == "gochujang" && pass.slots[s].placedByPeer != peerId)
+                                {
+                                    SetTarget(pass, "Retrieve Gochujang from Pass Counter");
+                                    return;
+                                }
+                            }
+                        }
+                        SetTarget(pass ?? (StationBase)counter, "Wait for gochujang from Partner");
                         return;
                     }
 
@@ -800,7 +840,7 @@ namespace TwoLadles.AI
                         {
                             for (int i = 0; i < pass.slots.Length; i++)
                             {
-                                if (pass.slots[i] != null && pass.slots[i].item != null && pass.slots[i].placedByPeer != peerId)
+                                if (pass.slots[i] != null && pass.slots[i].item != null && (pass.slots[i].item.itemId == "tteok_portioned" || pass.slots[i].item.itemId == "tteok_raw") && pass.slots[i].placedByPeer != peerId)
                                 {
                                     SetTarget(pass, "Retrieve Rice Cakes from Pass Counter");
                                     return;
@@ -816,9 +856,8 @@ namespace TwoLadles.AI
                             return;
                         }
 
-                        // Otherwise get rice cakes from fridge
-                        desiredItemId = "tteok_portioned";
-                        SetTarget(fridge, "Get Rice Cakes from Fridge");
+                        // Wait for Linh to pass rice cakes
+                        SetTarget(pass ?? (StationBase)counter, "Wait for tteok_portioned from Partner");
                         return;
                     }
                 }
@@ -828,30 +867,7 @@ namespace TwoLadles.AI
                 // Linh: Supports with pass counter handoff or stands by to serve completed dish
                 if (playerController.carriedItem == null)
                 {
-                    // Goal commitment: if already walking to fetch rice cakes, don't flap back to standby
-                    if (currentGoalName == "Get Rice Cakes to Pass to Jiwon" && targetStation != null && currentPath != null && currentPath.Count > 0)
-                    {
-                        return;
-                    }
-
-                    CookingStation eastWok = GetStation("simmer_wok") as CookingStation;
-                    PassCounter pass = GetStation("pass_counter") as PassCounter;
-                    bool passHasItem = pass != null && pass.slots[0].item != null;
-
-                    CounterStation eastRice = FindItemOnCounters("tteok_portioned") ?? FindItemOnCounters("tteok_raw") ?? FindItemOnCounters("tteokbokki_raw");
-                    if (!passHasItem && eastRice == null && eastWok != null && eastWok.heldItem == null)
-                    {
-                        desiredItemId = "tteok_portioned";
-                        SetTarget(GetStation("fridge_west"), "Get Rice Cakes to Pass to Jiwon");
-                    }
-                    else
-                    {
-                        SetTarget(GetStation("pass_counter"), "Standby at Pass Counter");
-                    }
-                }
-                else if (playerController.carriedItem.itemId == "tteok_portioned")
-                {
-                    SetTarget(GetStation("pass_counter"), "Pass Rice Cakes to Jiwon");
+                    SetTarget(GetStation("pass_counter"), "Standby at Pass Counter");
                 }
             }
         }
@@ -961,7 +977,11 @@ namespace TwoLadles.AI
 
                 if (wok.heldItem == null)
                 {
-                    PlanBotChienEmptyPan(wok, "shelf_east", "fridge_east");
+                    CounterStation tableBatter = FindItemOnCounters("bot_chien_batter");
+                    CounterStation tableFlourCake = FindItemOnCounters("cooked_flour");
+                    if (tableBatter != null) { SetTarget(tableBatter, "Pick Up Batter to Cook"); return; }
+                    if (tableFlourCake != null) { SetTarget(tableFlourCake, "Pick Up Flour Cake"); return; }
+                    SetTarget(GetStation("counter_east"), "Standby for Support");
                     return;
                 }
 
@@ -970,8 +990,21 @@ namespace TwoLadles.AI
                     // Pipeline the egg in parallel!
                     if (playerController.carriedItem == null)
                     {
-                        desiredItemId = "egg_raw";
-                        SetTarget(GetStation("fridge_east"), "Get Egg for Second Batch");
+                        CounterStation tableEgg = FindItemOnCounters("egg_raw");
+                        if (tableEgg != null) { SetTarget(tableEgg, "Pick Up Egg for Wok"); return; }
+                        PassCounter pass = GetStation("pass_counter") as PassCounter;
+                        if (pass != null)
+                        {
+                            for (int s = 0; s < pass.slots.Length; s++)
+                            {
+                                if (pass.slots[s] != null && pass.slots[s].item != null && pass.slots[s].item.itemId == "egg_raw" && pass.slots[s].placedByPeer != peerId)
+                                {
+                                    SetTarget(pass, "Retrieve Egg from Pass Counter");
+                                    return;
+                                }
+                            }
+                        }
+                        SetTarget(pass ?? GetStation("counter_east"), "Wait for egg_raw from Partner");
                         return;
                     }
 
@@ -1127,8 +1160,25 @@ namespace TwoLadles.AI
                     if (stove != null && stove.heldItem == null)
                     {
                         // Also covers beef parked on table with no rice yet.
-                        desiredItemId = "rice_portioned";
-                        SetTarget(GetStation("shelf_west"), "Get Rice Portion");
+                        CounterStation riceTable = FindItemOnCounters("rice_portioned");
+                        if (riceTable != null)
+                        {
+                            SetTarget(riceTable, "Pick Up Rice Portion from Table");
+                            return;
+                        }
+                        PassCounter pass = GetStation("pass_counter") as PassCounter;
+                        if (pass != null)
+                        {
+                            for (int s = 0; s < pass.slots.Length; s++)
+                            {
+                                if (pass.slots[s] != null && pass.slots[s].item != null && pass.slots[s].item.itemId == "rice_portioned" && pass.slots[s].placedByPeer != peerId)
+                                {
+                                    SetTarget(pass, "Retrieve Rice from Pass Counter");
+                                    return;
+                                }
+                            }
+                        }
+                        SetTarget(pass ?? (StationBase)counter, "Wait for rice_portioned from Partner");
                         return;
                     }
                 }
@@ -1216,8 +1266,25 @@ namespace TwoLadles.AI
                     // 4. Need rice (nothing on tables, or beef/beef+egg waiting for rice).
                     if (stove != null && stove.heldItem == null)
                     {
-                        desiredItemId = "rice_portioned";
-                        SetTarget(GetStation("shelf_west"), "Get Rice Portion");
+                        CounterStation riceTable = FindItemOnCounters("rice_portioned");
+                        if (riceTable != null)
+                        {
+                            SetTarget(riceTable, "Pick Up Rice Portion from Table");
+                            return;
+                        }
+                        PassCounter pass = GetStation("pass_counter") as PassCounter;
+                        if (pass != null)
+                        {
+                            for (int s = 0; s < pass.slots.Length; s++)
+                            {
+                                if (pass.slots[s] != null && pass.slots[s].item != null && pass.slots[s].item.itemId == "rice_portioned" && pass.slots[s].placedByPeer != peerId)
+                                {
+                                    SetTarget(pass, "Retrieve Rice from Pass Counter");
+                                    return;
+                                }
+                            }
+                        }
+                        SetTarget(pass ?? (StationBase)counter, "Wait for rice_portioned from Partner");
                         return;
                     }
                 }
@@ -1258,8 +1325,7 @@ namespace TwoLadles.AI
                 CounterStation counter = GetStation("counter_west") as CounterStation;
                 var carried = playerController.carriedItem;
 
-                bool stoveFlourRaw = stove != null && stove.heldItem != null && stove.heldItem.itemId == "flour" &&
-                    (stove.currentState == CookingState.COOKING || stove.currentState == CookingState.RAW);
+                bool stoveFlourRaw = stove != null && stove.heldItem != null && (stove.heldItem.itemId == "flour" || stove.heldItem.itemId == "cooked_flour");
 
                 if (carried == null)
                 {
@@ -1293,8 +1359,8 @@ namespace TwoLadles.AI
                         return;
                     }
 
-                    // 5. Stove finished baking (baguette, cooked flour, or burnt waste): pick it up
-                    if (stove != null && stove.heldItem != null &&
+                    // 5. Stove finished baking (baguette or burnt waste): pick it up
+                    if (stove != null && stove.heldItem != null && stove.heldItem.itemId != "flour" && stove.heldItem.itemId != "cooked_flour" &&
                         (stove.currentState == CookingState.OPTIMAL || stove.currentState == CookingState.OVERCOOKED || stove.currentState == CookingState.BURNT))
                     {
                         SetTarget(stove, "Pick Up Baked Baguette");
@@ -1340,8 +1406,25 @@ namespace TwoLadles.AI
                                   FindItemOnCounters("banh_mi_partial_pb") != null;
                     if (!hasVeg)
                     {
-                        desiredItemId = "radish_carrot";
-                        SetTarget(GetStation("fridge_west"), "Get Radish for Pickling");
+                        CounterStation radTable = FindItemOnCounters("radish_carrot");
+                        if (radTable != null)
+                        {
+                            SetTarget(radTable, "Pick Up Radish from Table");
+                            return;
+                        }
+                        PassCounter pass = GetStation("pass_counter") as PassCounter;
+                        if (pass != null)
+                        {
+                            for (int s = 0; s < pass.slots.Length; s++)
+                            {
+                                if (pass.slots[s] != null && pass.slots[s].item != null && pass.slots[s].item.itemId == "radish_carrot" && pass.slots[s].placedByPeer != peerId)
+                                {
+                                    SetTarget(pass, "Retrieve Radish from Pass Counter");
+                                    return;
+                                }
+                            }
+                        }
+                        SetTarget(pass ?? (StationBase)counter, "Wait for radish_carrot from Partner");
                         return;
                     }
 
@@ -1380,7 +1463,7 @@ namespace TwoLadles.AI
                     }
                     if (id == "egg_raw")
                     {
-                        if (stoveFlourRaw || (stove != null && stove.heldItem != null && stove.heldItem.itemId == "flour"))
+                        if (stoveFlourRaw || (stove != null && stove.heldItem != null && (stove.heldItem.itemId == "flour" || stove.heldItem.itemId == "cooked_flour")))
                         {
                             SetTarget(stove, "Add Egg to Baguette Dough");
                             return;
@@ -1494,7 +1577,7 @@ namespace TwoLadles.AI
                         SetTarget(GetStation("trash_bin"), "Trash Burnt Waste");
                         return;
                     }
-                    if (playerController.carriedItem.itemId == "bulgogi" || playerController.carriedItem.itemId == "bulgogi_seared")
+                    if (playerController.carriedItem.itemId == "bulgogi" || playerController.carriedItem.itemId == "bulgogi_seared" || playerController.carriedItem.itemId == "bbq_beef")
                     {
                         SetTarget(GetStation("pass_counter"), "Pass Bulgogi to Linh");
                         return;
@@ -2166,6 +2249,196 @@ namespace TwoLadles.AI
                     return true;
                 }
             }
+            return false;
+        }
+
+        // --- INGREDIENT SOURCING & PARTNER SUPPLY HELPERS ---
+        public static string FindCrateIdFor(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId)) return null;
+            string[] crates = new string[] { "fridge_west", "shelf_west", "fridge_east", "shelf_east" };
+            for (int i = 0; i < crates.Length; i++)
+            {
+                var catalog = QuickSelectWheelUI.GetStationCatalogIds(crates[i]);
+                if (catalog != null && System.Array.IndexOf(catalog, itemId) >= 0)
+                {
+                    return crates[i];
+                }
+            }
+            return null;
+        }
+
+        public static bool IsCrateOnChefSide(string characterId, string crateId)
+        {
+            if (string.IsNullOrEmpty(characterId) || string.IsNullOrEmpty(crateId)) return false;
+            if (characterId == "linh")
+            {
+                return crateId == "fridge_west" || crateId == "shelf_west";
+            }
+            if (characterId == "jiwon")
+            {
+                return crateId == "fridge_east" || crateId == "shelf_east";
+            }
+            return false;
+        }
+
+        public static List<string> GetPartnerSupplyItems(string characterId, string recipeId)
+        {
+            var list = new List<string>();
+            if (string.IsNullOrEmpty(characterId) || string.IsNullOrEmpty(recipeId)) return list;
+
+            if (characterId == "linh")
+            {
+                if (recipeId == "tteokbokki")
+                {
+                    list.Add("tteok_portioned");
+                    list.Add("gochujang");
+                }
+            }
+            else if (characterId == "jiwon")
+            {
+                if (recipeId == "korean_bbq_rice" || recipeId == "viet_broken_rice")
+                {
+                    list.Add("rice_portioned");
+                }
+                else if (recipeId == "bulgogi_banh_mi")
+                {
+                    list.Add("radish_carrot");
+                }
+            }
+            return list;
+        }
+
+        private bool CheckPartnerSupply()
+        {
+            if (KitchenController.Instance == null) return false;
+            if (string.IsNullOrEmpty(activeRecipeId)) return false;
+
+            // 1. If currently carrying a supply item, deliver it to pass counter
+            if (playerController.carriedItem != null)
+            {
+                string carriedId = playerController.carriedItem.itemId;
+                if ((characterId == "linh" && activeRecipeId == "tteokbokki" && (carriedId == "tteok_portioned" || carriedId == "gochujang")) ||
+                    (characterId == "jiwon" && (activeRecipeId == "korean_bbq_rice" || activeRecipeId == "viet_broken_rice") && carriedId == "rice_portioned") ||
+                    (characterId == "jiwon" && activeRecipeId == "bulgogi_banh_mi" && carriedId == "radish_carrot"))
+                {
+                    PassCounter pass = GetStation("pass_counter") as PassCounter;
+                    if (pass != null)
+                    {
+                        SetTarget(pass, $"Pass {carriedId} to Partner");
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // 2. Hands are empty: check if we need to fetch an ingredient to pass to partner
+            var supplyItems = GetPartnerSupplyItems(characterId, activeRecipeId);
+            if (supplyItems == null || supplyItems.Count == 0) return false;
+
+            PassCounter passCounter = GetStation("pass_counter") as PassCounter;
+            if (passCounter == null) return false;
+
+            // Must have at least one free pass counter slot to place an item
+            bool hasFreeSlot = false;
+            for (int i = 0; i < passCounter.slots.Length; i++)
+            {
+                if (passCounter.slots[i] == null || passCounter.slots[i].item == null)
+                {
+                    hasFreeSlot = true;
+                    break;
+                }
+            }
+            if (!hasFreeSlot) return false;
+
+            int partnerPeer = (peerId == 1) ? 2 : 1;
+            PlayerController partner = null;
+            if (KitchenController.Instance.playersByPeer != null)
+            {
+                KitchenController.Instance.playersByPeer.TryGetValue(partnerPeer, out partner);
+            }
+
+            for (int s = 0; s < supplyItems.Count; s++)
+            {
+                string neededItem = supplyItems[s];
+
+                // If already on the way to fetch this exact supply item, commit to it
+                if (currentGoalName == $"Get {neededItem} to Pass to Partner" && targetStation != null && currentPath != null && currentPath.Count > 0)
+                {
+                    return true;
+                }
+
+                // Check if already in pipeline
+                if (IsItemInPartnerPipeline(neededItem, partnerPeer, partner))
+                {
+                    continue;
+                }
+
+                // Partner needs it! Fetch from own crate:
+                string crateId = FindCrateIdFor(neededItem);
+                if (!string.IsNullOrEmpty(crateId) && IsCrateOnChefSide(characterId, crateId))
+                {
+                    desiredItemId = neededItem;
+                    SetTarget(GetStation(crateId), $"Get {neededItem} to Pass to Partner");
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsItemInPartnerPipeline(string neededItem, int partnerPeer, PlayerController partner)
+        {
+            PassCounter pass = GetStation("pass_counter") as PassCounter;
+            if (pass != null)
+            {
+                for (int i = 0; i < pass.slots.Length; i++)
+                {
+                    if (pass.slots[i] != null && pass.slots[i].item != null)
+                    {
+                        if (pass.slots[i].item.itemId == neededItem) return true;
+                        if (neededItem == "rice_portioned" && pass.slots[i].item.itemId == "cooked_rice") return true;
+                        if (neededItem == "radish_carrot" && pass.slots[i].item.itemId == "pickled_veg") return true;
+                    }
+                }
+            }
+
+            if (partner != null && partner.carriedItem != null)
+            {
+                if (partner.carriedItem.itemId == neededItem) return true;
+                if (neededItem == "rice_portioned" && partner.carriedItem.itemId == "cooked_rice") return true;
+                if (neededItem == "radish_carrot" && partner.carriedItem.itemId == "pickled_veg") return true;
+                if (neededItem == "tteok_portioned" && (partner.carriedItem.itemId == "tteok_raw" || partner.carriedItem.itemId == "tteokbokki_simmered" || partner.carriedItem.itemId == "tteokbokki_raw" || partner.carriedItem.itemId == "tteokbokki")) return true;
+            }
+
+            float minX = (partnerPeer == 1) ? -100f : 0f;
+            float maxX = (partnerPeer == 1) ? 0f : 100f;
+
+            if (KitchenController.Instance != null && KitchenController.Instance.stations != null)
+            {
+                foreach (var kvp in KitchenController.Instance.stations)
+                {
+                    StationBase st = kvp.Value;
+                    if (st == null || st is PassCounter || st is TrashStation) continue;
+                    float x = st.transform.position.x;
+                    if (x < minX || x > maxX) continue;
+
+                    KitchenItem held = null;
+                    if (st is CounterStation c) held = c.heldItem;
+                    else if (st is CookingStation ck) held = ck.heldItem;
+                    else if (st is PrepStation p) held = p.heldItem;
+
+                    if (held != null)
+                    {
+                        if (held.itemId == neededItem) return true;
+                        if (neededItem == "rice_portioned" && held.itemId == "cooked_rice") return true;
+                        if (neededItem == "radish_carrot" && held.itemId == "pickled_veg") return true;
+                        if (neededItem == "tteok_portioned" && (held.itemId == "tteok_raw" || held.itemId == "tteokbokki_simmered" || held.itemId == "tteokbokki_raw" || held.itemId == "tteokbokki")) return true;
+                        if (neededItem == "gochujang" && (held.itemId == "tteokbokki_raw" || held.itemId == "tteokbokki")) return true;
+                    }
+                }
+            }
+
             return false;
         }
     }

@@ -64,6 +64,7 @@ namespace TwoLadles.Core
                 esObj.AddComponent<UnityEngine.EventSystems.EventSystem>();
                 esObj.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
             }
+            DisableKeyboardMenuNavigation();
 
             if (Object.FindObjectOfType<KitchenHUD>() == null)
             {
@@ -88,6 +89,19 @@ namespace TwoLadles.Core
                 GameObject hudDebugObj = new GameObject("BotDebugHUD");
                 Object.DontDestroyOnLoad(hudDebugObj);
                 hudDebugObj.AddComponent<TwoLadles.AI.BotDebugHUD>();
+            }
+        }
+
+        /// <summary>
+        /// Stops WASD / arrows / Space / Enter from moving the menu highlight or re-pressing the
+        /// last clicked button. Menus stay mouse/touch only; the keyboard is for the chef.
+        /// </summary>
+        public static void DisableKeyboardMenuNavigation()
+        {
+            foreach (var es in Object.FindObjectsOfType<UnityEngine.EventSystems.EventSystem>(true))
+            {
+                es.sendNavigationEvents = false;
+                es.SetSelectedGameObject(null);
             }
         }
     }

@@ -1503,6 +1503,22 @@ namespace TwoLadles.Tests
             });
             Assert(allOnGrass, "Every yard decoration sits on grass outside the building");
 
+            // Forgiving mobile joystick: bigger touch zone, finger outside the pad still steers at full tilt
+            Assert(KitchenHUD.JOYSTICK_TOUCH_ZONE >= 240f, "Joystick touch zone is much bigger than the 128px pad");
+            Vector2 farOut = KitchenHUD.JoystickVector(new Vector2(400f, 0f));
+            Assert(Mathf.Abs(farOut.x - 1f) < 0.001f && Mathf.Abs(farOut.y) < 0.001f, "Finger far outside the pad still steers full right");
+            Vector2 halfway = KitchenHUD.JoystickVector(new Vector2(0f, -KitchenHUD.JOYSTICK_MAX_RADIUS * 0.5f));
+            Assert(Mathf.Abs(halfway.y + 0.5f) < 0.001f, "Half drag gives half speed");
+            Assert(KitchenHUD.JoystickVector(new Vector2(2f, 1f)) == Vector2.zero, "Tiny finger wobble near centre is ignored");
+
+            // WASD / arrows / Space must move the chef, never steer menus or re-press the last clicked button
+            var esGo = new GameObject("TestEventSystem");
+            var es = esGo.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            Assert(es.sendNavigationEvents, "Fresh EventSystem starts with keyboard menu navigation on");
+            AutoBootstrap.DisableKeyboardMenuNavigation();
+            Assert(!es.sendNavigationEvents, "Keyboard menu navigation is off so WASD only moves the chef");
+            UnityEngine.Object.DestroyImmediate(esGo);
+
             sm.isNetworkClient = false;
             sm.shiftActive = false;
             sm.isAutoplayQAMode = prevQA;

@@ -409,7 +409,7 @@ namespace TwoLadles.UI
             if (EventSystem.current == null && FindObjectOfType<EventSystem>() == null)
             {
                 var es = new GameObject("EventSystem");
-                es.AddComponent<EventSystem>();
+                es.AddComponent<EventSystem>().sendNavigationEvents = false; // keyboard is for the chef, not menus
                 es.AddComponent<StandaloneInputModule>();
             }
 

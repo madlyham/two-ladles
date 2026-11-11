@@ -15,6 +15,13 @@ namespace TwoLadles.UI
     {
         /// <summary>Mobile joystick centre, anchored bottom-left (moved up/right from 92,92 in v1.4.1).</summary>
         public static readonly Vector2 MOBILE_JOYSTICK_POS = new Vector2(150f, 140f);
+        /// <summary>Invisible square touch zone around the 128px joystick pad (forgiving grab area).</summary>
+        public const float JOYSTICK_TOUCH_ZONE = 260f;
+        /// <summary>Knob travel radius; drag this far (or further) = full speed.</summary>
+        public const float JOYSTICK_MAX_RADIUS = 46f;
+        /// <summary>Finger wobble under this distance from centre is ignored.</summary>
+        public const float JOYSTICK_DEAD_ZONE = 6f;
+        private int joystickPointerId = int.MinValue;
         // Pause button: plain word, inset from the right edge so rounded phone corners do not hide it
         public const string PAUSE_LABEL = "PAUSE";
         public const float PAUSE_BUTTON_X = -70f;
@@ -1141,38 +1148,78 @@ namespace TwoLadles.UI
 
         private void SetupDraggableJoystick(GameObject joyPadObj)
         {
-            var trigger = joyPadObj.AddComponent<EventTrigger>();
+            // Invisible, much bigger touch zone around the pad so near-misses still grab the stick.
+            GameObject zoneObj = new GameObject("JoystickTouchZone", typeof(RectTransform));
+            zoneObj.transform.SetParent(joyPadObj.transform, false);
+            zoneObj.transform.SetAsFirstSibling();
+            var zoneRect = zoneObj.GetComponent<RectTransform>();
+            zoneRect.anchorMin = zoneRect.anchorMax = zoneRect.pivot = new Vector2(0.5f, 0.5f);
+            zoneRect.anchoredPosition = Vector2.zero;
+            zoneRect.sizeDelta = new Vector2(JOYSTICK_TOUCH_ZONE, JOYSTICK_TOUCH_ZONE);
+            var zoneImg = zoneObj.AddComponent<Image>();
+            zoneImg.color = new Color(0f, 0f, 0f, 0f);
 
-            var downEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerDown };
-            downEntry.callback.AddListener((data) => OnJoystickDrag((PointerEventData)data));
-            trigger.triggers.Add(downEntry);
-
-            var dragEntry = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
-            dragEntry.callback.AddListener((data) => OnJoystickDrag((PointerEventData)data));
-            trigger.triggers.Add(dragEntry);
-
-            var upEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerUp };
-            upEntry.callback.AddListener((_) =>
+            // D-pad arrows become visual hints so a press on them drives the analog stick too.
+            foreach (var b in new[] { dpadUpButton, dpadDownButton, dpadLeftButton, dpadRightButton })
             {
-                if (joystickKnobRect != null) joystickKnobRect.anchoredPosition = Vector2.zero;
-                SetJoystick(Vector2.zero);
-            });
-            trigger.triggers.Add(upEntry);
+                if (b == null) continue;
+                foreach (var g in b.GetComponentsInChildren<Graphic>(true)) g.raycastTarget = false;
+            }
+
+            foreach (var target in new[] { joyPadObj, zoneObj })
+            {
+                var trigger = target.AddComponent<EventTrigger>();
+
+                var downEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerDown };
+                downEntry.callback.AddListener((data) =>
+                {
+                    var ped = (PointerEventData)data;
+                    joystickPointerId = ped.pointerId;
+                    OnJoystickDrag(ped);
+                });
+                trigger.triggers.Add(downEntry);
+
+                // Drag keeps arriving even when the finger leaves the pad, until it is lifted.
+                var dragEntry = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
+                dragEntry.callback.AddListener((data) => OnJoystickDrag((PointerEventData)data));
+                trigger.triggers.Add(dragEntry);
+
+                var upEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerUp };
+                upEntry.callback.AddListener((data) =>
+                {
+                    if (((PointerEventData)data).pointerId == joystickPointerId) ReleaseJoystick();
+                });
+                trigger.triggers.Add(upEntry);
+            }
+        }
+
+        private void ReleaseJoystick()
+        {
+            joystickPointerId = int.MinValue;
+            if (joystickKnobRect != null) joystickKnobRect.anchoredPosition = Vector2.zero;
+            SetJoystick(Vector2.zero);
+        }
+
+        /// <summary>Touch offset from pad centre to stick vector: capped at full tilt, tiny wobble ignored.</summary>
+        public static Vector2 JoystickVector(Vector2 localOffset)
+        {
+            if (localOffset.magnitude < JOYSTICK_DEAD_ZONE) return Vector2.zero;
+            return Vector2.ClampMagnitude(localOffset, JOYSTICK_MAX_RADIUS) / JOYSTICK_MAX_RADIUS;
         }
 
         private void OnJoystickDrag(PointerEventData eventData)
         {
             if (joystickBackgroundRect == null || eventData == null) return;
+            if (eventData.pointerId != joystickPointerId) return;
             if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 joystickBackgroundRect, eventData.position, eventData.pressEventCamera, out Vector2 localPt))
             {
-                float maxRadius = 46.0f;
-                Vector2 clamped = Vector2.ClampMagnitude(localPt, maxRadius);
+                Vector2 stick = JoystickVector(localPt);
                 if (joystickKnobRect != null)
                 {
-                    joystickKnobRect.anchoredPosition = clamped;
+                    joystickKnobRect.anchoredPosition = stick * JOYSTICK_MAX_RADIUS;
                 }
-                SetJoystick(clamped / maxRadius);
+                SetJoystick(stick);
             }
         }
 

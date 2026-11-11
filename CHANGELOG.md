@@ -2,6 +2,12 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-11 — v1.4.10: Forgiving Joystick & WASD Fix
+
+- **Mobile joystick is more forgiving**: bigger invisible grab area (260px) around the pad; once grabbed, the stick keeps following your thumb anywhere until you lift it; small dead zone stops drift; arrow hints no longer steal touches; only the grabbing finger controls it.
+- **WASD / arrows / Space only move the chef** on laptop: keyboard menu navigation is turned off, so keys no longer move the menu highlight or re-press the last clicked button.
+- Tests: Test20 +6 — 375 total.
+
 ## 2026-11-11 — v1.4.9: Bot Cleanup, PAUSE Button & Greener Yard
 
 - **QA bots fully stop** after the 2-bot QA test: leaving, closing the report, or starting any other mode aborts the QA run and turns the bots off.

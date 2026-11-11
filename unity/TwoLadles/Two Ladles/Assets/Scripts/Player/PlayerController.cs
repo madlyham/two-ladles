@@ -486,8 +486,8 @@ namespace TwoLadles.Player
                     }
                 }
 
-                // 2. Nearest station target (Holding counter, Pass Counter, Trash bin)
-                StationBase nearest = KitchenController.Instance.FindNearestStation(landingTarget);
+                // 2. First free table along the throw path (tight snap radius, never far-side tables)
+                StationBase nearest = FindThrowLandingStation(transform.position, dir);
                 if (nearest is CounterStation counter && counter.heldItem == null)
                 {
                     counter.heldItem = itemToThrow;
@@ -513,9 +513,71 @@ namespace TwoLadles.Player
                     KitchenController.Instance.TriggerStatusToast("Thrown cleanly into Trash!", new Color(0.6f, 0.6f, 0.6f));
                     return true;
                 }
+
+                KitchenController.Instance.TriggerStatusToast("Nowhere to land!", new Color(1.0f, 0.55f, 0.4f));
             }
 
-            return true;
+            // Nothing caught it: item stays in hands instead of vanishing.
+            SetCarriedItem(itemToThrow);
+            return false;
+        }
+
+        /// <summary>Throw lands only on a table within this distance of the flight path.</summary>
+        public const float THROW_SNAP_RADIUS = 1.4f;
+        public const float THROW_RANGE = 4.5f;
+
+        /// <summary>
+        /// Walks the throw path from near the chef outward and returns the first table that can
+        /// take the item (free counter, pass counter with a free slot, or trash).
+        /// Pass Counter uses its long rectangle footprint so the middle exchange table is easy to hit.
+        /// </summary>
+        public static StationBase FindThrowLandingStation(Vector3 origin, Vector2 dir)
+        {
+            if (KitchenController.Instance == null) return null;
+            for (float d = 1.0f; d <= THROW_RANGE + 0.001f; d += 0.25f)
+            {
+                Vector3 p = origin + new Vector3(dir.x * d, 0.0f, dir.y * d);
+                StationBase best = null;
+                float bestDist = THROW_SNAP_RADIUS;
+                foreach (var st in KitchenController.Instance.stations.Values)
+                {
+                    if (st == null || !CanTakeThrownItem(st)) continue;
+                    float dist = ThrowDistanceTo(st, p);
+                    if (dist <= bestDist)
+                    {
+                        bestDist = dist;
+                        best = st;
+                    }
+                }
+                if (best != null) return best;
+            }
+            return null;
+        }
+
+        private static bool CanTakeThrownItem(StationBase st)
+        {
+            if (st is CounterStation c) return c.heldItem == null;
+            if (st is PassCounter pc)
+            {
+                if (pc.slots == null) return false;
+                for (int i = 0; i < PassCounter.NUM_SLOTS; i++)
+                    if (pc.slots[i] == null || pc.slots[i].item == null) return true;
+                return false;
+            }
+            return st is TrashStation;
+        }
+
+        private static float ThrowDistanceTo(StationBase st, Vector3 p)
+        {
+            Vector3 c = st.transform.position;
+            float dx = Mathf.Abs(p.x - c.x);
+            float dz = Mathf.Abs(p.z - c.z);
+            if (st is PassCounter)
+            {
+                dx = Mathf.Max(0.0f, dx - 0.8f);
+                dz = Mathf.Max(0.0f, dz - 1.6f);
+            }
+            return Mathf.Sqrt(dx * dx + dz * dz);
         }
 
         private static System.Collections.Generic.Dictionary<string, Sprite> _itemSpriteCache = new System.Collections.Generic.Dictionary<string, Sprite>();

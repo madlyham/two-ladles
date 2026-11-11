@@ -58,12 +58,18 @@ namespace TwoLadles.Stations
             }
         }
 
+        /// <summary>True when this peer is the chef controlled on this device (gets the pick wheel).</summary>
+        public static bool IsHumanInteractor(int peerId)
+        {
+            int localPeer = NetworkManager.Instance != null ? NetworkManager.Instance.localPeerId : 1;
+            return peerId == localPeer;
+        }
+
         public override (bool ok, string reason) InteractPrimary(ref KitchenItem playerItem, int peerId, string characterId)
         {
             bool isFridgeStation = isFridge || (stationId != null && stationId.Contains("fridge"));
 
-            int localPeer = NetworkManager.Instance != null ? NetworkManager.Instance.localPeerId : 1;
-            bool isHuman = (peerId == localPeer);
+            bool isHuman = IsHumanInteractor(peerId);
 
             // In interactive gameplay with HUD active, human chef interacting with Fridge or Shelf opens the Select Wheel!
             if (isHuman && QuickSelectWheelUI.Instance != null)

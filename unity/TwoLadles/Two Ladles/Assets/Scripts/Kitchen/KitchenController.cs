@@ -1186,6 +1186,15 @@ namespace TwoLadles.Kitchen
                     }
                 }
             }
+
+            // Offline: the human-controlled chef must be the local peer, otherwise input,
+            // prompts, fridge/shelf wheel and mobile buttons all stay bound to Linh.
+            if (NetworkManager.Instance != null && !NetworkManager.Instance.isLanActive)
+            {
+                NetworkManager.Instance.localPeerId = isSolo ? humanPeer : 1;
+                UpdateLocalPrompt();
+                OnChefSwitched?.Invoke(NetworkManager.Instance.localPeerId);
+            }
         }
 
         public bool IsStationOccupiedByWorker(StationBase st)

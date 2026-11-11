@@ -734,6 +734,46 @@ namespace TwoLadles.Tests
             Assert(p1.carriedItem == null, "Chef hands empty after throwing item");
             Assert(p2.carriedItem != null && p2.carriedItem.itemId == "pickled_veg", "Partner chef automatically catches thrown item with empty hands");
 
+            // 4. Tight throw snapping: lands on first table in path, never silently deleted
+            Assert(PlayerController.THROW_SNAP_RADIUS < StationBase.MAX_INTERACT_DISTANCE, "Throw snap radius is tighter than interact radius");
+            kc.stations.Clear();
+            p2.carriedItem = null;
+            p2.transform.position = new Vector3(-9.0f, 0.0f, -6.0f); // partner far away (no catch)
+            var tPass = new GameObject("ThrowTest_Pass").AddComponent<PassCounter>();
+            tPass.stationId = "pass_counter"; tPass.InitSlots();
+            tPass.transform.position = new Vector3(0.0f, 0.0f, 0.5f);
+            var tTrash = new GameObject("ThrowTest_Trash").AddComponent<TrashStation>();
+            tTrash.stationId = "trash_bin";
+            tTrash.transform.position = new Vector3(0.0f, 0.0f, -6.0f);
+            kc.stations["pass_counter"] = tPass;
+            kc.stations["trash_bin"] = tTrash;
+
+            p1.transform.position = new Vector3(-2.5f, 0.0f, 1.8f);
+            p1.SetCarriedItem(new KitchenItem("pork_portioned", "Pork"));
+            p1.ThrowItem(Vector2.right);
+            bool inPass = false;
+            for (int i = 0; i < PassCounter.NUM_SLOTS; i++) if (tPass.slots[i] != null && tPass.slots[i].item != null) inPass = true;
+            Assert(inPass && p1.carriedItem == null, "Throw at middle exchange table lands in a Pass Counter slot (not trash)");
+
+            p1.transform.position = new Vector3(-3.5f, 0.0f, -4.0f);
+            p1.SetCarriedItem(new KitchenItem("pork_portioned", "Pork"));
+            bool threwNowhere = p1.ThrowItem(Vector2.right);
+            Assert(!threwNowhere && p1.carriedItem != null, "Throw with no table in range keeps item in chef's hands");
+
+            kc.stations.Clear();
+            var tCounterObj = new GameObject("ThrowTest_Counter");
+            var tCounter = tCounterObj.AddComponent<CounterStation>();
+            tCounter.stationId = "counter_east";
+            tCounter.transform.position = new Vector3(4.4f, 0.0f, 1.8f);
+            kc.stations["counter_east"] = tCounter;
+            p1.transform.position = new Vector3(-3.0f, 0.0f, 1.8f);
+            p1.ThrowItem(Vector2.right);
+            Assert(tCounter.heldItem == null && p1.carriedItem != null, "Far-side table outside snap radius does not grab thrown item");
+
+            DestroyImmediate(tPass.gameObject);
+            DestroyImmediate(tTrash.gameObject);
+            DestroyImmediate(tCounterObj);
+
             // Cleanup
             DestroyImmediate(counterObj);
             DestroyImmediate(pObj);
@@ -859,6 +899,22 @@ namespace TwoLadles.Tests
             Assert(linhPlayer.isLocalPlayer == false, "Switching solo role sets Linh as !isLocalPlayer");
             var linhBot = linhGo.GetComponent<AI.BotController>();
             Assert(linhBot != null && linhBot.botActive == true && linhBot.difficulty == BotDifficulty.Challenge, "BotController attaches to Linh with Challenge difficulty");
+
+            // 5. Human Jiwon gets input focus, fridge/shelf wheel, and own catalogs
+            Assert(NetworkManager.Instance != null && NetworkManager.Instance.localPeerId == 2, "Solo as Jiwon makes Jiwon the local (controlled) peer");
+            Assert(CrateStation.IsHumanInteractor(2) && !CrateStation.IsHumanInteractor(1), "Jiwon (human) opens fridge/shelf wheel; Linh bot does not");
+            var eastFridge = QuickSelectWheelUI.GetStationCatalogIds("fridge_east");
+            var eastShelf = QuickSelectWheelUI.GetStationCatalogIds("shelf_east");
+            var westFridge = new System.Collections.Generic.List<string>(QuickSelectWheelUI.GetStationCatalogIds("fridge_west"));
+            var westShelf = new System.Collections.Generic.List<string>(QuickSelectWheelUI.GetStationCatalogIds("shelf_west"));
+            bool overlap = false;
+            foreach (var id in eastFridge) if (westFridge.Contains(id) || westShelf.Contains(id)) overlap = true;
+            foreach (var id in eastShelf) if (westFridge.Contains(id) || westShelf.Contains(id)) overlap = true;
+            Assert(eastFridge.Length == 2 && eastShelf.Length == 2 && !overlap, "Jiwon fridge & shelf each offer 2 items not in Linh's fridge/shelf");
+
+            // Back to Linh human: focus returns to Peer 1
+            kc.ConfigureSoloAndAIMode(true, 1, BotDifficulty.Standard);
+            Assert(NetworkManager.Instance.localPeerId == 1 && linhPlayer.isLocalPlayer && !jiwonPlayer.isLocalPlayer, "Solo as Linh restores Linh as local peer");
 
             // Cleanup test objects
             DestroyImmediate(crateGo);

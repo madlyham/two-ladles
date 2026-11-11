@@ -2,6 +2,13 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-11 — v1.4.11: Jiwon Fridge/Shelf, Solo Jiwon & Throw Fix
+
+- **Solo as Jiwon (bot plays Linh) works**: Jiwon now moves and is the controlled chef (keyboard, mobile joystick, buttons, prompts).
+- **Jiwon's fridge & shelf open the pick wheel** (fridge: raw meat / radish-carrot; shelf: rice / baguette) instead of only handing out one item.
+- **Throws land where you aim**: item lands on the first free table along the throw path within a tight 1.4m snap (was 2.6m around a far landing point, which jumped to far-side tables or the trash). The long middle exchange table is easy to hit. If nothing can take it, the item stays in your hands instead of vanishing.
+- Tests: Test14 +4, Test16 +4 — 383 total.
+
 ## 2026-11-11 — v1.4.10: Forgiving Joystick & WASD Fix
 
 - **Mobile joystick is more forgiving**: bigger invisible grab area (260px) around the pad; once grabbed, the stick keeps following your thumb anywhere until you lift it; small dead zone stops drift; arrow hints no longer steal touches; only the grabbing finger controls it.

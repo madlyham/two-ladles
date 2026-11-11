@@ -1002,6 +1002,7 @@ namespace TwoLadles.Core
                 rushRemaining = rushRhythmRemaining,
                 waveCompleted = waveOrdersCompleted,
                 waveRequired = waveOrdersRequired,
+                waveIndex = currentWaveIndex,
                 orders = activeOrders
             };
         }
@@ -1035,6 +1036,7 @@ namespace TwoLadles.Core
                   .Append(F(o.initialPatience)).Append(';')
                   .Append(string.Join(",", done));
             }
+            if (st.waveIndex >= 0) sb.Append("|W").Append(st.waveIndex.ToString(System.Globalization.CultureInfo.InvariantCulture));
             return sb.ToString();
         }
 
@@ -1053,7 +1055,14 @@ namespace TwoLadles.Core
             if (!int.TryParse(parts[6], System.Globalization.NumberStyles.Integer, inv, out int wc)) return null;
             if (!int.TryParse(parts[7], System.Globalization.NumberStyles.Integer, inv, out int wr)) return null;
             if (!int.TryParse(parts[8], System.Globalization.NumberStyles.Integer, inv, out int n)) return null;
-            if (n < 0 || n > MAX_SYNC_ORDERS || parts.Length != ORDERS_HEADER_FIELDS + n) return null;
+            if (n < 0 || n > MAX_SYNC_ORDERS) return null;
+            int waveIdx = -1;
+            if (parts.Length == ORDERS_HEADER_FIELDS + n + 1)
+            {
+                string wf = parts[parts.Length - 1];
+                if (wf.Length < 2 || wf[0] != 'W' || !int.TryParse(wf.Substring(1), System.Globalization.NumberStyles.Integer, inv, out waveIdx) || waveIdx < 0) return null;
+            }
+            else if (parts.Length != ORDERS_HEADER_FIELDS + n) return null;
 
             var st = new NetworkShiftState
             {
@@ -1064,6 +1073,7 @@ namespace TwoLadles.Core
                 rushRemaining = Mathf.Max(0f, rushRem),
                 waveCompleted = wc,
                 waveRequired = wr,
+                waveIndex = waveIdx,
                 orders = new List<OrderTicket>()
             };
 
@@ -1112,6 +1122,7 @@ namespace TwoLadles.Core
             rushRhythmRemaining = st.rushRemaining;
             waveOrdersCompleted = st.waveCompleted;
             waveOrdersRequired = st.waveRequired;
+            if (st.waveIndex >= 0) currentWaveIndex = st.waveIndex;
             activeOrders = st.orders;
 
             OnOrderQueueUpdated?.Invoke(activeOrders);
@@ -1132,6 +1143,7 @@ namespace TwoLadles.Core
         public float rushRemaining;
         public int waveCompleted;
         public int waveRequired;
+        public int waveIndex = -1;
         public List<OrderTicket> orders = new List<OrderTicket>();
     }
 }

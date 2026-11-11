@@ -113,6 +113,7 @@ namespace TwoLadles.UI
         private readonly Dictionary<string, GameObject> botWheels = new Dictionary<string, GameObject>();
 
         private Transform openStation;
+        private string openStationId;
         private WheelItem[] currentCatalog = FRIDGE_WEST_ITEMS;
         private GameObject wheelRoot;
         private Text storageHeaderText;
@@ -209,6 +210,7 @@ namespace TwoLadles.UI
         {
             currentCatalog = GetStationCatalog(stationId);
             openStation = station;
+            openStationId = stationId;
             bool isFridge = stationId != null && stationId.Contains("fridge");
             var names = new List<string>();
             foreach (var it in currentCatalog) names.Add(it.displayName.ToUpper());
@@ -363,6 +365,14 @@ namespace TwoLadles.UI
             if (localChef.carriedItem != null)
             {
                 KitchenController.Instance.TriggerStatusToast("Hands full! Place or throw current item first.", new Color(1.0f, 0.45f, 0.45f));
+                return;
+            }
+
+            // LAN guest: the host owns item state, so ask it to hand over this pick.
+            if (NetworkManager.Instance != null && NetworkManager.Instance.isLanActive && !NetworkManager.Instance.IsHost())
+            {
+                NetworkManager.Instance.SendClientDispense(openStationId, itemId);
+                CloseWheel();
                 return;
             }
 

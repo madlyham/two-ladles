@@ -82,6 +82,11 @@ namespace TwoLadles.Networking
         private float sweepUntilRealtime = 0.0f; // sweep only runs for 60s after the Join screen opens
         private float helloRetryTimer = 0.0f;
         private int helloRetriesLeft = 0; // client resends HELLO every 0.5s until the host answers
+        private readonly ReliableOutbox outbox = new ReliableOutbox(); // control packets resent until ACK
+        private readonly HashSet<int> seenRel = new HashSet<int>(); // REL seqs already handled (dedupe)
+        private float lastRecvRealtime = 0f; // last packet from partner (heartbeat timeout)
+        private float heartbeatTimer = 0f;
+        public const float HEARTBEAT_TIMEOUT = 5f;
         private const float SWEEP_INTERVAL = 3.0f; // unicast Wi-Fi sweep (works even when router drops broadcasts)
 
         // Cached Wi-Fi address of this device (never 127.0.0.1)
@@ -106,6 +111,7 @@ namespace TwoLadles.Networking
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
+                Application.runInBackground = true; // alt-tabbed peer keeps sending heartbeats (5s timeout)
             }
             else
             {
@@ -170,6 +176,29 @@ namespace TwoLadles.Networking
                     {
                         CloseConnection();
                         OnConnectionStatusChanged?.Invoke("Host did not answer. Same Wi-Fi? Host allowed the game in Windows Firewall?", true);
+                    }
+                }
+            }
+
+            // 2b. Reliable control packets + heartbeat
+            if (isLanActive && partnerEndPoint != null)
+            {
+                foreach (var kv in outbox.Due(Time.realtimeSinceStartup))
+                    SendPacket($"REL|{kv.Key}|{kv.Value}", partnerEndPoint);
+
+                if (players.Count >= 2)
+                {
+                    heartbeatTimer += Time.unscaledDeltaTime;
+                    if (heartbeatTimer >= 1.0f)
+                    {
+                        heartbeatTimer = 0f;
+                        SendPacket("HEARTBEAT", partnerEndPoint);
+                    }
+                    if (lastRecvRealtime > 0f && ShouldTimeout(lastRecvRealtime, Time.realtimeSinceStartup))
+                    {
+                        OnConnectionStatusChanged?.Invoke("Partner disconnected.", true);
+                        CloseConnection("Partner disconnected.");
+                        return;
                     }
                 }
             }
@@ -632,6 +661,7 @@ namespace TwoLadles.Networking
 
             players.Clear();
             players[1] = CreateHostPlayer(playerName);
+            lastRecvRealtime = 0f;
 
             try
             {
@@ -701,6 +731,7 @@ namespace TwoLadles.Networking
                 SendPacket(BuildHelloPacket(playerName), partnerEndPoint);
                 helloRetryTimer = 0f;
                 helloRetriesLeft = 10;
+                lastRecvRealtime = Time.realtimeSinceStartup;
 
                 OnConnectionStatusChanged?.Invoke($"Joining Room at {cleanIp}...", false);
                 OnLobbyUpdated?.Invoke(players);
@@ -731,6 +762,10 @@ namespace TwoLadles.Networking
             partnerEndPoint = null;
             isLanActive = false;
             if (ShiftManager.Instance != null) ShiftManager.Instance.isNetworkClient = false;
+            outbox.Clear();
+            seenRel.Clear();
+            lastRecvRealtime = 0f;
+            heartbeatTimer = 0f;
             players.Clear();
             OnLobbyUpdated?.Invoke(players);
 
@@ -799,6 +834,8 @@ namespace TwoLadles.Networking
             if (parts.Length == 0) return;
 
             string cmd = parts[0];
+            if (partnerEndPoint != null && senderEp != null && senderEp.Equals(partnerEndPoint))
+                lastRecvRealtime = Time.realtimeSinceStartup;
 
             switch (cmd)
             {
@@ -836,6 +873,7 @@ namespace TwoLadles.Networking
                         if (partnerEndPoint != null && !partnerEndPoint.Equals(senderEp) && players.ContainsKey(2)) break;
                         bool isRetry = players.ContainsKey(2) && partnerEndPoint != null && partnerEndPoint.Equals(senderEp);
                         partnerEndPoint = senderEp;
+                        lastRecvRealtime = Time.realtimeSinceStartup;
                         if (!isRetry)
                         {
                             players[2] = CreateClientPlayer(parts[2]);
@@ -851,6 +889,7 @@ namespace TwoLadles.Networking
                     {
                         helloRetriesLeft = 0;
                         partnerEndPoint = senderEp;
+                        lastRecvRealtime = Time.realtimeSinceStartup;
                         int count = int.Parse(parts[1]);
                         players.Clear();
                         for (int i = 0; i < count; i++)
@@ -990,7 +1029,12 @@ namespace TwoLadles.Networking
                             // Client names the station it aimed at; host still checks the 2.6m reach.
                             StationBase aimed = null;
                             if (parts.Length >= 4 && !string.IsNullOrEmpty(parts[3])) kci.stations.TryGetValue(parts[3], out aimed);
-                            if (isSec) chef.TryInteractSecondary(aimed);
+                            if (isSec)
+                            {
+                                // Guest's own strike clock keeps chop cadence fair under network jitter.
+                                if (aimed is PrepStation psG && TryParseStrikeTime(parts, out float gStrike)) psG.nextStrikeTimeOverride = gStrike;
+                                chef.TryInteractSecondary(aimed);
+                            }
                             else chef.TryInteractPrimary(aimed);
                         }
                     }
@@ -1046,6 +1090,62 @@ namespace TwoLadles.Networking
                         OnDayReadyChanged?.Invoke(hostDayReady, guestDayReady);
                     }
                     break;
+
+                case "REL":
+                    {
+                        // Reliable wrapper: REL|seq|<inner packet>. Always ACK; handle each seq once.
+                        if (parts.Length < 3 || !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int relSeq)) break;
+                        SendPacket("ACK|" + relSeq.ToString(CultureInfo.InvariantCulture), senderEp);
+                        int cut = msg.IndexOf('|', msg.IndexOf('|') + 1);
+                        if (cut < 0 || cut + 1 >= msg.Length) break;
+                        string inner = msg.Substring(cut + 1);
+                        if (inner.StartsWith("REL|")) break; // no nesting
+                        if (seenRel.Add(relSeq)) HandleIncomingMessage(inner, senderEp);
+                    }
+                    break;
+
+                case "ACK":
+                    {
+                        if (parts.Length >= 2 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int ackSeq))
+                            outbox.Ack(ackSeq);
+                    }
+                    break;
+
+                case "HEARTBEAT":
+                    break; // lastRecvRealtime already refreshed above
+
+                case "DISPENSE":
+                    {
+                        // Guest picked an item from a fridge/shelf wheel. Host validates and hands it over.
+                        var kcd = Kitchen.KitchenController.Instance;
+                        if (!IsHost() || kcd == null) break;
+                        if (!TryDecodeDispense(msg, out int dp, out string ds, out string di)) break;
+                        if (dp == localPeerId || !kcd.playersByPeer.TryGetValue(dp, out var dChef) || dChef == null || dChef.carriedItem != null) break;
+                        CrateStation crate = null;
+                        if (kcd.stations.TryGetValue(ds, out var dst) && dst is CrateStation dc) crate = dc;
+                        else
+                        {
+                            string kind = ds.Contains("fridge") ? "fridge" : "shelf";
+                            float best = float.MaxValue;
+                            foreach (var sv in kcd.stations.Values)
+                            {
+                                if (!(sv is CrateStation c2) || c2.stationId == null || !c2.stationId.Contains(kind)) continue;
+                                float dd = Vector3.Distance(dChef.transform.position, c2.transform.position);
+                                if (dd < best) { best = dd; crate = c2; }
+                            }
+                        }
+                        if (crate == null) break;
+                        if (Vector3.Distance(dChef.transform.position, crate.transform.position) > StationBase.BOT_REACH_DISTANCE) break;
+                        if (Array.IndexOf(UI.QuickSelectWheelUI.GetStationCatalogIds(crate.stationId), di) < 0) break;
+                        var dres = crate.DispenseItemDirect(ref dChef.carriedItem, di);
+                        if (dres.ok && dChef.carriedItem != null)
+                        {
+                            if (di == "clean_plate") dChef.carriedItem.vesselType = "plate";
+                            else if (di == "clean_bowl") dChef.carriedItem.vesselType = "bowl";
+                        }
+                        dChef.RefreshVisuals();
+                    }
+                    break;
             }
         }
 
@@ -1064,12 +1164,29 @@ namespace TwoLadles.Networking
             }
         }
 
-        public void SendClientInteract(bool isSecondary, string stationId = "")
+        public void SendClientInteract(bool isSecondary, string stationId = "", float strikeTime = -1f)
         {
             if (!IsHost() && partnerEndPoint != null)
             {
-                SendPacket($"INTERACT|{localPeerId}|{(isSecondary ? 1 : 0)}|{(stationId ?? "").Replace("|", "")}", partnerEndPoint);
+                string pkt = $"INTERACT|{localPeerId}|{(isSecondary ? 1 : 0)}|{(stationId ?? "").Replace("|", "")}";
+                if (strikeTime >= 0f) pkt += "|" + strikeTime.ToString("0.###", CultureInfo.InvariantCulture);
+                SendPacket(pkt, partnerEndPoint);
             }
+        }
+
+        /// <summary>LAN guest: ask the host for a specific fridge/shelf item picked on the guest's wheel.</summary>
+        public void SendClientDispense(string stationId, string itemId)
+        {
+            if (!IsHost() && partnerEndPoint != null)
+                SendPacket(EncodeDispense(localPeerId, stationId, itemId), partnerEndPoint);
+        }
+
+        /// <summary>Sends a control packet that is resent every 0.5s until the partner ACKs it.</summary>
+        private void SendReliable(string payload)
+        {
+            if (partnerEndPoint == null) return;
+            int s = outbox.Add(payload, Time.realtimeSinceStartup);
+            SendPacket($"REL|{s}|{payload}", partnerEndPoint);
         }
 
         public void SendClientHire()
@@ -1155,7 +1272,7 @@ namespace TwoLadles.Networking
             var up = new Dictionary<string, float>();
             foreach (var key in UPGRADE_KEYS)
                 up[key] = pm != null ? pm.GetUpgradeValue(key, 1.0f) : 1.0f;
-            SendPacket(EncodeUpgrades(tier, up), partnerEndPoint);
+            SendReliable(EncodeUpgrades(tier, up));
         }
 
         // ---------------- Part-timer mirror (WORKER packet, host -> client) ----------------
@@ -1169,7 +1286,7 @@ namespace TwoLadles.Networking
         public void BroadcastWorker(string wid, string roleId, string stationId)
         {
             if (!isLanActive || !IsHost() || partnerEndPoint == null) return;
-            SendPacket(EncodeWorker(wid, roleId, stationId), partnerEndPoint);
+            SendReliable(EncodeWorker(wid, roleId, stationId));
         }
 
         public static bool ApplyWorkerPacket(string msg, Kitchen.KitchenController kc)
@@ -1304,7 +1421,7 @@ namespace TwoLadles.Networking
             if (int.TryParse(q, NumberStyles.Integer, CultureInfo.InvariantCulture, out int qi) && Enum.IsDefined(typeof(QualityTier), qi))
                 qt = (QualityTier)qi;
             string v = string.IsNullOrEmpty(vessel) || vessel == "-" ? "none" : vessel;
-            var item = new KitchenItem(id, Player.PlayerController.ResolveItemSpriteName(id), v, qt);
+            var item = new KitchenItem(id, SyncedDisplayName(id), v, qt);
             item.assembledComponents.AddRange(SplitList(comps));
             return item;
         }
@@ -1431,7 +1548,7 @@ namespace TwoLadles.Networking
         {
             if (IsHost() && partnerEndPoint != null)
             {
-                SendPacket("STORY_DONE", partnerEndPoint);
+                SendReliable("STORY_DONE");
             }
         }
 
@@ -1439,7 +1556,7 @@ namespace TwoLadles.Networking
         {
             if (IsHost() && partnerEndPoint != null)
             {
-                SendPacket($"START_SHIFT|{stage}|{mode}", partnerEndPoint);
+                SendReliable($"START_SHIFT|{stage}|{mode}");
             }
         }
 
@@ -1491,7 +1608,7 @@ namespace TwoLadles.Networking
             bool vic = summary.TryGetValue("victory", out var v) && v is bool b && b;
             string pkt = EncodeDayReport(SummaryInt(summary, "stage_id"), vic, rep, SummaryInt(summary, "waves_completed"),
                 SummaryInt(summary, "total_waves"), SummaryInt(summary, "ordersServed"), SummaryInt(summary, "total_score"), SummaryInt(summary, "high_score"));
-            if (partnerEndPoint != null) SendPacket(pkt, partnerEndPoint);
+            if (partnerEndPoint != null) SendReliable(pkt);
             OnDayReadyChanged?.Invoke(hostDayReady, guestDayReady);
         }
 
@@ -1508,7 +1625,7 @@ namespace TwoLadles.Networking
             else
             {
                 guestDayReady = ready;
-                if (partnerEndPoint != null) SendPacket($"DAY_READY|{localPeerId}|{(ready ? 1 : 0)}", partnerEndPoint);
+                if (partnerEndPoint != null) SendReliable($"DAY_READY|{localPeerId}|{(ready ? 1 : 0)}");
                 OnDayReadyChanged?.Invoke(hostDayReady, guestDayReady);
             }
         }
@@ -1535,6 +1652,66 @@ namespace TwoLadles.Networking
 
         /// <summary>Lobby-only stand-in chef: lets a player step off Linh/Jiwon, but can never be Ready.</summary>
         public const string PLACEHOLDER_CHAR = "placeholder";
+
+        public static string EncodeDispense(int peer, string station, string item)
+            => $"DISPENSE|{peer}|{(station ?? "").Replace("|", "")}|{(item ?? "").Replace("|", "")}";
+
+        public static bool TryDecodeDispense(string packet, out int peer, out string station, out string item)
+        {
+            peer = 0; station = ""; item = "";
+            if (string.IsNullOrEmpty(packet)) return false;
+            var p = packet.Split('|');
+            if (p.Length != 4 || p[0] != "DISPENSE") return false;
+            if (!int.TryParse(p[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out peer)) return false;
+            if (string.IsNullOrEmpty(p[2]) || string.IsNullOrEmpty(p[3])) return false;
+            station = p[2]; item = p[3];
+            return true;
+        }
+
+        /// <summary>True when the partner has been silent longer than HEARTBEAT_TIMEOUT.</summary>
+        public static bool ShouldTimeout(float lastRecv, float now) => now - lastRecv > HEARTBEAT_TIMEOUT;
+
+        /// <summary>Chef this peer plays: their lobby pick (linh/jiwon), else host Linh / guest Jiwon.</summary>
+        public static string ResolveChefCharacter(int peer, Dictionary<int, PlayerLobbyInfo> lobby)
+        {
+            if (lobby != null && lobby.TryGetValue(peer, out var info) && info != null &&
+                (info.character == "linh" || info.character == "jiwon"))
+                return info.character;
+            return peer == 1 ? "linh" : "jiwon";
+        }
+
+        public static string ResolveChefSpec(string ch, string spec)
+            => string.IsNullOrEmpty(spec) || spec == "-" ? (ch == "linh" ? "prep_master" : "flame_keeper") : spec;
+
+        /// <summary>Readable name for an item id received in a sync snapshot.</summary>
+        public static string SyncedDisplayName(string id)
+        {
+            if (id == null) return "";
+            string name = null;
+            var gd = GameData.Instance;
+            if (gd != null)
+            {
+                if (gd.ingredients != null && gd.ingredients.TryGetValue(id, out var ing) && ing != null) name = ing.displayName;
+                if (string.IsNullOrEmpty(name)) name = gd.GetRecipeSpec(id)?.displayName;
+            }
+            if (string.IsNullOrEmpty(name)) name = GameData.GetItemDisplayName(id);
+            if (string.IsNullOrEmpty(name)) name = id;
+            return name.Replace('_', ' ');
+        }
+
+        /// <summary>Reads the guest's optional strike time (5th INTERACT field).</summary>
+        public static bool TryParseStrikeTime(string[] parts, out float t)
+        {
+            t = 0f;
+            if (parts == null || parts.Length < 5) return false;
+            if (!float.TryParse(parts[4], NumberStyles.Float, CultureInfo.InvariantCulture, out t) ||
+                float.IsNaN(t) || float.IsInfinity(t) || t < 0f)
+            {
+                t = 0f;
+                return false;
+            }
+            return true;
+        }
 
         /// <summary>True when a player using this character may mark themselves Ready.</summary>
         public static bool CanReadyAs(string characterId) => characterId != PLACEHOLDER_CHAR;
@@ -1590,7 +1767,7 @@ namespace TwoLadles.Networking
 
             if (!IsHost() && partnerEndPoint != null)
             {
-                SendPacket($"LOBBY_READY|{peerId}|{(isReady ? 1 : 0)}", partnerEndPoint);
+                SendReliable($"LOBBY_READY|{peerId}|{(isReady ? 1 : 0)}");
             }
             else
             {

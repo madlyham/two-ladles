@@ -2,6 +2,16 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-11 — v1.4.14-dev: Development Branch (experimental)
+
+- **Bots use the select wheel**: bot opens a half-size wheel, waits 0.5 s, then picks. Linh's wheel on the left, Jiwon's on the right.
+- **LAN guest fridge/shelf**: guest opens the wheel locally and sends a DISPENSE request; host checks reach, empty hands and the item list.
+- **Reliable LAN control packets**: start shift, day report, day ready, story done, lobby ready, upgrades and worker are resent every 0.5 s until acknowledged.
+- **Heartbeat**: partner silent for 5 s -> "Partner disconnected." and back to menu. Game keeps running when the window loses focus.
+- **Lobby chef pick honored**: the guest can play Linh; Linh always spawns West, Jiwon East.
+- **Guest sync**: wave number synced, real item names shown on guest, prep rhythm uses the guest's own strike time.
+- Tests: Test22 Development Batch, Test23 LAN Reliability — 23 suites, 455 total.
+
 ## 2026-11-11 — v1.4.13: Final Polish
 
 - **Switch-chef removed** in every mode (C key and HUD `LINH [C]` button gone) — it let the player hijack the bot's chef.

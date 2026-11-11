@@ -1050,11 +1050,27 @@ namespace TwoLadles.Kitchen
             int lTier = (ProgressionManager.Instance != null) ? ProgressionManager.Instance.linhTier : 1;
             int jTier = (ProgressionManager.Instance != null) ? ProgressionManager.Instance.jiwonTier : 1;
 
-            // Spawn Linh (Player 1) at (-2.2, 0, 0.5) in spacious West walkway
-            SpawnChef(1, "linh", "prep_master", lTier, new Vector3(-2.2f, 0.0f, 0.5f));
+            var nm = NetworkManager.Instance;
+            if (nm != null && nm.isLanActive && nm.players.Count >= 2)
+            {
+                // LAN: honour the lobby pick (host may play Jiwon, guest Linh). Linh always spawns West.
+                string c1 = NetworkManager.ResolveChefCharacter(1, nm.players);
+                string c2 = c1 == "linh" ? "jiwon" : "linh";
+                foreach (var (peer, ch) in new[] { (1, c1), (2, c2) })
+                {
+                    nm.players.TryGetValue(peer, out var info);
+                    SpawnChef(peer, ch, NetworkManager.ResolveChefSpec(ch, info?.specialization),
+                        ch == "linh" ? lTier : jTier, new Vector3(ch == "linh" ? -2.2f : 2.2f, 0.0f, 0.5f));
+                }
+            }
+            else
+            {
+                // Spawn Linh (Player 1) at (-2.2, 0, 0.5) in spacious West walkway
+                SpawnChef(1, "linh", "prep_master", lTier, new Vector3(-2.2f, 0.0f, 0.5f));
 
-            // Spawn Jiwon (Player 2) at (2.2, 0, 0.5) in spacious East walkway
-            SpawnChef(2, "jiwon", "flame_keeper", jTier, new Vector3(2.2f, 0.0f, 0.5f));
+                // Spawn Jiwon (Player 2) at (2.2, 0, 0.5) in spacious East walkway
+                SpawnChef(2, "jiwon", "flame_keeper", jTier, new Vector3(2.2f, 0.0f, 0.5f));
+            }
         }
 
         private PlayerController SpawnChef(int peerId, string charId, string specId, int tier, Vector3 spawnPos)

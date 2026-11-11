@@ -92,6 +92,7 @@ namespace TwoLadles.Tests
             Test20_PauseAndLanDayCycle();
             Test21_FinalPolish();
             Test22_DevelopmentBatch();
+            Test23_LanReliability();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -1721,6 +1722,84 @@ namespace TwoLadles.Tests
             worker.TickWorker(0.1f);
             Assert(worker.currentState != WorkerState.WALKING_IN, "Part-timer with no station leaves instead of standing still");
             UnityEngine.Object.DestroyImmediate(wObj);
+        }
+
+        // Suite 23: LAN reliability (v1.4.14-dev): guest fridge wheel, resent control packets, heartbeat, lobby pick, sync details
+        private void Test23_LanReliability()
+        {
+            Debug.Log("\n[Suite 23] LAN Reliability: Guest Dispense, Reliable Packets, Heartbeat, Lobby Pick, Sync Details");
+
+            // 1.2 Guest fridge/shelf pick travels as a DISPENSE packet
+            string disp = NetworkManager.EncodeDispense(2, "fridge_east", "egg_raw");
+            bool dispOk = NetworkManager.TryDecodeDispense(disp, out int dPeer, out string dStation, out string dItem);
+            Assert(dispOk && dPeer == 2 && dStation == "fridge_east" && dItem == "egg_raw", "DISPENSE packet round-trips peer, station and item");
+            Assert(!NetworkManager.TryDecodeDispense(null, out _, out _, out _), "Null DISPENSE packet rejected");
+            Assert(!NetworkManager.TryDecodeDispense("DISPENSE|x|a|b", out _, out _, out _), "DISPENSE with bad peer id rejected");
+            Assert(!NetworkManager.TryDecodeDispense("DISPENSE|2|a", out _, out _, out _), "DISPENSE missing the item rejected");
+            Assert(!NetworkManager.TryDecodeDispense("HELLO|2|a|b", out _, out _, out _), "Non-DISPENSE packet rejected");
+
+            // 1.8 Control packets are resent until acknowledged
+            var outbox = new ReliableOutbox();
+            int s1 = outbox.Add("START_SHIFT|1|campaign", 0f);
+            int s2 = outbox.Add("STORY_DONE", 0f);
+            Assert(s1 >= 1 && s2 > s1, "Reliable packets get increasing sequence numbers");
+            Assert(outbox.Due(0.4f).Count == 0, "Reliable packet is not resent before 0.5s");
+            Assert(outbox.Due(0.6f).Count == 2, "Reliable packets are resent after 0.5s");
+            Assert(outbox.Ack(s1) && outbox.Count == 1, "Acknowledged packet stops being resent");
+            Assert(!outbox.Ack(999), "Unknown acknowledgement is ignored");
+            float t = 0.6f;
+            for (int i = 0; i < ReliableOutbox.MAX_TRIES + 5; i++) { t += 0.6f; outbox.Due(t); }
+            Assert(outbox.Count == 0, "Reliable packet is dropped after MAX_TRIES resends");
+
+            // 1.8 Heartbeat timeout
+            Assert(!NetworkManager.ShouldTimeout(0f, 4.9f), "Partner is still connected after 4.9s of silence");
+            Assert(NetworkManager.ShouldTimeout(0f, 5.1f), "Partner is dropped after 5s of silence");
+
+            // 1.9 Lobby chef pick is honoured
+            var lobby = new Dictionary<int, PlayerLobbyInfo>
+            {
+                { 1, new PlayerLobbyInfo { peerId = 1, name = "Host", character = "jiwon", specialization = "flame_keeper" } },
+                { 2, new PlayerLobbyInfo { peerId = 2, name = "Guest", character = "linh", specialization = "prep_master" } }
+            };
+            Assert(NetworkManager.ResolveChefCharacter(2, lobby) == "linh", "Guest who picked Linh plays Linh");
+            Assert(NetworkManager.ResolveChefCharacter(1, lobby) == "jiwon", "Host who picked Jiwon plays Jiwon");
+            var empty = new Dictionary<int, PlayerLobbyInfo>();
+            Assert(NetworkManager.ResolveChefCharacter(1, empty) == "linh" && NetworkManager.ResolveChefCharacter(2, empty) == "jiwon", "No lobby pick falls back to host Linh / guest Jiwon");
+            Assert(NetworkManager.ResolveChefCharacter(1, null) == "linh", "Missing lobby falls back to host Linh");
+            var ph = new Dictionary<int, PlayerLobbyInfo> { { 2, new PlayerLobbyInfo { peerId = 2, character = "placeholder" } } };
+            Assert(NetworkManager.ResolveChefCharacter(2, ph) == "jiwon", "Placeholder pick falls back to the default chef");
+            Assert(NetworkManager.ResolveChefSpec("linh", "") == "prep_master" && NetworkManager.ResolveChefSpec("jiwon", "-") == "flame_keeper", "Empty specialization falls back to the chef default");
+            Assert(NetworkManager.ResolveChefSpec("linh", "fusion_artist") == "fusion_artist", "Chosen specialization is kept");
+
+            // 2.13 Wave index syncs to the guest
+            var ws = new NetworkShiftState { score = 10, reputation = 50f, flow = 0f, waveCompleted = 1, waveRequired = 4, waveIndex = 2 };
+            var wsDec = ShiftManager.DecodeNetworkState(ShiftManager.EncodeNetworkState(ws));
+            Assert(wsDec != null && wsDec.waveIndex == 2, "Wave index round-trips in the ORDERS packet");
+            var oldState = new NetworkShiftState { score = 5, reputation = 40f, waveCompleted = 0, waveRequired = 3 };
+            var oldDec = ShiftManager.DecodeNetworkState(ShiftManager.EncodeNetworkState(oldState));
+            Assert(oldDec != null && oldDec.waveIndex == -1, "ORDERS packet without wave index still decodes");
+            Assert(ShiftManager.DecodeNetworkState("ORDERS|5|40|0|0|0|0|3|0|Wx") == null, "Bad wave index field rejected");
+
+            // 2.13 Guest sees real item names
+            Assert(NetworkManager.SyncedDisplayName("egg_raw") == "Fresh Egg", "Synced egg shows its real name");
+            string unk = NetworkManager.SyncedDisplayName("some_unknown_id");
+            Assert(!string.IsNullOrEmpty(unk) && !unk.Contains("_"), "Unknown synced item shows a readable name");
+
+            // 2.13 Guest chop timing uses the guest's own strike time
+            Assert(NetworkManager.TryParseStrikeTime(new[] { "INTERACT", "2", "1", "prep_east", "12.5" }, out float st) && Mathf.Approximately(st, 12.5f), "Guest strike time parsed from INTERACT packet");
+            Assert(!NetworkManager.TryParseStrikeTime(new[] { "INTERACT", "2", "1", "prep_east" }, out _), "INTERACT without strike time uses host time");
+            Assert(!NetworkManager.TryParseStrikeTime(new[] { "INTERACT", "2", "1", "prep_east", "abc" }, out _), "Garbage strike time rejected");
+            Assert(!NetworkManager.TryParseStrikeTime(new[] { "INTERACT", "2", "1", "prep_east", "NaN" }, out _), "NaN strike time rejected");
+
+            var cadObj = new GameObject("LanCadencePrep");
+            var cadPrep = cadObj.AddComponent<PrepStation>();
+            Assert(cadPrep.nextStrikeTimeOverride < 0f, "Prep table uses its own clock by default");
+            cadPrep.PlaceRawItem(new KitchenItem("pork_raw", "Raw Pork Belly"));
+            KitchenItem none = null;
+            cadPrep.nextStrikeTimeOverride = 3.0f;
+            cadPrep.InteractSecondary(ref none, 2, "jiwon");
+            Assert(cadPrep.nextStrikeTimeOverride < 0f, "Guest strike time is used once then cleared");
+            UnityEngine.Object.DestroyImmediate(cadObj);
         }
     }
 }

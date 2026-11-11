@@ -14,6 +14,7 @@ namespace TwoLadles.Stations
 
         public int strikesCompleted = 0;
         public float lastStrikeTime = 0.0f;
+        public float nextStrikeTimeOverride = -1f; // LAN guest's own strike clock, used once
         public bool hasMissedCadence = false;
         public int perfectCadenceCount = 0;
 
@@ -217,6 +218,8 @@ namespace TwoLadles.Stations
 
         public override (bool ok, string reason) InteractSecondary(ref KitchenItem playerItem, int peerId, string characterId)
         {
+            float strikeTime = nextStrikeTimeOverride >= 0f ? nextStrikeTimeOverride : Time.time;
+            nextStrikeTimeOverride = -1f;
             // LAN: use the striking chef's own tier + knife upgrade (partner may have different upgrades).
             int chefTier = -1;
             float chefPrepWindow = -1f;
@@ -227,7 +230,7 @@ namespace TwoLadles.Stations
                 chefTier = chef.characterTier;
                 chefPrepWindow = chef.GetChefUpgradeValue("prep_window", 1.0f);
             }
-            var res = PerformStrike(Time.time, "", characterId, 1.0f, chefTier, chefPrepWindow);
+            var res = PerformStrike(strikeTime, "", characterId, 1.0f, chefTier, chefPrepWindow);
             return (res.ok, res.reason);
         }
     }

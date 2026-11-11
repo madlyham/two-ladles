@@ -159,6 +159,12 @@ namespace TwoLadles.Player
             // the result comes back in the next STATIONS snapshot (~0.1s).
             if (IsLanClient())
             {
+                if (target is CrateStation && carriedItem == null && TwoLadles.UI.QuickSelectWheelUI.Instance != null)
+                {
+                    // Guest picks on its own wheel; the pick goes to the host as DISPENSE.
+                    TwoLadles.UI.QuickSelectWheelUI.Instance.OpenWheelForStation(target.stationId, target.transform);
+                    return (true, "");
+                }
                 NetworkManager.Instance.SendClientInteract(false, target.stationId);
                 return (true, "");
             }
@@ -197,7 +203,13 @@ namespace TwoLadles.Player
 
             if (IsLanClient())
             {
-                NetworkManager.Instance.SendClientInteract(true, target.stationId);
+                if (target is CrateStation && carriedItem == null && TwoLadles.UI.QuickSelectWheelUI.Instance != null)
+                {
+                    // Guest picks on its own wheel; the pick goes to the host as DISPENSE.
+                    TwoLadles.UI.QuickSelectWheelUI.Instance.OpenWheelForStation(target.stationId, target.transform);
+                    return (true, "");
+                }
+                NetworkManager.Instance.SendClientInteract(true, target.stationId, target is PrepStation ? Time.time : -1f);
                 return (true, "");
             }
 

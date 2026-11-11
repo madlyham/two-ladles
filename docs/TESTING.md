@@ -7,7 +7,7 @@
 
 File: [`Assets/Tests/TwoLadlesTestSuite.cs`](../unity/TwoLadles/Two%20Ladles/Assets/Tests/TwoLadlesTestSuite.cs)
 
-### What it covers (21 suites, 405 assertions as of 2026-11-11)
+### What it covers (23 suites, 455 assertions as of 2026-11-11)
 1. Recipes & Cross-Prep Architecture
 2. Prep Station Rhythm Cadence (0.45 s sweet spot)
 3. Cooking State Machine & Phá»Ÿ Separation
@@ -27,6 +27,10 @@ File: [`Assets/Tests/TwoLadlesTestSuite.cs`](../unity/TwoLadles/Two%20Ladles/Ass
 17. Two-Bot QA Autoplay Manager & Reporting
 18. Story Phone Script & Day-Night Lighting
 19. LAN Order Sync, Recipe Timing & Bot Safety
+20. Pause Menu & LAN Day Cycle
+21. Final Polish
+22. Development Batch (bot select wheel, prep/worker/logger fixes)
+23. LAN Reliability (reliable packets, heartbeat timeout, guest fridge/shelf dispense, lobby chef pick, wave sync)
 
 > [!IMPORTANT]
 > **Test immutability:** never weaken, skip, comment out, or delete assertions to make a build pass. Fix the code instead. Tests change only when requirements change and the change is approved.

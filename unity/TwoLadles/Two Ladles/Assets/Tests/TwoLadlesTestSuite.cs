@@ -101,6 +101,7 @@ namespace TwoLadles.Tests
             Test22_DevelopmentBatch();
             Test23_LanReliability();
             Test24_BotIngredientSourcing();
+            Test25_BotUnstickTrashRule();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -1903,6 +1904,40 @@ namespace TwoLadles.Tests
 
             var linhBbq = AI.BotController.GetPartnerSupplyItems("linh", "korean_bbq_rice");
             Assert(linhBbq.Count == 0, "Linh supplies no ingredients for Korean BBQ rice");
+        }
+
+        // ------------------------------------------------------------------
+        // TEST 25: Bot Unstick Rule — trash unneeded item when tables full, closer pass approach
+        // ------------------------------------------------------------------
+        private void Test25_BotUnstickTrashRule()
+        {
+            Debug.Log("\n[TEST 25] Bot Unstick — Trash Unneeded Item When Tables Full & Closer Pass Approach");
+
+            // 1. Trash rule: unneeded + every own-side table full -> trash
+            Assert(AI.BotController.ShouldTrashInsteadOfHold("cooked_flour", false, true), "Unneeded item is trashed when all holding tables are full");
+            Assert(AI.BotController.ShouldTrashInsteadOfHold("bbq_beef", false, true), "Unneeded BBQ beef is trashed when all holding tables are full");
+            Assert(!AI.BotController.ShouldTrashInsteadOfHold("cooked_flour", false, false), "Unneeded item is parked when a holding table is free");
+            Assert(!AI.BotController.ShouldTrashInsteadOfHold("bbq_beef", true, true), "Needed item is never trashed by the unstick rule");
+            Assert(AI.BotController.ShouldTrashInsteadOfHold("baguette", false, false), "Wrong baguette still goes straight to trash");
+
+            // 2. Recipe chain membership decides whether a carried item is still needed
+            Assert(AI.BotController.IsItemUsedInRecipe("bbq_beef", "korean_bbq_rice"), "BBQ beef is used in Korean BBQ rice");
+            Assert(AI.BotController.IsItemUsedInRecipe("egg_raw", "bot_chien"), "Egg is used in Bot Chien");
+            Assert(AI.BotController.IsItemUsedInRecipe("bulgogi_seared", "bulgogi_banh_mi"), "Seared bulgogi is used in Bulgogi Banh Mi");
+            Assert(!AI.BotController.IsItemUsedInRecipe("bbq_beef", "bot_chien"), "BBQ beef is not used in Bot Chien");
+            Assert(!AI.BotController.IsItemUsedInRecipe("gochujang", "bulgogi_banh_mi"), "Gochujang is not used in Bulgogi Banh Mi");
+
+            // 3. Idle goals never spam table interactions
+            Assert(AI.BotController.IsIdleGoal("Standby for Support"), "Standby goal is idle");
+            Assert(AI.BotController.IsIdleGoal("Wait for Rice from Partner"), "Wait goal is idle");
+            Assert(!AI.BotController.IsIdleGoal("Pick Up Flour Cake"), "Pick-up goal is not idle");
+            Assert(!AI.BotController.IsIdleGoal(null), "Empty goal is not idle");
+
+            // 4. Pass counter approach is closer than before (was 1.4m) but outside the collider (edge 0.8 + chef radius 0.45)
+            Vector3 westPass = AI.KitchenNavGraph.GetPassApproach(1);
+            Vector3 eastPass = AI.KitchenNavGraph.GetPassApproach(2);
+            Assert(westPass.x < 0f && Mathf.Abs(westPass.x) < 1.4f && Mathf.Abs(westPass.x) >= 1.25f, "Linh stands closer to the pass counter without clipping it");
+            Assert(eastPass.x > 0f && Mathf.Abs(eastPass.x) < 1.4f && Mathf.Abs(eastPass.x) >= 1.25f, "Jiwon stands closer to the pass counter without clipping it");
         }
     }
 }

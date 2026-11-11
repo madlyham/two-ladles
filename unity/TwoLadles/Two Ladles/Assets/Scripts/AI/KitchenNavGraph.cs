@@ -55,7 +55,7 @@ namespace TwoLadles.AI
             AddNode("W_Serving_App", new Vector3(-1.4f, 0f, 3.2f), "NW_Inner", "W_Prep_App");
             AddNode("W_Prep_App", new Vector3(-2.2f, 0f, 3.6f), "NW_Inner", "W_Serving_App", "W_Counter1_App");
             AddNode("W_Counter1_App", new Vector3(-2.2f, 0f, 0.8f), "W_Prep_App", "W_Mid_North_Cross", "W_Pass_App", "W_Counter2_App");
-            AddNode("W_Pass_App", new Vector3(-1.4f, 0f, 0.5f), "W_Counter1_App", "W_Counter2_App");
+            AddNode("W_Pass_App", new Vector3(-1.3f, 0f, 0.5f), "W_Counter1_App", "W_Counter2_App");
             AddNode("W_Counter2_App", new Vector3(-2.2f, 0f, -2.0f), "W_Counter1_App", "W_Pass_App", "SW_Inner");
             AddNode("SW_Inner", new Vector3(-2.2f, 0f, -3.4f), "W_Counter2_App", "W_Mid_South_Cross", "W_Counter3_App", "W_Trash_App");
             AddNode("W_Counter3_App", new Vector3(-2.2f, 0f, -5.0f), "SW_Inner", "W_Trash_App");
@@ -75,7 +75,7 @@ namespace TwoLadles.AI
             AddNode("NE_Inner", new Vector3(2.2f, 0f, 4.6f), "E_Fridge_App", "E_Counter1_App", "E_Serving_App");
             AddNode("E_Serving_App", new Vector3(1.4f, 0f, 3.2f), "NE_Inner", "E_Counter1_App");
             AddNode("E_Counter1_App", new Vector3(2.2f, 0f, 1.8f), "NE_Inner", "E_Serving_App", "E_Mid_North_Cross", "E_Pass_App", "E_Prep_App");
-            AddNode("E_Pass_App", new Vector3(1.4f, 0f, 0.5f), "E_Counter1_App", "E_Mid_North_Cross", "E_Prep_App");
+            AddNode("E_Pass_App", new Vector3(1.3f, 0f, 0.5f), "E_Counter1_App", "E_Mid_North_Cross", "E_Prep_App");
             AddNode("E_Prep_App", new Vector3(2.2f, 0f, -1.6f), "E_Counter1_App", "E_Pass_App", "SE_Inner");
             AddNode("SE_Inner", new Vector3(2.2f, 0f, -3.4f), "E_Prep_App", "E_Mid_South_Cross", "E_Counter2_App", "E_Trash_App");
             AddNode("E_Counter2_App", new Vector3(2.2f, 0f, -5.0f), "SE_Inner", "E_Trash_App");
@@ -123,6 +123,13 @@ namespace TwoLadles.AI
             nodes[id] = new NavNode(id, pos, neighbors);
         }
 
+        /// <summary>Bot stand spot beside the Pass Counter (exchange table) for the given chef side.</summary>
+        public static Vector3 GetPassApproach(int peerId)
+        {
+            EnsureInitialized();
+            return (peerId == 1) ? nodes["W_Pass_App"].position : nodes["E_Pass_App"].position;
+        }
+
         public static Vector3 GetStationApproachPosition(StationBase station, int peerId)
         {
             EnsureInitialized();
@@ -131,7 +138,7 @@ namespace TwoLadles.AI
             string sId = station.stationId;
             if (sId == "pass_counter")
             {
-                return (peerId == 1) ? nodes["W_Pass_App"].position : nodes["E_Pass_App"].position;
+                return GetPassApproach(peerId);
             }
             if (sId == "trash_bin")
             {

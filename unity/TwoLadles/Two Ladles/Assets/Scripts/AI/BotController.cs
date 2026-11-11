@@ -172,9 +172,7 @@ namespace TwoLadles.AI
 
             // Anti-Stuck Watchdog: Catches bot standing still or unable to reach/interact
             // Check stationary duration (excluding intentional standby or cooking monitoring)
-            bool isIntentionalWait = !string.IsNullOrEmpty(currentGoalName) && 
-                (currentGoalName.StartsWith("Standby") || currentGoalName.StartsWith("Monitor") || currentGoalName.StartsWith("Wait") ||
-                 currentGoalName.StartsWith("Hold Dish"));
+            bool isIntentionalWait = IsIdleGoal(currentGoalName);
 
             if (!isIntentionalWait && Vector3.Distance(transform.position, lastRecordedPosition) < 0.08f)
             {
@@ -188,7 +186,14 @@ namespace TwoLadles.AI
                     targetStation = null;
                     currentPath.Clear();
                     currentWaypointIndex = 0;
-                    if (stuckRepeatCount >= 2 && playerController.carriedItem != null)
+                    if (playerController.carriedItem != null && TrashIfUnneededAndTablesFull())
+                    {
+                        // Unneeded item and nowhere to park it: bin it straight away.
+                        stuckRepeatCount = 0;
+                        lastStuckGoal = null;
+                        unstickTimer = UNSTICK_HOLD_TIME;
+                    }
+                    else if (stuckRepeatCount >= 2 && playerController.carriedItem != null)
                     {
                         stuckRepeatCount = 0;
                         lastStuckGoal = null;
@@ -877,6 +882,7 @@ namespace TwoLadles.AI
         private void DropOrTrash(string goal)
         {
             if (TrashIfWrongBaguette()) return;
+            if (TrashIfUnneededAndTablesFull()) return;
             StationBase drop = FindDropStation();
             if (drop != null) SetTarget(drop, goal);
             else SetTarget(GetStation("trash_bin"), "Trash Item (Tables Full)");
@@ -979,8 +985,12 @@ namespace TwoLadles.AI
                 {
                     CounterStation tableBatter = FindItemOnCounters("bot_chien_batter");
                     CounterStation tableFlourCake = FindItemOnCounters("cooked_flour");
-                    if (tableBatter != null) { SetTarget(tableBatter, "Pick Up Batter to Cook"); return; }
-                    if (tableFlourCake != null) { SetTarget(tableFlourCake, "Pick Up Flour Cake"); return; }
+                    string held = playerController.carriedItem != null ? playerController.carriedItem.itemId : null;
+                    if (held == "bot_chien_batter") { SetTarget(wok, "Place Batter in Wok"); return; }
+                    if (held == "cooked_flour") { SetTarget(wok, "Place Flour Cake in Wok"); return; }
+                    if (tableBatter != null && held == null) { SetTarget(tableBatter, "Pick Up Batter to Cook"); return; }
+                    if (tableFlourCake != null && held == null) { SetTarget(tableFlourCake, "Pick Up Flour Cake"); return; }
+                    if (held != null) { DropOrTrash("Place Unused Item on Table"); return; }
                     SetTarget(GetStation("counter_east"), "Standby for Support");
                     return;
                 }
@@ -1870,6 +1880,22 @@ namespace TwoLadles.AI
             }
             else if (targetStation is CounterStation counter)
             {
+                // Idle goals (Standby/Wait/Monitor) only park here — never spam pick-up/place on an occupied table.
+                bool idleHere = IsIdleGoal(currentGoalName) && !currentGoalName.StartsWith("Hold Dish");
+                if (idleHere)
+                {
+                    if (playerController.carriedItem == null) return; // just stand by
+                    if (counter.heldItem != null)
+                    {
+                        targetStation = null;
+                        currentPath.Clear();
+                        currentWaypointIndex = 0;
+                        DropOrTrash("Re-park Item (Table Taken)");
+                        return;
+                    }
+                    // carrying + empty table: fall through and park the item
+                }
+
                 if (playerController.carriedItem != null)
                 {
                     var res = playerController.TryInteractPrimary(targetStation);
@@ -1884,6 +1910,12 @@ namespace TwoLadles.AI
                         EvaluateAndSelectGoal();
                         return;
                     }
+                    // Table taken: find another free table, or trash if unneeded/all full (no infinite retry).
+                    targetStation = null;
+                    currentPath.Clear();
+                    currentWaypointIndex = 0;
+                    DropOrTrash("Re-park Item (Table Taken)");
+                    return;
                 }
                 else
                 {
@@ -1892,14 +1924,12 @@ namespace TwoLadles.AI
                         var res = playerController.TryInteractPrimary(targetStation);
                         BotLogger.LogAction(characterId, "Pick up from Table", targetStation.stationId, res.ok, res.reason);
                         interactCooldown = INTERACTION_DELAY;
-                        if (res.ok)
-                        {
-                            targetStation = null;
-                            currentPath.Clear();
-                            currentWaypointIndex = 0;
-                            EvaluateAndSelectGoal();
-                            return;
-                        }
+                        targetStation = null;
+                        currentPath.Clear();
+                        currentWaypointIndex = 0;
+                        // Success or fail: re-plan instead of retrying the same table forever.
+                        EvaluateAndSelectGoal();
+                        return;
                     }
                 }
             }
@@ -2250,6 +2280,77 @@ namespace TwoLadles.AI
                 }
             }
             return false;
+        }
+
+        // --- UNSTICK TRASH RULE ---
+        // Unneeded item + every own-side holding table full -> trash it (prevents place/pick-up retry loops).
+        public static bool ShouldTrashInsteadOfHold(string itemId, bool neededByOrder, bool allTablesFull)
+        {
+            return ShouldTrashInsteadOfHold(itemId, neededByOrder) || (!neededByOrder && allTablesFull);
+        }
+
+        // Every intermediate item that appears on the way to each campaign dish.
+        private static readonly Dictionary<string, string[]> RecipeItemChains = new Dictionary<string, string[]>
+        {
+            { "tteokbokki", new[] { "tteok_raw", "tteok_portioned", "tteok_cooked", "gochujang", "gochujang_sauce", "tteokbokki_raw", "tteokbokki_simmered", "tteokbokki" } },
+            { "bot_chien", new[] { "flour", "flour_sack", "cooked_flour", "bot_chien_batter", "egg_raw", "egg_cooked", "bot_chien" } },
+            { "korean_bbq_rice", new[] { "unprocessed_raw_meat", "korean_bbq_raw", "bbq_beef", "rice_raw", "rice_portioned", "cooked_rice", "korean_bbq_rice" } },
+            { "viet_broken_rice", new[] { "unprocessed_raw_meat", "korean_bbq_raw", "bbq_beef", "rice_raw", "rice_portioned", "cooked_rice", "egg_raw", "egg_cooked", "rice_with_egg", "bbq_with_egg", "viet_broken_rice" } },
+            { "bulgogi_banh_mi", new[] { "flour", "flour_sack", "egg_raw", "baguette_dough", "baguette", "radish_carrot", "pickled_veg", "unprocessed_raw_meat", "bulgogi", "bulgogi_raw", "bulgogi_portioned", "bulgogi_seared", "bulgogi_cooked", "banh_mi_partial", "banh_mi_partial_bb", "banh_mi_partial_bp", "banh_mi_partial_pb", "bulgogi_banh_mi" } },
+        };
+
+        public static bool IsItemUsedInRecipe(string itemId, string recipeId)
+        {
+            if (string.IsNullOrEmpty(itemId) || string.IsNullOrEmpty(recipeId)) return false;
+            if (itemId == recipeId) return true;
+            return RecipeItemChains.TryGetValue(recipeId, out var chain) && System.Array.IndexOf(chain, itemId) >= 0;
+        }
+
+        // Standby / Wait / Monitor / Hold Dish goals mean "stand here", never interact with the target.
+        public static bool IsIdleGoal(string goal)
+        {
+            if (string.IsNullOrEmpty(goal)) return false;
+            return goal.StartsWith("Standby") || goal.StartsWith("Wait") || goal.StartsWith("Monitor") || goal.StartsWith("Hold Dish");
+        }
+
+        private bool AreOwnTablesFull()
+        {
+            return FindNearestHoldingCounter() == null;
+        }
+
+        // Needed = ordered dish, or part of the active recipe, or part of any open order's next dish.
+        // Unknown recipes count as "needed" so the rule never bins food it does not understand.
+        private bool IsCarriedItemNeeded(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId)) return false;
+            if (IsDishCurrentlyOrdered(itemId)) return true;
+            if (IsBaguetteItem(itemId)) return IsCarriedBaguetteNeeded(itemId);
+            if (!string.IsNullOrEmpty(activeRecipeId) && !RecipeItemChains.ContainsKey(activeRecipeId)) return true;
+            if (IsItemUsedInRecipe(itemId, activeRecipeId)) return true;
+
+            if (ShiftManager.Instance != null && ShiftManager.Instance.activeOrders != null)
+            {
+                for (int i = 0; i < ShiftManager.Instance.activeOrders.Count; i++)
+                {
+                    var ord = ShiftManager.Instance.activeOrders[i];
+                    if (ord.isCompleted || ord.isFailed) continue;
+                    string rid = ord.GetNextUnfulfilledRecipeId();
+                    if (!string.IsNullOrEmpty(rid) && !RecipeItemChains.ContainsKey(rid)) return true;
+                    if (IsItemUsedInRecipe(itemId, rid)) return true;
+                }
+            }
+            return false;
+        }
+
+        private bool TrashIfUnneededAndTablesFull()
+        {
+            if (playerController == null || playerController.carriedItem == null) return false;
+            string id = playerController.carriedItem.itemId;
+            if (!ShouldTrashInsteadOfHold(id, IsCarriedItemNeeded(id), AreOwnTablesFull())) return false;
+            StationBase trash = GetStation("trash_bin");
+            if (trash == null) return false;
+            SetTarget(trash, "Trash Item (Tables Full)");
+            return true;
         }
 
         // --- INGREDIENT SOURCING & PARTNER SUPPLY HELPERS ---

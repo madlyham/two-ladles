@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TwoLadles.Data;
 using TwoLadles.Core;
 using TwoLadles.Stations;
@@ -152,7 +152,7 @@ namespace TwoLadles.Player
             if (target != null)
             {
                 float dist = Vector3.Distance(transform.position, target.transform.position);
-                if (dist > StationBase.MAX_INTERACT_DISTANCE)
+                if (dist > StationBase.BOT_REACH_DISTANCE)
                 {
                     return (false, "Target station out of reach.");
                 }
@@ -192,7 +192,7 @@ namespace TwoLadles.Player
             if (target != null)
             {
                 float dist = Vector3.Distance(transform.position, target.transform.position);
-                if (dist > StationBase.MAX_INTERACT_DISTANCE)
+                if (dist > StationBase.BOT_REACH_DISTANCE)
                 {
                     return (false, "Target station out of reach.");
                 }

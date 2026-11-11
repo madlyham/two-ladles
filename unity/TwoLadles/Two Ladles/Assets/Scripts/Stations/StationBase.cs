@@ -7,7 +7,12 @@ namespace TwoLadles.Stations
     [SelectionBase]
     public abstract class StationBase : MonoBehaviour
     {
-        public const float MAX_INTERACT_DISTANCE = 2.6f;
+        // Human pick radius (prompt + nearest-station interact). Kept compact so the
+        // chef must face/stand at the station they mean.
+        public const float MAX_INTERACT_DISTANCE = 2.0f;
+        // Tolerance for explicit-station interactions (bots at nav approach nodes,
+        // host validating a LAN client's aimed station under latency).
+        public const float BOT_REACH_DISTANCE = 2.6f;
 
         [Header("Station Identity")]
         public string stationId;

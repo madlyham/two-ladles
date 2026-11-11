@@ -1817,7 +1817,7 @@ namespace TwoLadles.AI
                 // treating it as a rejection, which caused an endless serve/store ping-pong loop.
                 Vector3 reachVec = targetStation.transform.position - transform.position;
                 reachVec.y = 0.0f;
-                if (reachVec.magnitude > StationBase.MAX_INTERACT_DISTANCE)
+                if (reachVec.magnitude > StationBase.BOT_REACH_DISTANCE)
                 {
                     BotLogger.Log(characterId, $"[{targetStation.stationId}] out of reach ({reachVec.magnitude:F1}m, station at {targetStation.transform.position.x:F1},{targetStation.transform.position.z:F1}). Re-pathing.");
                     interactCooldown = INTERACTION_DELAY;

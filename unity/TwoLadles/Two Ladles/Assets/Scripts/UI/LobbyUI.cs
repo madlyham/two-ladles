@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -200,7 +200,7 @@ namespace TwoLadles.UI
             var tRect = textObj.GetComponent<RectTransform>();
             tRect.anchorMin = Vector2.zero;
             tRect.anchorMax = Vector2.one;
-            tRect.sizeDelta = new Vector2(-10f, -4f);
+            tRect.sizeDelta = new Vector2(-20f, -4f);
             var txt = textObj.AddComponent<Text>();
             txt.font = GetDefaultFont();
             txt.fontSize = 12;
@@ -212,7 +212,7 @@ namespace TwoLadles.UI
             var pRect = phObj.GetComponent<RectTransform>();
             pRect.anchorMin = Vector2.zero;
             pRect.anchorMax = Vector2.one;
-            pRect.sizeDelta = new Vector2(-10f, -4f);
+            pRect.sizeDelta = new Vector2(-20f, -4f);
             var pTxt = phObj.AddComponent<Text>();
             pTxt.font = GetDefaultFont();
             pTxt.fontSize = 12;
@@ -301,7 +301,7 @@ namespace TwoLadles.UI
             // Bottom bar on main menu
             statusText = CreateLabel("StatusText", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(680f, 20f), "Ready to play on Local Wi-Fi.", 11, new Color(0.85f, 0.9f, 0.95f), TextAnchor.MiddleCenter);
             controlsGuideText = CreateLabel("ControlsGuide", mainMenuPanel.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(680f, 20f), "[WASD] Walk  •  [E] Pick / Place  •  [F] Chop / Cook  •  [Q] Throw  •  [R] Recipes", 11, new Color(0.68f, 0.78f, 0.92f), TextAnchor.MiddleCenter);
-            CreateLabel("VersionBadge", mainMenuPanel.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-15f, 15f), new Vector2(120f, 18f), "v1.4.11", 11, new Color(1f, 1f, 1f, 0.5f), TextAnchor.MiddleRight);
+            CreateLabel("VersionBadge", mainMenuPanel.transform, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-15f, 15f), new Vector2(120f, 18f), "v1.4.12", 11, new Color(1f, 1f, 1f, 0.5f), TextAnchor.MiddleRight);
 
             // -------------------------------------------------------------
             // SUB-PANEL B: HOST POPUP MODAL (Clean, asks for name & creates room)
@@ -319,13 +319,13 @@ namespace TwoLadles.UI
             Reg(CreateLabel("HostTitle", hostPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(600f, 26f), "HOST A NEW KITCHEN", 16, new Color(0.35f, 0.95f, 0.65f), TextAnchor.MiddleCenter), "menu.host_title");
             Reg(CreateLabel("HostDesc", hostPopupPanel.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -80f), new Vector2(600f, 20f), "Choose your chef name and kitchen name. Your friend can join on the same Wi-Fi!", 11, new Color(0.75f, 0.82f, 0.90f), TextAnchor.MiddleCenter), "menu.host_desc");
 
-            Reg(CreateLabel("NamePrompt", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-110f, 50f), new Vector2(220f, 20f), "Your Chef Name:", 12, Color.white, TextAnchor.MiddleRight), "menu.name_prompt");
+            Reg(CreateLabel("NamePrompt", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-150f, 50f), new Vector2(220f, 20f), "Your Chef Name:", 12, Color.white, TextAnchor.MiddleRight), "menu.name_prompt");
             string savedHostName = PlayerPrefs.GetString("TwoLadles_PlayerName", "Chef Linh");
-            nameInput = CreateInputField("NameInput", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(60f, 50f), new Vector2(200f, 32f), savedHostName, "Your Chef Name");
+            nameInput = CreateInputField("NameInput", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(95f, 50f), new Vector2(200f, 32f), savedHostName, "Your Chef Name");
 
-            Reg(CreateLabel("RoomPrompt", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-110f, 5f), new Vector2(220f, 20f), "Kitchen Room Name:", 12, Color.white, TextAnchor.MiddleRight), "menu.room_prompt");
+            Reg(CreateLabel("RoomPrompt", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-150f, 5f), new Vector2(220f, 20f), "Kitchen Room Name:", 12, Color.white, TextAnchor.MiddleRight), "menu.room_prompt");
             string savedRoomName = PlayerPrefs.GetString("TwoLadles_RoomName", "Two Ladles Bistro");
-            roomNameInput = CreateInputField("RoomNameInput", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(60f, 5f), new Vector2(200f, 32f), savedRoomName, "Kitchen Name");
+            roomNameInput = CreateInputField("RoomNameInput", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(95f, 5f), new Vector2(200f, 32f), savedRoomName, "Kitchen Name");
 
             hostButton = CreateButton("StartHostBtn", hostPopupPanel.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(85f, -70f), new Vector2(170f, 44f), "START HOSTING", new Color(0.18f, 0.62f, 0.35f, 1f), out hostButtonLabel, 13);
             hostButton.onClick.AddListener(OnHostClicked);
@@ -907,7 +907,7 @@ namespace TwoLadles.UI
 
         private void OnStartShiftClicked()
         {
-            if (NetworkManager.Instance != null && !NetworkManager.Instance.isLanActive && NetworkManager.Instance.players.Count == 0)
+            if (!isSoloMode && NetworkManager.Instance != null && !NetworkManager.Instance.isLanActive && NetworkManager.Instance.players.Count == 0)
             {
                 string pName = nameInput != null && !string.IsNullOrEmpty(nameInput.text) ? nameInput.text : "Chef Linh";
                 string rName = roomNameInput != null && !string.IsNullOrEmpty(roomNameInput.text) ? roomNameInput.text : "Two Ladles Bistro";

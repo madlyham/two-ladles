@@ -2,6 +2,13 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-11 — v1.4.12: Solo Jiwon Moves, Tighter Stations, Lobby Text
+
+- **Play with bot as Jiwon: Jiwon moves now.** Solo start no longer secretly hosts a LAN room (which forced Linh as the local chef); a leftover empty room is closed when solo starts.
+- **Smaller station interaction range** for players: 2.6m -> 2.0m (`StationBase.MAX_INTERACT_DISTANCE`). Bots and host validation keep 2.6m (`BOT_REACH_DISTANCE`).
+- **Host popup text no longer overlaps**: labels moved left, input boxes moved right, more inner padding.
+- Tests: Test14 +2, Test16 +3 — 388 total.
+
 ## 2026-11-11 — v1.4.11: Jiwon Fridge/Shelf, Solo Jiwon & Throw Fix
 
 - **Solo as Jiwon (bot plays Linh) works**: Jiwon now moves and is the controlled chef (keyboard, mobile joystick, buttons, prompts).

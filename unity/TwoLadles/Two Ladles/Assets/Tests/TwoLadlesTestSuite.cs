@@ -736,6 +736,8 @@ namespace TwoLadles.Tests
 
             // 4. Tight throw snapping: lands on first table in path, never silently deleted
             Assert(PlayerController.THROW_SNAP_RADIUS < StationBase.MAX_INTERACT_DISTANCE, "Throw snap radius is tighter than interact radius");
+            Assert(StationBase.MAX_INTERACT_DISTANCE <= 2.1f, "Human station interaction radius is compact (<= 2.1m)");
+            Assert(StationBase.BOT_REACH_DISTANCE >= 2.6f, "Bot reach stays wide enough for nav approach nodes (>= 2.6m)");
             kc.stations.Clear();
             p2.carriedItem = null;
             p2.transform.position = new Vector3(-9.0f, 0.0f, -6.0f); // partner far away (no catch)
@@ -915,6 +917,18 @@ namespace TwoLadles.Tests
             // Back to Linh human: focus returns to Peer 1
             kc.ConfigureSoloAndAIMode(true, 1, BotDifficulty.Standard);
             Assert(NetworkManager.Instance.localPeerId == 1 && linhPlayer.isLocalPlayer && !jiwonPlayer.isLocalPlayer, "Solo as Linh restores Linh as local peer");
+
+            // 6. Solo started while a lone LAN room is hosted (lobby auto-host): Jiwon must still be controllable
+            var nmSolo = NetworkManager.Instance;
+            nmSolo.isLanActive = true;
+            nmSolo.localPeerId = 1;
+            nmSolo.players.Clear();
+            kc.ConfigureSoloAndAIMode(true, 2, BotDifficulty.Standard);
+            Assert(jiwonPlayer.isLocalPlayer && !linhPlayer.isLocalPlayer, "Solo as Jiwon with lone hosted room: Jiwon is the local player");
+            Assert(nmSolo.localPeerId == 2 && !nmSolo.isLanActive, "Solo as Jiwon drops the empty LAN room and makes Jiwon the local peer");
+            var linhBotSolo = linhGo.GetComponent<AI.BotController>();
+            Assert(linhBotSolo != null && linhBotSolo.botActive, "Solo as Jiwon with lone hosted room: bot drives Linh");
+            kc.ConfigureSoloAndAIMode(true, 1, BotDifficulty.Standard);
 
             // Cleanup test objects
             DestroyImmediate(crateGo);

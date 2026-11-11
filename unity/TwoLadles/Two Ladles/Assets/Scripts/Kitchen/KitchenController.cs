@@ -1156,6 +1156,13 @@ namespace TwoLadles.Kitchen
                 return;
             }
 
+            // Solo with no partner in the room: an auto-hosted empty LAN room would pin
+            // the local peer to 1 (Linh), leaving a human Jiwon frozen. Solo is offline.
+            if (isSolo && NetworkManager.Instance != null && NetworkManager.Instance.isLanActive && NetworkManager.Instance.players.Count <= 1)
+            {
+                NetworkManager.Instance.CloseConnection();
+            }
+
             foreach (var kvp in playersByPeer)
             {
                 int peer = kvp.Key;

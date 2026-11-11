@@ -80,7 +80,7 @@ Open the folder `unity/TwoLadles/Two Ladles/` in **Unity Hub** with Unity **2022
 ### Build and test (Unity menu bar → **Two Ladles**)
 - **Build Standalone Windows EXE** → `Builds/Windows/TwoLadles.exe`
 - **Build Android Standalone APK** → `Builds/Android/TwoLadles.apk` (needs the Unity Android module)
-- **Run Automated Test Suite** → runs all 20 test suites (383 assertions) and prints `RESULTS: X / Y Passed`
+- **Run Automated Test Suite** → runs all 20 test suites (388 assertions) and prints `RESULTS: X / Y Passed`
 - **🤖 Run Two-Bot QA Test** / **QA Test From Day → Day 1..5** → automatic two-bot playthrough
 
 ### Project layout

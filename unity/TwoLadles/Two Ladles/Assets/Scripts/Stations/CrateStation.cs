@@ -110,6 +110,15 @@ namespace TwoLadles.Stations
             if (playerItem != null) return (false, "Hands full.");
             if (string.IsNullOrEmpty(requestedItemId)) return (false, "Invalid item requested.");
 
+            if (!string.IsNullOrEmpty(stationId) && (stationId == "fridge_west" || stationId == "shelf_west" || stationId == "fridge_east" || stationId == "shelf_east"))
+            {
+                var catalog = QuickSelectWheelUI.GetStationCatalogIds(stationId);
+                if (catalog != null && System.Array.IndexOf(catalog, requestedItemId) < 0)
+                {
+                    return (false, "Not stocked here.");
+                }
+            }
+
             string dName = requestedItemId;
             if (GameData.Instance != null && GameData.Instance.ingredients.TryGetValue(requestedItemId, out var ing))
             {

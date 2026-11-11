@@ -2,6 +2,26 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-11 — v1.4.15-dev: Bot Ingredient Sourcing, Day 5 Baguette & Cooking Burn Fix (development)
+
+- **Cooking Station Instant Burn Safeguard**:
+  - Marked `CookingStation.applianceSpec` as `[System.NonSerialized]` to eliminate scene serialization of default 0.0s burn times.
+  - Added `GetEffectiveApplianceSpec()` with safe dynamic fallback to `GameData.Instance.appliances[applianceId]` and minimum thresholds (`burnTime >= 12.0f`).
+  - Added station spec linking in `KitchenController.cs:BuildStations()`.
+- **Day 5 Baguette Dough Workflow & Bulgogi Grilling**:
+  - `CookingStation.InteractPrimary()` combines raw/cooked flour with raw egg on Day 5 into `baguette_dough`, resetting `cookingElapsedSeconds = 0.0f` and `currentState = CookingState.COOKING` to bake fresh baguette.
+  - `BotController.PlanBulgogiBanhMi()` prevents premature pickup of un-egged flour, monitors baguette baking, and passes grilled bulgogi / BBQ beef cleanly to Linh.
+- **Crate catalog enforcement**: `CrateStation.DispenseItemDirect` validates items against the station's catalog. Bots and players cannot spawn items from crates that do not stock them (e.g. no gochujang from `shelf_east`, no eggs from `fridge_east`).
+- **Bot ingredient location awareness**: bots know which side's crate stocks each ingredient (`BotController.FindCrateIdFor` and `IsCrateOnChefSide`).
+- **Pass counter handoff pipeline**:
+  - Day 1 (*Tteokbokki*): Linh fetches and passes `tteok_portioned` and `gochujang` via pass counter; Jiwon retrieves them to cook in the wok.
+  - Days 3 & 4 (*Korean BBQ Rice* / *Viet Broken Rice*): Jiwon fetches and passes `rice_portioned` via pass counter; Linh retrieves and steams it.
+  - Day 5 (*Bulgogi Bánh Mì*): Jiwon fetches and passes `radish_carrot` via pass counter; Linh retrieves and pickles it.
+  - Day 2 (*Bột Chiên*): Jiwon stands by on the East side instead of pulling unstocked flour/eggs from East appliances.
+- **Solo mode AI partner**: in solo mode, if the player needs partner-side ingredients, the AI partner fetches and passes them; if the AI needs player-side ingredients, it waits at the pass counter without spawning items or stalling.
+- **Interactive Play mode test mock isolation**: `TwoLadlesTestSuite` destroys mock objects immediately in interactive mode so Play mode stays pristine with 0 mock duplicates.
+- Tests: Test3 +2 (zero/null burn safeguard), Test24 Bot Ingredient Sourcing — 24 suites, 486 total assertions.
+
 ## 2026-11-11 — v1.4.14-dev: Development Branch (experimental)
 
 - **Bots use the select wheel**: bot opens a half-size wheel, waits 0.5 s, then picks. Linh's wheel on the left, Jiwon's on the right.

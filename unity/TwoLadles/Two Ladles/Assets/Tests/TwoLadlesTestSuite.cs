@@ -21,7 +21,14 @@ namespace TwoLadles.Tests
 
         private void Start()
         {
-            RunAllTests();
+            if (Application.isBatchMode)
+            {
+                RunAllTests();
+            }
+            else
+            {
+                DestroyImmediate(gameObject);
+            }
         }
 
         public void RunAllTests()
@@ -93,6 +100,7 @@ namespace TwoLadles.Tests
             Test21_FinalPolish();
             Test22_DevelopmentBatch();
             Test23_LanReliability();
+            Test24_BotIngredientSourcing();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -238,6 +246,18 @@ namespace TwoLadles.Tests
             fkCs.PlaceIngredient(new KitchenItem("pork_portioned", "Portioned Pork"));
             fkCs.TickCooking(9.8f); // With +35%, 9.8s remains OPTIMAL
             Assert(fkCs.currentState == CookingState.OPTIMAL, "Flame Keeper specialization extends OPTIMAL cooking window (+35%)");
+
+            // Zero/Null Spec safeguard: prevents 0.0s instant burning from serialized default zeroes
+            var zeroCsObj = new GameObject("ZeroCsTest");
+            var zeroCs = zeroCsObj.AddComponent<CookingStation>();
+            zeroCs.applianceId = "grill_pan";
+            zeroCs.applianceSpec = null; // Unassigned / zero serialized
+            zeroCs.PlaceIngredient(new KitchenItem("bulgogi_portioned", "Portioned Bulgogi Beef"));
+            zeroCs.TickCooking(0.1f);
+            Assert(zeroCs.currentState == CookingState.COOKING, "Unassigned/zero-spec grill does not instantly burn at 0.1s");
+            zeroCs.TickCooking(4.5f); // Total 4.6s
+            Assert(zeroCs.currentState == CookingState.OPTIMAL, "Unassigned/zero-spec grill enters OPTIMAL at 4.6s via effective spec");
+            DestroyImmediate(zeroCsObj);
 
             DestroyImmediate(fkObj);
             DestroyImmediate(csObj);
@@ -1800,6 +1820,89 @@ namespace TwoLadles.Tests
             cadPrep.InteractSecondary(ref none, 2, "jiwon");
             Assert(cadPrep.nextStrikeTimeOverride < 0f, "Guest strike time is used once then cleared");
             UnityEngine.Object.DestroyImmediate(cadObj);
+        }
+
+        // Suite 24: Bot Ingredient Sourcing & Pass Counter Handoff (v1.4.15-dev)
+        private void Test24_BotIngredientSourcing()
+        {
+            Debug.Log("\n[Suite 24] Bot Ingredient Sourcing & Pass Counter Handoff");
+
+            // 1. CrateStation Catalog Dispense Enforcement
+            var eastShelfGo = new GameObject("TestShelfEast");
+            var eastShelf = eastShelfGo.AddComponent<CrateStation>();
+            eastShelf.stationId = "shelf_east";
+            KitchenItem hand = null;
+            var badDispense = eastShelf.DispenseItemDirect(ref hand, "gochujang");
+            Assert(!badDispense.ok && hand == null, "shelf_east rejects gochujang (only in shelf_west)");
+
+            var goodDispense = eastShelf.DispenseItemDirect(ref hand, "rice_portioned");
+            Assert(goodDispense.ok && hand != null && hand.itemId == "rice_portioned", "shelf_east allows rice_portioned");
+            hand = null;
+
+            var westShelfGo = new GameObject("TestShelfWest");
+            var westShelf = westShelfGo.AddComponent<CrateStation>();
+            westShelf.stationId = "shelf_west";
+            var westGochu = westShelf.DispenseItemDirect(ref hand, "gochujang");
+            Assert(westGochu.ok && hand != null && hand.itemId == "gochujang", "shelf_west allows gochujang");
+            hand = null;
+
+            var eastFridgeGo = new GameObject("TestFridgeEast");
+            var eastFridge = eastFridgeGo.AddComponent<CrateStation>();
+            eastFridge.stationId = "fridge_east";
+            var badEgg = eastFridge.DispenseItemDirect(ref hand, "egg_raw");
+            Assert(!badEgg.ok && hand == null, "fridge_east rejects egg_raw (only in fridge_west)");
+
+            var goodMeat = eastFridge.DispenseItemDirect(ref hand, "unprocessed_raw_meat");
+            Assert(goodMeat.ok && hand != null && hand.itemId == "unprocessed_raw_meat", "fridge_east allows unprocessed_raw_meat");
+            hand = null;
+
+            var nullCrateGo = new GameObject("TestCrateNull");
+            var nullCrate = nullCrateGo.AddComponent<CrateStation>();
+            var nullDispense = nullCrate.DispenseItemDirect(ref hand, "tteok_portioned");
+            Assert(nullDispense.ok && hand != null && hand.itemId == "tteok_portioned", "Crate with null stationId allows tteok_portioned for backward compatibility");
+
+            UnityEngine.Object.DestroyImmediate(eastShelfGo);
+            UnityEngine.Object.DestroyImmediate(westShelfGo);
+            UnityEngine.Object.DestroyImmediate(eastFridgeGo);
+            UnityEngine.Object.DestroyImmediate(nullCrateGo);
+
+            // 2. Bot Knowledge of Ingredient Locations
+            Assert(AI.BotController.FindCrateIdFor("gochujang") == "shelf_west", "Bot knows gochujang is in shelf_west");
+            Assert(AI.BotController.FindCrateIdFor("flour") == "shelf_west", "Bot knows flour is in shelf_west");
+            Assert(AI.BotController.FindCrateIdFor("tteok_portioned") == "fridge_west", "Bot knows tteok_portioned is in fridge_west");
+            Assert(AI.BotController.FindCrateIdFor("egg_raw") == "fridge_west", "Bot knows egg_raw is in fridge_west");
+            Assert(AI.BotController.FindCrateIdFor("unprocessed_raw_meat") == "fridge_east", "Bot knows raw meat is in fridge_east");
+            Assert(AI.BotController.FindCrateIdFor("radish_carrot") == "fridge_east", "Bot knows radish_carrot is in fridge_east");
+            Assert(AI.BotController.FindCrateIdFor("rice_portioned") == "shelf_east", "Bot knows rice_portioned is in shelf_east");
+            Assert(AI.BotController.FindCrateIdFor("baguette") == "shelf_east", "Bot knows baguette is in shelf_east");
+            Assert(AI.BotController.FindCrateIdFor("unknown_xyz") == null, "Bot returns null for unknown item");
+
+            // 3. Chef Side Ownership
+            Assert(AI.BotController.IsCrateOnChefSide("linh", "fridge_west"), "Linh owns fridge_west");
+            Assert(AI.BotController.IsCrateOnChefSide("linh", "shelf_west"), "Linh owns shelf_west");
+            Assert(!AI.BotController.IsCrateOnChefSide("linh", "fridge_east"), "Linh does not own fridge_east");
+            Assert(!AI.BotController.IsCrateOnChefSide("linh", "shelf_east"), "Linh does not own shelf_east");
+            Assert(AI.BotController.IsCrateOnChefSide("jiwon", "fridge_east"), "Jiwon owns fridge_east");
+            Assert(AI.BotController.IsCrateOnChefSide("jiwon", "shelf_east"), "Jiwon owns shelf_east");
+            Assert(!AI.BotController.IsCrateOnChefSide("jiwon", "fridge_west"), "Jiwon does not own fridge_west");
+            Assert(!AI.BotController.IsCrateOnChefSide("jiwon", "shelf_west"), "Jiwon does not own shelf_west");
+
+            // 4. Partner Supply Requirements
+            var linhTteok = AI.BotController.GetPartnerSupplyItems("linh", "tteokbokki");
+            Assert(linhTteok.Contains("tteok_portioned") && linhTteok.Contains("gochujang"), "Linh supplies tteok and gochujang for tteokbokki");
+            var jiwonTteok = AI.BotController.GetPartnerSupplyItems("jiwon", "tteokbokki");
+            Assert(jiwonTteok.Count == 0, "Jiwon supplies no ingredients for tteokbokki");
+
+            var jiwonBbq = AI.BotController.GetPartnerSupplyItems("jiwon", "korean_bbq_rice");
+            Assert(jiwonBbq.Contains("rice_portioned"), "Jiwon supplies rice for Korean BBQ rice");
+            var jiwonBroken = AI.BotController.GetPartnerSupplyItems("jiwon", "viet_broken_rice");
+            Assert(jiwonBroken.Contains("rice_portioned"), "Jiwon supplies rice for Viet broken rice");
+
+            var jiwonBanhMi = AI.BotController.GetPartnerSupplyItems("jiwon", "bulgogi_banh_mi");
+            Assert(jiwonBanhMi.Contains("radish_carrot"), "Jiwon supplies radish for Bulgogi Banh Mi");
+
+            var linhBbq = AI.BotController.GetPartnerSupplyItems("linh", "korean_bbq_rice");
+            Assert(linhBbq.Count == 0, "Linh supplies no ingredients for Korean BBQ rice");
         }
     }
 }

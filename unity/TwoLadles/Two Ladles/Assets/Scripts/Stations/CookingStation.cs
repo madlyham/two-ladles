@@ -7,13 +7,24 @@ namespace TwoLadles.Stations
     public class CookingStation : StationBase
     {
         public string applianceId;
-        public ApplianceSpec applianceSpec;
+        [System.NonSerialized] public ApplianceSpec applianceSpec;
         public float cookingElapsedSeconds = 0.0f;
         public CookingState currentState = CookingState.RAW;
         public bool flameKeeperEquipped = false;
         /// <summary>Cook speed / window of the chef who placed the food (-1 = use this device's global upgrades).</summary>
         public float chefCookSpeed = -1f;
         public float chefWindowMult = -1f;
+
+        public ApplianceSpec GetEffectiveApplianceSpec()
+        {
+            if (applianceSpec != null && applianceSpec.burnTime > 0.1f) return applianceSpec;
+            if (!string.IsNullOrEmpty(applianceId) && GameData.Instance != null && GameData.Instance.appliances.TryGetValue(applianceId, out var gSpec) && gSpec.burnTime > 0.1f)
+            {
+                applianceSpec = gSpec;
+                return gSpec;
+            }
+            return null;
+        }
 
         public bool PlaceIngredient(KitchenItem item)
         {
@@ -60,9 +71,16 @@ namespace TwoLadles.Stations
 
             cookingElapsedSeconds += delta * speedMult;
 
-            float optStart = applianceSpec != null ? applianceSpec.optimalStartTime : 4.0f;
-            float optEnd = applianceSpec != null ? applianceSpec.optimalEndTime : 8.0f;
-            float burnTime = applianceSpec != null ? applianceSpec.burnTime : 12.0f;
+            var spec = GetEffectiveApplianceSpec();
+            float optStart = 4.0f;
+            float optEnd = 8.0f;
+            float burnTime = 12.0f;
+            if (spec != null && spec.burnTime > 0.1f)
+            {
+                optStart = spec.optimalStartTime;
+                optEnd = Mathf.Max(spec.optimalEndTime, optStart + 1.0f);
+                burnTime = Mathf.Max(spec.burnTime, optEnd + 1.0f);
+            }
 
             // Apply Flame Keeper specialization bonus
             if ((flameKeeperEquipped || specializationId == "flame_keeper") && GameData.Instance != null && GameData.Instance.specializations.TryGetValue("flame_keeper", out var specData))
@@ -124,9 +142,13 @@ namespace TwoLadles.Stations
                 {
                     item.itemId = ingSpec.cookedId;
                 }
-                else if (applianceSpec != null && !string.IsNullOrEmpty(applianceSpec.outputItemId))
+                else
                 {
-                    item.itemId = applianceSpec.outputItemId;
+                    var spec = GetEffectiveApplianceSpec();
+                    if (spec != null && !string.IsNullOrEmpty(spec.outputItemId))
+                    {
+                        item.itemId = spec.outputItemId;
+                    }
                 }
                 if (GameData.Instance != null && GameData.Instance.ingredients.TryGetValue(item.itemId, out var outSpec))
                 {
@@ -220,14 +242,26 @@ namespace TwoLadles.Stations
                     }
 
                     // Case 0: Safeguard for Bột Chiên — if cooking flour for Bột Chiên, do not allow adding egg while flour is raw!
+                    int stage = ShiftManager.Instance != null ? ShiftManager.Instance.currentStageId : 1;
+                    bool hasBaguette = GameData.Instance != null && GameData.Instance.GetDayAllowedRecipes(stage).Contains("bulgogi_banh_mi");
+
                     if (playerItem.itemId == "egg_raw" && heldItem.itemId == "flour" && !panFinished)
                     {
-                        int stage = ShiftManager.Instance != null ? ShiftManager.Instance.currentStageId : 1;
-                        bool hasBaguette = GameData.Instance != null && GameData.Instance.GetDayAllowedRecipes(stage).Contains("bulgogi_banh_mi");
                         if (!hasBaguette)
                         {
                             return (false, "Flour is still frying! Wait for Flour Cake to finish cooking before adding Egg.");
                         }
+                    }
+
+                    // Special Day 5 / Baguette rule: combining egg with flour in pan (raw or cooked) makes baguette_dough and bakes!
+                    if (hasBaguette && (heldItem.itemId == "flour" || heldItem.itemId == "cooked_flour") && playerItem.itemId == "egg_raw")
+                    {
+                        heldItem = new KitchenItem("baguette_dough", "Flour + Egg Dough");
+                        playerItem = null;
+                        cookingElapsedSeconds = 0.0f;
+                        currentState = CookingState.COOKING;
+                        RefreshStationVisuals();
+                        return (true, "Baking Baguette Dough into Baguette...");
                     }
 
                     if (GameData.TryCombineItems(effectivePanItem, playerItem, out var combined) ||
@@ -249,6 +283,8 @@ namespace TwoLadles.Stations
                         {
                             heldItem = combined;
                             playerItem = null;
+                            cookingElapsedSeconds = 0.0f;
+                            currentState = CookingState.COOKING;
                             RefreshStationVisuals();
                             if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep <= 4)
                             {

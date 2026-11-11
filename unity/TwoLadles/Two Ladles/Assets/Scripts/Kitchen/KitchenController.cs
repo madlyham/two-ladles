@@ -804,6 +804,8 @@ namespace TwoLadles.Kitchen
                 new Color(0.30f, 0.30f, 0.33f), "stove_side_pot", null
             );
             stockpot.applianceId = "stockpot";
+            if (GameData.Instance != null && GameData.Instance.appliances.TryGetValue("stockpot", out var sSpec))
+                stockpot.applianceSpec = sSpec;
 
             var blancher = CreateStation<CookingStation>(
                 "noodle_blancher", "West Stove 2 (Cook Flour / Rice / Toboki)", "linh_west",
@@ -811,6 +813,8 @@ namespace TwoLadles.Kitchen
                 new Color(0.30f, 0.30f, 0.33f), "stove_side_on", null
             );
             blancher.applianceId = "noodle_blancher";
+            if (GameData.Instance != null && GameData.Instance.appliances.TryGetValue("noodle_blancher", out var bSpec))
+                blancher.applianceSpec = bSpec;
 
             // West Storage: Fridge flush on North wall baseboard (-6.2, 5.5) & Vertical Shelf flush on West wall (-10.35, -3.3)
             var fridgeWest = CreateCrateStation("fridge_west", "FRIDGE (Toboki / Egg)", "tteok_portioned", new Vector3(-6.2f, 0.0f, 5.5f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", null);
@@ -852,6 +856,8 @@ namespace TwoLadles.Kitchen
                 new Color(0.30f, 0.30f, 0.33f), "grill_side", null
             );
             grill.applianceId = "grill_pan";
+            if (GameData.Instance != null && GameData.Instance.appliances.TryGetValue("grill_pan", out var gSpec))
+                grill.applianceSpec = gSpec;
 
             var wok = CreateStation<CookingStation>(
                 "simmer_wok", "East Wok (Cook Tteokbokki / Rice / Egg)", "jiwon_east",
@@ -859,6 +865,8 @@ namespace TwoLadles.Kitchen
                 new Color(0.30f, 0.30f, 0.33f), "stove_side_on", null
             );
             wok.applianceId = "simmer_wok";
+            if (GameData.Instance != null && GameData.Instance.appliances.TryGetValue("simmer_wok", out var wSpec))
+                wok.applianceSpec = wSpec;
 
             // East Storage: Fridge flush on North wall baseboard (6.2, 5.5) & Vertical Shelf flush on East wall (10.35, -3.3)
             var fridgeEast = CreateCrateStation("fridge_east", "FRIDGE (Raw Meat / Radish)", "unprocessed_raw_meat", new Vector3(6.2f, 0.0f, 5.5f), new Color(0.85f, 0.88f, 0.92f), "fridge_south", null);

@@ -530,12 +530,7 @@ namespace TwoLadles.Core
             rushRhythmActive = false;
             rushRhythmRemaining = 0.0f;
 
-            int extraPlates = 0;
-            if (ProgressionManager.Instance != null && ProgressionManager.Instance.IsUpgradeOwned("extra_plate_stack"))
-            {
-                extraPlates = 2;
-            }
-            cleanPlates = INITIAL_CLEAN_PLATES + extraPlates;
+            cleanPlates = INITIAL_CLEAN_PLATES;
             dirtyPlatesAtReturn = 0;
 
             activeOrders.Clear();

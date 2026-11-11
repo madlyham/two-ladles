@@ -16,6 +16,13 @@ namespace TwoLadles.Kitchen
 
         /// <summary>World height (units) of hired part-timer sprites. Chefs are ~1.9; part-timers slightly smaller but readable.</summary>
         public const float PART_TIMER_HEIGHT = 1.75f;
+
+        // Sprites that show whatever item sits on a station/chef. Empty is normal, so they never trigger a rebuild.
+        public static bool IsRuntimeItemRenderer(string objectName)
+        {
+            if (string.IsNullOrEmpty(objectName)) return false;
+            return objectName == "FrontHeldItemSprite" || objectName == "CarriedItemSprite" || objectName.StartsWith("PassSlotSprite_");
+        }
         public const float CAMERA_ORTHO_SIZE = 11.2f;
         public const float MOBILE_CAMERA_ORTHO_SIZE = 9.6f; // phones: zoom in a bit more
         public static float CameraOrthoSize(bool mobile) => mobile ? MOBILE_CAMERA_ORTHO_SIZE : CAMERA_ORTHO_SIZE;
@@ -125,6 +132,8 @@ namespace TwoLadles.Kitchen
                 {
                     foreach (var sr in GetComponentsInChildren<SpriteRenderer>(true))
                     {
+                        // Held-item and pass-slot sprites are empty on purpose when nothing sits there.
+                        if (sr != null && IsRuntimeItemRenderer(sr.gameObject.name)) continue;
                         if (sr != null && sr.sprite == null)
                         {
                             needsSpriteRebuild = true;

@@ -50,6 +50,18 @@ namespace TwoLadles.AI
 
         [Header("Interaction Timing & Anti-Ping-Pong")]
         public float interactCooldown = 0.0f;
+        // Bot "opens" the fridge/shelf wheel and waits BOT_WHEEL_DELAY before taking the item.
+        private bool botWheelOpen = false;
+        private float botWheelTimer = 0.0f;
+
+        private void CloseBotWheel()
+        {
+            if (!botWheelOpen) return;
+            botWheelOpen = false;
+            botWheelTimer = 0.0f;
+            if (TwoLadles.UI.QuickSelectWheelUI.Instance != null)
+                TwoLadles.UI.QuickSelectWheelUI.Instance.HideBotPick(characterId);
+        }
         // After a real serving rejection, skip the serve goal briefly so the dish gets parked instead of looping.
         private float serveRetryBlock = 0.0f;
 
@@ -146,6 +158,7 @@ namespace TwoLadles.AI
                 targetStation = null;
                 desiredItemId = null;
                 currentGoalName = "Shift Inactive";
+                CloseBotWheel();
                 return;
             }
 
@@ -202,6 +215,10 @@ namespace TwoLadles.AI
             {
                 interactCooldown -= dt;
             }
+            if (botWheelTimer > 0.0f)
+            {
+                botWheelTimer -= dt;
+            }
 
             if (recentlyPlacedCooldowns.Count > 0)
             {
@@ -245,6 +262,7 @@ namespace TwoLadles.AI
             targetStation = null;
             desiredItemId = null;
             currentGoalName = "Halted";
+            CloseBotWheel();
         }
 
         /// <summary>
@@ -1492,6 +1510,7 @@ namespace TwoLadles.AI
         /// </summary>
         private void ExecuteMovementAndAction(float dt)
         {
+            if (botWheelOpen && !(targetStation is CrateStation)) CloseBotWheel();
             if (targetStation == null)
             {
                 playerController.ApplyMovement(Vector2.zero, dt);
@@ -1805,6 +1824,16 @@ namespace TwoLadles.AI
             {
                 if (playerController.carriedItem == null && !string.IsNullOrEmpty(desiredItemId))
                 {
+                    if (!botWheelOpen)
+                    {
+                        botWheelOpen = true;
+                        botWheelTimer = TwoLadles.UI.QuickSelectWheelUI.BOT_WHEEL_DELAY;
+                        if (TwoLadles.UI.QuickSelectWheelUI.Instance != null)
+                            TwoLadles.UI.QuickSelectWheelUI.Instance.ShowBotPick(characterId, crate.stationId, desiredItemId);
+                        return;
+                    }
+                    if (botWheelTimer > 0.0f) return;
+                    CloseBotWheel();
                     var res = crate.DispenseItemDirect(ref playerController.carriedItem, desiredItemId);
                     BotLogger.LogAction(characterId, $"Dispense '{desiredItemId}'", crate.stationId, res.ok, res.reason);
                     playerController.RefreshVisuals();

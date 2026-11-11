@@ -414,7 +414,7 @@ namespace TwoLadles.AI
         public static string ResolveReportsDirectory(bool isMobile, string dataPath, string persistentDataPath)
         {
             if (isMobile) return Path.Combine(persistentDataPath, "qa_reports");
-            return Path.GetFullPath(Path.Combine(dataPath, "../../../qa_reports"));
+            return Path.GetFullPath(Path.Combine(dataPath, "../qa_reports"));
         }
 
         public static string GetReportsDirectory()

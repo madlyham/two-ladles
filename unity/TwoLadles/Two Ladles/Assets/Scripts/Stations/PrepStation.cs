@@ -37,6 +37,7 @@ namespace TwoLadles.Stations
         public bool PlaceRawItem(KitchenItem item)
         {
             if (heldItem != null) return false;
+            if (!CanChop(item)) return false;
             heldItem = item;
             strikesCompleted = 0;
             lastStrikeTime = 0.0f;
@@ -44,6 +45,14 @@ namespace TwoLadles.Stations
             perfectCadenceCount = 0;
             UpdateVisuals();
             return true;
+        }
+
+        // Only raw food that actually turns into something on the board may be placed here.
+        public static bool CanChop(KitchenItem item)
+        {
+            if (item == null) return false;
+            if (GameData.Instance == null) return true;
+            return !string.IsNullOrEmpty(GameData.Instance.GetPrepOutput(item.itemId));
         }
 
         public (bool ok, string reason, CadenceGrade grade, QualityTier quality, bool finished, int scoreBonus) PerformStrike(
@@ -85,8 +94,9 @@ namespace TwoLadles.Stations
             }
 
             float idealInterval = IDEAL_CADENCE_SEC * speedMult;
-            float perfectWindow = CADENCE_PERFECT_WINDOW * speedMult;
-            float goodWindow = CADENCE_GOOD_WINDOW * speedMult;
+            // Faster chefs get a faster beat, but the same-size Perfect/Good windows.
+            float perfectWindow = CADENCE_PERFECT_WINDOW;
+            float goodWindow = CADENCE_GOOD_WINDOW;
 
             // Apply knife upgrade (striking chef's own value in LAN, else this device's upgrade)
             if (prepWindowOverride > 0f)
@@ -152,8 +162,8 @@ namespace TwoLadles.Stations
                     {
                         heldItem.displayName = outSpec.displayName;
                     }
+                    heldItem.quality = quality;
                 }
-                heldItem.quality = quality;
 
                 if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 3)
                 {
@@ -172,6 +182,7 @@ namespace TwoLadles.Stations
             {
                 if (playerItem != null)
                 {
+                    if (!CanChop(playerItem)) return (false, "Can't chop that.");
                     heldItem = playerItem;
                     playerItem = null;
                     strikesCompleted = 0;

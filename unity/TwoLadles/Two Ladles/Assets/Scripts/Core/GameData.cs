@@ -150,7 +150,7 @@ namespace TwoLadles.Core
                 "pho_bo", "Phở Bò", "Traditional Vietnamese", false, "bowl",
                 new List<string> { "noodles_blanched", "beef_sliced", "broth_hot" },
                 "broth_hot", 120, 65.0f, 2,
-                "Jiwon washes/passes Bowl & preps Beef -> Linh blanches Noodles & pours Stockpot Broth last."
+                "Jiwon passes Bowl & preps Beef -> Linh blanches Noodles & pours Stockpot Broth last."
             );
 
             // Recipe 2: BANH MI THIT (Traditional Vietnamese)
@@ -450,7 +450,7 @@ namespace TwoLadles.Core
                 180.0f, 220, 450, 650,
                 new List<string> { "banh_mi_thit", "pho_bo" },
                 3, 13.0f,
-                "Multiple customer orders arrive together! Manage finite plates and scrub dirty dishes at the sink."
+                "Multiple customer orders arrive together! Keep the plates moving."
             );
             // Level 3: 3 Recipes (Bánh Mì Thịt + Phở Bò + Tteokbokki) - Introduces Korean Wok & Pass Counter handoffs
             campaignLevels[3] = new CampaignLevelSpec(
@@ -540,7 +540,7 @@ namespace TwoLadles.Core
         {
             if (ingredients.TryGetValue(rawItemId, out var spec))
             {
-                if (!string.IsNullOrEmpty(spec.preparedId) && spec.preparedId != rawItemId)
+                if (!string.IsNullOrEmpty(spec.preparedId) && spec.preparedId != rawItemId && rawItemId != spec.cookedId)
                     return spec.preparedId;
             }
             return "";

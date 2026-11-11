@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using TwoLadles.Data;
 using TwoLadles.Core;
@@ -75,7 +76,12 @@ namespace TwoLadles.Kitchen
             switch (currentState)
             {
                 case WorkerState.WALKING_IN:
-                    if (targetStation != null)
+                    if (targetStation == null)
+                    {
+                        // Nowhere to work: leave instead of standing at the door forever.
+                        currentState = WorkerState.WALKING_OUT;
+                    }
+                    else
                     {
                         Vector3 targetPos = targetStation.transform.position + new Vector3(0.0f, 0.0f, 0.8f);
                         transform.position = Vector3.MoveTowards(transform.position, targetPos, walkSpeed * delta);
@@ -123,13 +129,21 @@ namespace TwoLadles.Kitchen
             {
                 ExecutePrepTask(prep);
             }
-            else if (targetStation is WashingStation wash)
+        }
+
+        // What a part-timer chops each day. West = Linh's side, East = Jiwon's side.
+        // Every raw item here has a prep output and every output is used by that day's menu.
+        public static (string rawId, string[] outputs) GetPrepRecipe(int day, bool isWest)
+        {
+            if (isWest)
             {
-                if (ShiftManager.Instance != null && ShiftManager.Instance.dirtyPlatesAtReturn > 0)
-                {
-                    wash.PerformScrubStroke();
-                }
+                if (day == 3 || day == 4) return ("rice_raw", new[] { "rice_portioned" });
+                if (day == 5 || day == 2) return ("radish_carrot", new[] { "pickled_veg" });
+                return ("tteok_raw", new[] { "tteok_portioned" });
             }
+            if (day == 5) return ("unprocessed_raw_meat", new[] { "korean_bbq_raw", "bulgogi_portioned" });
+            if (day == 3 || day == 4) return ("unprocessed_raw_meat", new[] { "korean_bbq_raw" });
+            return ("tteok_raw", new[] { "tteok_portioned" });
         }
 
         // Prep assistant brain: chop what's on the board, hand finished food to a free counter,
@@ -164,19 +178,7 @@ namespace TwoLadles.Kitchen
 
             // Determine raw ingredient depending on whether this prep station is West (Linh's side) or East (Jiwon's side)
             bool isWest = prep.transform.position.x < 0f;
-            string rawId;
-            string[] outputs;
-
-            if (isWest)
-            {
-                rawId = (day == 1 || day == 4) ? "pork_raw" : (day == 2 ? "beef_raw" : (day == 3 ? "tteok_raw" : "unprocessed_raw_meat"));
-                outputs = (day == 1 || day == 4) ? new[] { "pork_portioned" } : (day == 2 ? new[] { "beef_sliced" } : (day == 3 ? new[] { "tteok_portioned" } : new[] { "bulgogi_portioned" }));
-            }
-            else
-            {
-                rawId = (day <= 2) ? "tteok_raw" : "unprocessed_raw_meat";
-                outputs = (day <= 2) ? new[] { "tteok_portioned" } : new[] { "korean_bbq_raw", "bulgogi_portioned" };
-            }
+            var (rawId, outputs) = GetPrepRecipe(day, isWest);
 
             if (CountOnCounters(outputs) >= 2) return;
 
@@ -207,12 +209,13 @@ namespace TwoLadles.Kitchen
         private static int CountOnCounters(string[] ids)
         {
             if (KitchenController.Instance == null) return 0;
-            int n = 0;
+            // Some counters are registered under two names (aliases); count each one once.
+            var seen = new HashSet<StationBase>();
             foreach (var st in KitchenController.Instance.stations.Values)
             {
-                if (st is CounterStation c && c.heldItem != null && Array.IndexOf(ids, c.heldItem.itemId) >= 0) n++;
+                if (st is CounterStation c && c.heldItem != null && Array.IndexOf(ids, c.heldItem.itemId) >= 0) seen.Add(st);
             }
-            return n;
+            return seen.Count;
         }
     }
 }

@@ -51,6 +51,15 @@ namespace TwoLadles.AI
             }
         }
 
+        // Files are only written during two-bot QA runs; normal games keep logs in memory only.
+        public static bool ShouldWriteToDisk(bool qaMode) => qaMode;
+
+        private static bool IsQARun()
+        {
+            var sm = TwoLadles.Core.ShiftManager.Instance;
+            return sm != null && sm.isAutoplayQAMode;
+        }
+
         public static void ClearLogs()
         {
             lock (_fileLock)
@@ -59,7 +68,7 @@ namespace TwoLadles.AI
                 try
                 {
                     string path = LogFilePath;
-                    if (!string.IsNullOrEmpty(path))
+                    if (!string.IsNullOrEmpty(path) && ShouldWriteToDisk(IsQARun()))
                     {
                         File.WriteAllText(path, $"=== TWO LADLES BOT SESSION STARTED: {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===\n");
                     }
@@ -84,7 +93,10 @@ namespace TwoLadles.AI
 
                 try
                 {
-                    File.AppendAllText(LogFilePath, line + Environment.NewLine);
+                    if (ShouldWriteToDisk(IsQARun()))
+                    {
+                        File.AppendAllText(LogFilePath, line + Environment.NewLine);
+                    }
                 }
                 catch { }
             }
@@ -108,7 +120,10 @@ namespace TwoLadles.AI
 
                 try
                 {
-                    File.AppendAllText(LogFilePath, line + Environment.NewLine);
+                    if (ShouldWriteToDisk(IsQARun()))
+                    {
+                        File.AppendAllText(LogFilePath, line + Environment.NewLine);
+                    }
                 }
                 catch { }
             }
@@ -140,7 +155,7 @@ namespace TwoLadles.AI
                 {
                     _recentLogs.Add(line);
                     if (_recentLogs.Count > MAX_RECENT_LOGS) _recentLogs.RemoveAt(0);
-                    try { File.AppendAllText(LogFilePath, line + Environment.NewLine); } catch { }
+                    if (ShouldWriteToDisk(IsQARun())) { try { File.AppendAllText(LogFilePath, line + Environment.NewLine); } catch { } }
                 }
                 Debug.LogWarning(line);
             }
@@ -161,7 +176,7 @@ namespace TwoLadles.AI
             {
                 _recentLogs.Add(line);
                 if (_recentLogs.Count > MAX_RECENT_LOGS) _recentLogs.RemoveAt(0);
-                try { File.AppendAllText(LogFilePath, line + Environment.NewLine); } catch { }
+                if (ShouldWriteToDisk(IsQARun())) { try { File.AppendAllText(LogFilePath, line + Environment.NewLine); } catch { } }
             }
             Debug.LogWarning(line);
         }

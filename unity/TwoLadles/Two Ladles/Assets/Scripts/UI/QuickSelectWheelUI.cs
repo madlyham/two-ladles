@@ -91,6 +91,27 @@ namespace TwoLadles.UI
         public const float AUTO_CLOSE_DISTANCE = 3.0f;
         public static bool ShouldAutoClose(float distanceToStation) => distanceToStation > AUTO_CLOSE_DISTANCE;
 
+        /// <summary>Bots hold their wheel open this long before taking the item.</summary>
+        public const float BOT_WHEEL_DELAY = 0.5f;
+        /// <summary>Wheel drawn at half size so it does not cover the kitchen.</summary>
+        public const float WHEEL_SCALE = 0.5f;
+        private const float DEAD_ZONE = 36f;
+
+        /// <summary>Linh's wheel sits on the left of the screen, Jiwon's on the right.</summary>
+        public static float GetWheelAnchorX(string characterId) => characterId == "jiwon" ? 0.82f : 0.18f;
+
+        /// <summary>Slice under a mouse offset from the wheel centre; -1 inside the dead zone.</summary>
+        public static int SliceIndexFor(Vector2 offset, int count)
+        {
+            if (count <= 0 || offset.magnitude <= DEAD_ZONE * WHEEL_SCALE) return -1;
+            float angle = Mathf.Atan2(offset.y, offset.x) * Mathf.Rad2Deg;
+            if (angle < 0f) angle += 360f;
+            return Mathf.RoundToInt(angle / (360f / count)) % count;
+        }
+
+        private RectTransform wheelRect;
+        private readonly Dictionary<string, GameObject> botWheels = new Dictionary<string, GameObject>();
+
         private Transform openStation;
         private WheelItem[] currentCatalog = FRIDGE_WEST_ITEMS;
         private GameObject wheelRoot;
@@ -107,6 +128,15 @@ namespace TwoLadles.UI
         private void Awake()
         {
             if (Instance == null) Instance = this;
+            // Fill the HUD so the left/right anchors map to the real screen edges.
+            var selfRect = GetComponent<RectTransform>();
+            if (selfRect != null)
+            {
+                selfRect.anchorMin = Vector2.zero;
+                selfRect.anchorMax = Vector2.one;
+                selfRect.offsetMin = Vector2.zero;
+                selfRect.offsetMax = Vector2.zero;
+            }
             BuildWheelUI();
         }
 
@@ -121,6 +151,7 @@ namespace TwoLadles.UI
             if (!inActiveShift)
             {
                 if (IsOpen) CloseWheel();
+                HideAllBotPicks();
                 return;
             }
 
@@ -149,16 +180,11 @@ namespace TwoLadles.UI
             // Mouse direction highlight when wheel is open
             if (IsOpen && currentCatalog != null && currentCatalog.Length > 0)
             {
-                Vector2 mouseOffset = (Vector2)Input.mousePosition - new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-                if (mouseOffset.magnitude > 36f)
-                {
-                    float angle = Mathf.Atan2(mouseOffset.y, mouseOffset.x) * Mathf.Rad2Deg;
-                    if (angle < 0f) angle += 360f;
-
-                    float sliceAngle = 360f / currentCatalog.Length;
-                    int idx = Mathf.RoundToInt(angle / sliceAngle) % currentCatalog.Length;
-                    HighlightSlice(idx);
-                }
+                Vector2 centre = wheelRect != null
+                    ? RectTransformUtility.WorldToScreenPoint(null, wheelRect.position)
+                    : new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+                int idx = SliceIndexFor((Vector2)Input.mousePosition - centre, currentCatalog.Length);
+                if (idx >= 0) HighlightSlice(idx);
             }
         }
 
@@ -187,11 +213,97 @@ namespace TwoLadles.UI
             var names = new List<string>();
             foreach (var it in currentCatalog) names.Add(it.displayName.ToUpper());
             RebuildSlices((isFridge ? "FRIDGE (" : "SHELF (") + string.Join(" • ", names) + ")");
+            if (wheelRect != null)
+            {
+                float ax = GetWheelAnchorX(GetLocalCharacterId());
+                wheelRect.anchorMin = new Vector2(ax, 0.5f);
+                wheelRect.anchorMax = new Vector2(ax, 0.5f);
+            }
             if (wheelRoot != null)
             {
                 wheelRoot.SetActive(true);
                 HighlightSlice(0);
             }
+        }
+
+        private static string GetLocalCharacterId()
+        {
+            int localPeer = NetworkManager.Instance != null ? NetworkManager.Instance.localPeerId : 1;
+            if (KitchenController.Instance != null && KitchenController.Instance.playersByPeer.TryGetValue(localPeer, out var chef) && chef != null)
+                return chef.characterId;
+            return "linh";
+        }
+
+        /// <summary>Display-only wheel showing a bot picking an item (no buttons, no input).</summary>
+        public void ShowBotPick(string characterId, string stationId, string itemId)
+        {
+            string key = string.IsNullOrEmpty(characterId) ? "bot" : characterId;
+            HideBotPick(key);
+            var catalog = GetStationCatalog(stationId);
+            if (catalog == null || catalog.Length == 0) return;
+
+            var go = new GameObject($"BotWheel_{key}", typeof(RectTransform));
+            go.transform.SetParent(transform, false);
+            var r = go.GetComponent<RectTransform>();
+            float ax = GetWheelAnchorX(key);
+            r.anchorMin = new Vector2(ax, 0.5f);
+            r.anchorMax = new Vector2(ax, 0.5f);
+            r.pivot = new Vector2(0.5f, 0.5f);
+            r.anchoredPosition = Vector2.zero;
+            r.sizeDelta = new Vector2(420f, 420f);
+            go.transform.localScale = Vector3.one * WHEEL_SCALE;
+
+            MakeDisc(go.transform, "Backdrop", Vector2.zero, 420f, new Color(0.06f, 0.08f, 0.12f, 0.85f));
+            int chosen = Array.FindIndex(catalog, x => x.itemId == itemId);
+            float step = (2f * Mathf.PI) / catalog.Length;
+            for (int i = 0; i < catalog.Length; i++)
+            {
+                var pos = new Vector2(Mathf.Cos(i * step), Mathf.Sin(i * step)) * 142f;
+                var col = i == chosen ? new Color(0.95f, 0.75f, 0.2f, 0.90f) : new Color(0.18f, 0.22f, 0.28f, 0.78f);
+                var slice = MakeDisc(go.transform, "Slice_" + catalog[i].itemId, pos, 74f, col);
+                var icon = new GameObject("Icon", typeof(RectTransform));
+                icon.transform.SetParent(slice.transform, false);
+                icon.GetComponent<RectTransform>().sizeDelta = new Vector2(44f, 44f);
+                var img = icon.AddComponent<Image>();
+                img.raycastTarget = false;
+                var spr = PlayerController.LoadItemSprite(catalog[i].iconSpriteName);
+                if (spr != null) img.sprite = spr; else img.color = catalog[i].itemColor;
+            }
+            botWheels[key] = go;
+        }
+
+        public void HideBotPick(string characterId)
+        {
+            string key = string.IsNullOrEmpty(characterId) ? "bot" : characterId;
+            if (botWheels.TryGetValue(key, out var go))
+            {
+                if (go != null) Destroy(go);
+                botWheels.Remove(key);
+            }
+        }
+
+        private void HideAllBotPicks()
+        {
+            if (botWheels.Count == 0) return;
+            foreach (var go in botWheels.Values) if (go != null) Destroy(go);
+            botWheels.Clear();
+        }
+
+        private static GameObject MakeDisc(Transform parent, string name, Vector2 pos, float size, Color col)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var r = go.GetComponent<RectTransform>();
+            r.anchorMin = new Vector2(0.5f, 0.5f);
+            r.anchorMax = new Vector2(0.5f, 0.5f);
+            r.pivot = new Vector2(0.5f, 0.5f);
+            r.anchoredPosition = pos;
+            r.sizeDelta = new Vector2(size, size);
+            var img = go.AddComponent<Image>();
+            img.sprite = KitchenHUD.GetCircleSprite();
+            img.color = col;
+            img.raycastTarget = false;
+            return go;
         }
 
         public void CloseWheel()
@@ -285,12 +397,13 @@ namespace TwoLadles.UI
             // Circular Radial Modal Wheel Container (Opened when interacting with Fridge or Shelf!)
             wheelRoot = new GameObject("RadialWheelContainer");
             wheelRoot.transform.SetParent(root, false);
-            var wrRect = wheelRoot.AddComponent<RectTransform>();
-            wrRect.anchorMin = new Vector2(0.5f, 0.5f);
-            wrRect.anchorMax = new Vector2(0.5f, 0.5f);
-            wrRect.pivot = new Vector2(0.5f, 0.5f);
-            wrRect.anchoredPosition = Vector2.zero;
-            wrRect.sizeDelta = new Vector2(420f, 420f);
+            wheelRect = wheelRoot.AddComponent<RectTransform>();
+            wheelRect.anchorMin = new Vector2(0.18f, 0.5f);
+            wheelRect.anchorMax = new Vector2(0.18f, 0.5f);
+            wheelRect.pivot = new Vector2(0.5f, 0.5f);
+            wheelRect.anchoredPosition = Vector2.zero;
+            wheelRect.sizeDelta = new Vector2(420f, 420f);
+            wheelRect.localScale = Vector3.one * WHEEL_SCALE;
 
             // Dark radial backdrop circle
             GameObject bgCircle = new GameObject("BackdropCircle");

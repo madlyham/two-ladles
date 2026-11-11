@@ -91,6 +91,7 @@ namespace TwoLadles.Tests
             Test19_LanSyncTimingAndBotSafety();
             Test20_PauseAndLanDayCycle();
             Test21_FinalPolish();
+            Test22_DevelopmentBatch();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
@@ -1652,6 +1653,74 @@ namespace TwoLadles.Tests
                 Assert(!pm.catalogUpgrades.ContainsKey("high_pressure_sink"), "Shop no longer sells the useless High-Pressure Sink");
                 Assert(!pm.catalogUpgrades.ContainsKey("extra_plate_stack"), "Shop no longer sells the useless Extra Plate Stack");
             }
+        }
+
+        // Suite 22: Development batch (v1.4.14-dev): bot wheel, prep fixes, part-timers, QA tooling
+        private void Test22_DevelopmentBatch()
+        {
+            Debug.Log("\n[Suite 22] Development Batch: Bot Wheel, Prep Fixes, Part-Timers, QA Tooling");
+
+            // Select wheel: half size, Linh left / Jiwon right, bots wait 0.5s before picking
+            Assert(Mathf.Approximately(QuickSelectWheelUI.BOT_WHEEL_DELAY, 0.5f), "Bots hold the select wheel open for 0.5s before picking");
+            Assert(Mathf.Approximately(QuickSelectWheelUI.WHEEL_SCALE, 0.5f), "Select wheel is drawn at half size");
+            Assert(QuickSelectWheelUI.GetWheelAnchorX("linh") < 0.5f, "Linh's select wheel sits on the left side of the screen");
+            Assert(QuickSelectWheelUI.GetWheelAnchorX("jiwon") > 0.5f, "Jiwon's select wheel sits on the right side of the screen");
+            Assert(QuickSelectWheelUI.SliceIndexFor(Vector2.zero, 2) == -1, "Mouse at wheel centre selects nothing");
+            Assert(QuickSelectWheelUI.SliceIndexFor(new Vector2(100f, 0f), 2) == 0, "Mouse right of wheel centre picks the first item");
+            Assert(QuickSelectWheelUI.SliceIndexFor(new Vector2(-100f, 0f), 2) == 1, "Mouse left of wheel centre picks the second item");
+
+            // Prep table can no longer un-cook food
+            Assert(GameData.Instance.GetPrepOutput("pork_grilled") == "", "Grilled pork cannot be chopped back into raw portions");
+            Assert(GameData.Instance.GetPrepOutput("bulgogi_seared") == "", "Seared bulgogi cannot be chopped back into raw portions");
+            Assert(GameData.Instance.GetPrepOutput("pork_raw") == "pork_portioned", "Raw pork still chops into portions");
+
+            var prepObj = new GameObject("DevBatchPrep");
+            var prep = prepObj.AddComponent<PrepStation>();
+            Assert(!prep.PlaceRawItem(new KitchenItem("bulgogi_banh_mi", "Bulgogi Banh Mi")), "Prep table refuses a finished dish");
+            KitchenItem hand = new KitchenItem("bulgogi_banh_mi", "Bulgogi Banh Mi");
+            var refuse = prep.InteractPrimary(ref hand, 1, "linh");
+            Assert(!refuse.ok && hand != null && prep.heldItem == null, "Placing a finished dish on the prep table keeps it in your hands");
+            KitchenItem rawHand = new KitchenItem("pork_raw", "Raw Pork Belly");
+            var accept = prep.InteractPrimary(ref rawHand, 1, "linh");
+            Assert(accept.ok && rawHand == null && prep.heldItem != null, "Prep table still accepts raw pork by hand");
+
+            // Linh's faster tiers no longer shrink the Perfect window
+            prep.heldItem = null;
+            prep.PlaceRawItem(new KitchenItem("pork_raw", "Raw Pork Belly"));
+            prep.PerformStrike(0.0f, "", "linh", 0.85f, 3, 1.0f);
+            var tierStrike = prep.PerformStrike(0.45f * 0.85f + 0.11f, "", "linh", 0.85f, 3, 1.0f);
+            Assert(tierStrike.grade == CadenceGrade.PERFECT, "Linh tier 3 keeps the full Perfect timing window");
+            UnityEngine.Object.DestroyImmediate(prepObj);
+
+            // Bot logger only writes files during two-bot QA runs
+            Assert(!BotLogger.ShouldWriteToDisk(false), "Bot logger does not write files in normal games");
+            Assert(BotLogger.ShouldWriteToDisk(true), "Bot logger writes files during QA runs");
+
+            // QA reports stay inside the Unity project folder
+            string qaDir = AI.TwoBotQAManager.ResolveReportsDirectory(false, "C:/P/Two Ladles/Assets", "C:/x");
+            Assert(qaDir.Replace('\\', '/').EndsWith("Two Ladles/qa_reports"), "Desktop QA reports go to the project's qa_reports folder");
+
+            // Part-timers only chop ingredients used by the current menu
+            bool recipesOk = true;
+            for (int day = 1; day <= 5; day++)
+            {
+                foreach (bool west in new[] { true, false })
+                {
+                    var r = PartTimeWorker.GetPrepRecipe(day, west);
+                    if (string.IsNullOrEmpty(r.rawId) || GameData.Instance.GetPrepOutput(r.rawId) == "") recipesOk = false;
+                    if (r.outputs == null || r.outputs.Length == 0) recipesOk = false;
+                    else if (Array.IndexOf(r.outputs, "beef_sliced") >= 0 || Array.IndexOf(r.outputs, "pork_portioned") >= 0) recipesOk = false;
+                }
+            }
+            Assert(recipesOk, "Part-timer recipes use only the current menu's ingredients on every day and side");
+
+            // A part-timer with no station walks out instead of standing forever
+            var wObj = new GameObject("DevBatchWorker");
+            var worker = wObj.AddComponent<PartTimeWorker>();
+            worker.InitializeWorker("dev_worker", "prep_assistant", null, 3);
+            worker.TickWorker(0.1f);
+            Assert(worker.currentState != WorkerState.WALKING_IN, "Part-timer with no station leaves instead of standing still");
+            UnityEngine.Object.DestroyImmediate(wObj);
         }
     }
 }

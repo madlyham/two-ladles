@@ -74,11 +74,13 @@ namespace TwoLadles.AI
             }
         }
 
+        public static bool IsPanUrgent(CookingState s) => s == CookingState.OVERCOOKED || s == CookingState.BURNT;
+
         /// <summary>True once the cooker has been OPTIMAL for OPTIMAL_ACT_DELAY seconds, or is already OVERCOOKED.</summary>
         private bool IsCookReadyToAct(CookingStation cook)
         {
             if (cook == null || cook.heldItem == null) return false;
-            if (cook.currentState == CookingState.OVERCOOKED) return true;
+            if (IsPanUrgent(cook.currentState)) return true;
             return cook.currentState == CookingState.OPTIMAL &&
                    optimalSince.TryGetValue(cook, out float since) &&
                    Time.time - since >= OPTIMAL_ACT_DELAY;
@@ -291,7 +293,7 @@ namespace TwoLadles.AI
             {
                 // Carrying the egg for this exact flour pan? Add it now instead of dumping the egg.
                 if (playerController.carriedItem != null && playerController.carriedItem.itemId == "egg_raw" &&
-                    (urgentPan.heldItem.itemId == "flour" || urgentPan.heldItem.itemId == "cooked_flour"))
+                    urgentPan.currentState != CookingState.BURNT && (urgentPan.heldItem.itemId == "flour" || urgentPan.heldItem.itemId == "cooked_flour"))
                 {
                     SetTarget(urgentPan, "Add Egg to Cooked Flour");
                     return;
@@ -326,6 +328,13 @@ namespace TwoLadles.AI
             {
                 DropOrTrash("Place Flour Cake on Table");
                 return;
+            }
+
+            // 1c. Burnt waste in hand always goes straight to the trash
+            if (playerController.carriedItem != null && playerController.carriedItem.itemId == "burnt_waste")
+            {
+                StationBase bin = GetStation("trash_bin");
+                if (bin != null) { SetTarget(bin, "Trash Burnt Waste"); return; }
             }
 
             // 2. DELIVER / PASS COMPLETED DISH (Score: 260)
@@ -1864,9 +1873,9 @@ namespace TwoLadles.AI
             {
                 if (st is CookingStation cook && cook.heldItem != null)
                 {
-                    // Only OVERCOOKED (in imminent danger of burning into waste) triggers an urgent pan rescue!
+                    // OVERCOOKED or BURNT triggers an urgent pan rescue (burnt pans must be emptied or the bot waits forever)
                     // OPTIMAL is the normal recipe completion/combination window and must not trigger false panic aborts.
-                    if (cook.currentState == CookingState.OVERCOOKED)
+                    if (IsPanUrgent(cook.currentState))
                     {
                         // Check if station belongs to this bot's zone or is shared
                         if (peerId == 1 && cook.transform.position.x <= 0f) return cook;

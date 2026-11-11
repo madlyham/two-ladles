@@ -30,6 +30,7 @@ namespace TwoLadles.Tests
             testsPassed = 0;
             testsFailed = 0;
             failureMessages.Clear();
+            ProgressionManager.suppressDiskSave = true;
 
             Debug.Log("============================================================");
             Debug.Log("  TWO LADLES — AUTOMATED TEST SUITE (Unity C# Migration)");
@@ -89,9 +90,11 @@ namespace TwoLadles.Tests
             Test18_StoryPhoneAndDayNightCycle();
             Test19_LanSyncTimingAndBotSafety();
             Test20_PauseAndLanDayCycle();
+            Test21_FinalPolish();
 
             Debug.Log("------------------------------------------------------------");
             Debug.Log($"  RESULTS: {testsPassed} / {testsRun} Passed | {testsFailed} Failed");
+            ProgressionManager.suppressDiskSave = false;
             Debug.Log("------------------------------------------------------------");
 
             if (testsFailed == 0)
@@ -1592,6 +1595,63 @@ namespace TwoLadles.Tests
             sm.isNetworkClient = false;
             sm.shiftActive = false;
             sm.isAutoplayQAMode = prevQA;
+        }
+
+        // Suite 21: Final polish for hand-in (v1.4.13)
+        private void Test21_FinalPolish()
+        {
+            Debug.Log("\n[Suite 21] Final Polish: No Chef Swap, Stove Filter, Burnt Pans, Day 5 Waves");
+
+            // C-key chef swap removed from the game in every mode
+            Assert(typeof(KitchenController).GetMethod("SwitchLocalChef") == null, "Switch-chef (C key) is removed from the game");
+
+            // Stoves only take food that still needs cooking
+            Func<KitchenItem, bool> stoveTakes = (item) =>
+            {
+                var go = new GameObject("StoveFilterTest");
+                var st = go.AddComponent<CookingStation>();
+                st.applianceId = "noodle_blancher";
+                st.applianceSpec = GameData.Instance.appliances["noodle_blancher"];
+                bool ok = st.PlaceIngredient(item);
+                UnityEngine.Object.DestroyImmediate(go);
+                return ok;
+            };
+            Assert(!stoveTakes(new KitchenItem("burnt_waste", "Burnt")), "Stove rejects burnt waste");
+            Assert(!stoveTakes(new KitchenItem("bulgogi_banh_mi", "Bulgogi Banh Mi")), "Stove rejects a finished dish");
+            Assert(!stoveTakes(new KitchenItem("clean_plate", "Plate", "plate")), "Stove rejects an empty plate");
+            Assert(stoveTakes(new KitchenItem("pork_portioned", "Pork")), "Stove still accepts portioned pork");
+            Assert(stoveTakes(new KitchenItem("cooked_flour", "Flour Cake")), "Stove still accepts cooked flour (Bot Chien base)");
+            Assert(stoveTakes(new KitchenItem("tteok_portioned", "Tteok")), "Stove still accepts rice cakes");
+
+            // Bots treat burnt pans as urgent instead of waiting forever
+            Assert(BotController.IsPanUrgent(CookingState.BURNT), "Bot treats a BURNT pan as urgent");
+            Assert(BotController.IsPanUrgent(CookingState.OVERCOOKED), "Bot treats an OVERCOOKED pan as urgent");
+            Assert(!BotController.IsPanUrgent(CookingState.OPTIMAL), "Bot does not treat an OPTIMAL pan as urgent");
+
+            // Missing translation keys fall back to English text
+            if (LocalizationManager.Instance != null)
+                Assert(LocalizationManager.Instance.Get("missing.key.final_polish", "fb") == "fb", "Missing translation shows the English fallback");
+
+            // Test runs never overwrite the player's real save file
+            Assert(ProgressionManager.suppressDiskSave, "Saving to disk is switched off while tests run");
+
+            // Item sprites: burnt food and plates no longer look like real ingredients
+            Assert(PlayerController.ResolveItemSpriteName("burnt_waste") != "gochujang", "Burnt waste no longer looks like gochujang");
+            Assert(PlayerController.ResolveItemSpriteName("clean_plate") != "cooked_rice", "Plates no longer look like cooked rice");
+
+            // Day 5 waves 2 and 3 can actually start
+            Assert(ShiftManager.Day5WaveOrders != null && ShiftManager.Day5WaveOrders.Length == 3, "Day 5 has three wave order targets");
+            bool reachable = ShiftManager.Day5WaveOrders != null;
+            if (reachable) foreach (int n in ShiftManager.Day5WaveOrders) if (n <= 0 || n >= 99) reachable = false;
+            Assert(reachable, "Every Day 5 wave target is reachable (not 99)");
+
+            // Washing-era upgrades are gone from the shop
+            var pm = ProgressionManager.Instance;
+            if (pm != null)
+            {
+                Assert(!pm.catalogUpgrades.ContainsKey("high_pressure_sink"), "Shop no longer sells the useless High-Pressure Sink");
+                Assert(!pm.catalogUpgrades.ContainsKey("extra_plate_stack"), "Shop no longer sells the useless Extra Plate Stack");
+            }
         }
     }
 }

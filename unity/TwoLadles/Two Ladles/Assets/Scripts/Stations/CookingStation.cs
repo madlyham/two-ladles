@@ -18,6 +18,10 @@ namespace TwoLadles.Stations
         public bool PlaceIngredient(KitchenItem item)
         {
             if (heldItem != null) return false;
+            // Stove filter: only raw/cookable ingredients go on the heat (no dishes, vessels or waste)
+            if (item == null || item.itemId == "burnt_waste") return false;
+            if (item.vesselType == "plate" || item.vesselType == "bowl") return false;
+            if (applianceId != "stockpot" && item.itemId != "cooked_flour" && GameData.Instance != null && GameData.Instance.ingredients.TryGetValue(item.itemId, out var cookSpec) && (string.IsNullOrEmpty(cookSpec.cookedId) || cookSpec.cookedId == item.itemId)) return false;
 
             // Separation rule: dedicated stockpot rejects raw rice noodles
             if (applianceId == "stockpot" && item.itemId == "noodles_raw")
@@ -166,7 +170,7 @@ namespace TwoLadles.Stations
 
                         if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial)
                         {
-                            if (ShiftManager.Instance.tutorialStep == 6)
+                            if (ShiftManager.Instance.tutorialStep == 6 && placedId == "pork_portioned")
                                 ShiftManager.Instance.AdvanceTutorialStep(7);
                             else if (ShiftManager.Instance.tutorialStep <= 4 && placedId == "tteokbokki_raw")
                                 ShiftManager.Instance.AdvanceTutorialStep(5);

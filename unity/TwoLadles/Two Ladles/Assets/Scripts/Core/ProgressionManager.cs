@@ -76,7 +76,10 @@ namespace TwoLadles.Core
         public Dictionary<string, UpgradeItem> catalogUpgrades = new Dictionary<string, UpgradeItem>();
         private HashSet<string> claimedRewardTokens = new HashSet<string>();
 
-        private string saveFilePath;
+        /// <summary>Test runs set this so the player's real save file is never overwritten.</summary>
+        public static bool suppressDiskSave;
+        private string _saveFilePath;
+        private string saveFilePath { get => suppressDiskSave ? Path.Combine(Application.temporaryCachePath, "progression_test.json") : _saveFilePath; set => _saveFilePath = value; }
 
         private void Awake()
         {
@@ -188,34 +191,6 @@ namespace TwoLadles.Core
                 value = 3.0f
             };
 
-            catalogUpgrades["high_pressure_sink"] = new UpgradeItem
-            {
-                id = "high_pressure_sink",
-                category = "Interaction Speed",
-                displayName = "High-Pressure Rinse Sprayer",
-                cost = 150,
-                description = "Cleans dirty plates in 3 scrubs instead of 4.",
-                level = 0,
-                maxLevel = 1,
-                purchased = false,
-                effectType = "wash_speed",
-                value = 0.75f
-            };
-
-            catalogUpgrades["extra_plate_stack"] = new UpgradeItem
-            {
-                id = "extra_plate_stack",
-                category = "Station Efficiency",
-                displayName = "Porcelain Dish Rack Expansion",
-                cost = 200,
-                description = "Starts every level with 6 Clean Vessels instead of 4.",
-                level = 0,
-                maxLevel = 1,
-                purchased = false,
-                effectType = "extra_plates",
-                value = 2.0f
-            };
-
             catalogUpgrades["insulated_broth_pot"] = new UpgradeItem
             {
                 id = "insulated_broth_pot",
@@ -308,6 +283,7 @@ namespace TwoLadles.Core
                 tierUpgraded = true;
             }
 
+            if (tierUpgraded) UpdateLiveChefsTiers();
             SaveProgression();
             OnProgressionUpdated?.Invoke();
             return (true, earnedGold, newlyUnlocked, tierUpgraded);
@@ -350,6 +326,7 @@ namespace TwoLadles.Core
                 tierUpgraded = true;
             }
 
+            if (tierUpgraded) UpdateLiveChefsTiers();
             SaveProgression();
             OnProgressionUpdated?.Invoke();
 
@@ -515,7 +492,7 @@ namespace TwoLadles.Core
                 File.WriteAllText(saveFilePath, json);
 
                 // Cache backup via SaveSystem
-                TwoLadles.IO.SaveSystem.Save(new TwoLadles.IO.SaveData
+                if (!suppressDiskSave) TwoLadles.IO.SaveSystem.Save(new TwoLadles.IO.SaveData
                 {
                     gold = coins,
                     campaignStage = highestUnlockedStage,

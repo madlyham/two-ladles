@@ -453,10 +453,9 @@ namespace TwoLadles.UI
             dirtyPlatesText.gameObject.SetActive(false);
             scoreText = CreateLabel("ScoreText", topBar.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(616f, 0f), new Vector2(120f, 28f), "0 pts", 13, Color.yellow, TextAnchor.MiddleLeft);
 
-            // D) Top-Right Utility Buttons: Recipes [R], Touch UI, Switch Chef [C], Pause (BGM toggle lives in Pause > Settings)
+            // D) Top-Right Utility Buttons: Recipes [R], Touch UI, Pause (BGM toggle lives in Pause > Settings)
             returnToLobbyButton = CreateButton("ReturnToLobbyBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(PAUSE_BUTTON_X, 0f), new Vector2(84f, 28f), PAUSE_LABEL, new Color(1.0f, 0.82f, 0.10f, 1f), out var pauseBtnText, 13);
             if (pauseBtnText != null) { pauseBtnText.color = new Color(0.08f, 0.08f, 0.10f, 1f); pauseBtnText.fontStyle = FontStyle.Bold; }
-            switchChefButton = CreateButton("SwitchChefBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-164f, 0f), new Vector2(115f, 26f), "LINH [C]", new Color(0.18f, 0.42f, 0.65f, 0.95f), out switchChefButtonText, 11);
             recipeBookButton = CreateButton("RecipeBookBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-285f, 0f), new Vector2(100f, 26f), "Recipes [R]", new Color(0.65f, 0.42f, 0.14f, 0.95f), out _, 11);
             touchControlsToggleButton = CreateButton("TouchToggleBtn", topBar.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-391f, 0f), new Vector2(72f, 26f), "Joypad", new Color(0.24f, 0.36f, 0.48f, 0.95f), out _, 11);
 
@@ -1259,15 +1258,6 @@ namespace TwoLadles.UI
                 LocalizationManager.Instance.OnLanguageChanged += RefreshLocalizedHUD;
             }
             RefreshLocalizedHUD();
-
-            if (switchChefButton != null)
-            {
-                switchChefButton.onClick.AddListener(() =>
-                {
-                    if (KitchenController.Instance != null)
-                        KitchenController.Instance.SwitchLocalChef();
-                });
-            }
 
             if (recipeBookButton != null)
             {

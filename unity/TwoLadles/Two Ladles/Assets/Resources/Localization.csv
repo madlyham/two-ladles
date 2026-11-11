@@ -67,8 +67,8 @@ tutorial.step4_title,STEP 4: COOK TTEOKBOKKI,BƯỚC 4: NẤU TTEOKBOKKI,4단계
 tutorial.step4_desc,Press [E] with Gochujang at the Stove to combine & cook Tteokbokki!,Cầm Gochujang nhấn [E] ở bếp để kết hợp & nấu Tteokbokki!,가스레인지에서 고추장을 들고 [E]를 눌러 떡볶이를 조리하세요!
 tutorial.step5_title,STEP 5: PICK UP AT GREEN BAR,BƯỚC 5: NHẤC MÓN KHI THANH XANH,5단계: 게이지가 초록색일 때 픽업
 tutorial.step5_desc,Wait for the Stove bar to turn GREEN then press [E] to pick up!,Đợi thanh tiến độ bếp chuyển sang XANH rồi nhấn [E] để nhấc món!,게이지가 초록색이 되면 [E]를 눌러 완성된 요리를 집으세요!
-tutorial.step6_title,STEP 6: BOWL IT & SEND IT OUT!,BƯỚC 6: CHO VÀO TÔ & GIAO MÓN!,6단계: 그릇에 담아 내보내기!
-tutorial.step6_desc,Put Tteokbokki in a BOWL (unlimited - no washing) then press [E] at the Send-Out Window by the north door. Tip: use the Pass Counter for +15 Flow or throw with [Q] / right-click.,Cho Tteokbokki vào TÔ (không giới hạn - không cần rửa) rồi nhấn [E] tại Cửa Giao Món gần cửa bắc. Mẹo: dùng Quầy Chuyền để +15 Flow hoặc ném bằng [Q] / chuột phải.,떡볶이를 그릇에 담고 (무제한 - 설거지 없음) 북쪽 문 옆 배식구에서 [E]를 누르세요. 팁: 패스 카운터로 넘기면 +15 Flow / [Q] 또는 우클릭으로 던지기.
+tutorial.step6_title,STEP 6: SEND IT OUT!,BƯỚC 6: GIAO MÓN!,6단계: 내보내기!
+tutorial.step6_desc,Pick up the Tteokbokki and press [E] at the Send-Out Window by the north door. Tip: use the Pass Counter for +15 Flow or throw with [Q] / right-click.,Cầm Tteokbokki lên rồi nhấn [E] tại Cửa Giao Món gần cửa bắc. Mẹo: dùng Quầy Chuyền để +15 Flow hoặc ném bằng [Q] / chuột phải.,떡볶이를 들고 북쪽 문 옆 배식구에서 [E]를 누르세요. 팁: 패스 카운터로 넘기면 +15 Flow / [Q] 또는 우클릭으로 던지기.
 tutorial.complete_title,COMPLETE!,HOÀN THÀNH!,튜토리얼 완료!
 tutorial.complete_desc,You're ready! Park items on holding counters. At Jiwon Tier 2 press [H] to hire a Part-Timer (20 score). Open the pause menu (PAUSE) and leave to start Day 1!,Bạn đã sẵn sàng! Đặt đồ lên quầy giữ món. Khi Jiwon đạt Bậc 2 nhấn [H] để thuê Phụ Bếp (20 điểm). Mở menu tạm dừng (PAUSE) và rời trận để bắt đầu Ngày 1!,준비 완료! 보관대에 재료를 올려두세요. 지원 2단계부터 [H]로 알바생 고용 (20점). 일시정지 메뉴(PAUSE)에서 나가면 1일차가 시작됩니다!
 results.victory,DAY {0} COMPLETE!,HOÀN THÀNH NGÀY {0}!,DAY {0} 영업 완료!

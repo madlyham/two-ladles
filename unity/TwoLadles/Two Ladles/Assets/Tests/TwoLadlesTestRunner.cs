@@ -20,18 +20,18 @@ namespace TwoLadles.Tests
                 if (suite.testsFailed > 0)
                 {
                     Debug.LogError($"[TestRunner] TEST SUITE FAILED: {suite.testsFailed} failures, {suite.testsPassed} passed.");
-                    EditorApplication.Exit(1);
+                    if (Application.isBatchMode) EditorApplication.Exit(1);
                 }
                 else
                 {
                     Debug.Log($"[TestRunner] TEST SUITE SUCCEEDED: All {suite.testsPassed} assertions passed cleanly!");
-                    EditorApplication.Exit(0);
+                    if (Application.isBatchMode) EditorApplication.Exit(0);
                 }
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[TestRunner] UNHANDLED EXCEPTION IN TEST RUNNER: {ex.Message}\n{ex.StackTrace}");
-                EditorApplication.Exit(1);
+                if (Application.isBatchMode) EditorApplication.Exit(1);
             }
         }
 

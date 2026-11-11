@@ -7,7 +7,7 @@
 
 File: [`Assets/Tests/TwoLadlesTestSuite.cs`](../unity/TwoLadles/Two%20Ladles/Assets/Tests/TwoLadlesTestSuite.cs)
 
-### What it covers (20 suites, 388 assertions as of 2026-11-11)
+### What it covers (21 suites, 405 assertions as of 2026-11-11)
 1. Recipes & Cross-Prep Architecture
 2. Prep Station Rhythm Cadence (0.45 s sweet spot)
 3. Cooking State Machine & Phá»Ÿ Separation

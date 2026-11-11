@@ -2,6 +2,20 @@
 
 All notable changes to **Two Ladles** are documented in this file.
 
+## 2026-11-11 — v1.4.13: Final Polish
+
+- **Switch-chef removed** in every mode (C key and HUD `LINH [C]` button gone) — it let the player hijack the bot's chef.
+- **Bots handle burnt pans**: BURNT now counts as urgent (`BotController.IsPanUrgent`); bots empty the pan and trash `burnt_waste` instead of waiting forever.
+- **Stove filter**: stoves reject finished dishes, plates/bowls, burnt waste and items with no cooked form (`CookingStation.PlaceIngredient`).
+- **Tier unlocks apply live** after a day clear (`ProgressionManager.UpdateLiveChefsTiers` called on tier-up) — no restart needed for Linh's arm / Jiwon's part-timers.
+- **Daily reset**: prep chop bar cleared, part-timers dismissed and hire cooldowns reset between days.
+- **Day 5 waves**: 6 / 8 / 10 orders so waves 2–3 actually start; 0 dishes served is no longer a victory.
+- **Shop**: removed dead washing upgrades (High-Pressure Rinse Sprayer, Dish Rack Expansion).
+- **Tutorial step 6** text no longer asks for a bowl; only placing pork on a stove advances it.
+- **Icons**: burnt waste no longer looks like gochujang, plates no longer look like cooked rice; missing sprite lookups cached.
+- **Tests no longer overwrite the player's save file**; test runner only exits the Editor in batch mode.
+- Tests: Test21 Final Polish — 21 suites, 405 total.
+
 ## 2026-11-11 — v1.4.12: Solo Jiwon Moves, Tighter Stations, Lobby Text
 
 - **Play with bot as Jiwon: Jiwon moves now.** Solo start no longer secretly hosts a LAN room (which forced Linh as the local chef); a leftover empty room is closed when solo starts.

@@ -125,15 +125,6 @@ namespace TwoLadles.Player
                 ThrowItem(facingDirection);
             }
 
-            // Switch Chef: C key (solo testing / local practice / tutorial)
-            if (Input.GetKeyDown(KeyCode.C))
-            {
-                if (KitchenController.Instance != null && (NetworkManager.Instance == null || !NetworkManager.Instance.isLanActive || NetworkManager.Instance.players.Count <= 1))
-                {
-                    KitchenController.Instance.SwitchLocalChef();
-                }
-            }
-
             // Jiwon Part-Timer Crew Skill: H key
             if (Input.GetKeyDown(KeyCode.H))
             {
@@ -581,6 +572,7 @@ namespace TwoLadles.Player
         }
 
         private static System.Collections.Generic.Dictionary<string, Sprite> _itemSpriteCache = new System.Collections.Generic.Dictionary<string, Sprite>();
+        private static readonly System.Collections.Generic.HashSet<string> _missingSprites = new System.Collections.Generic.HashSet<string>();
 
         public static Sprite LoadItemSprite(string itemIdOrSpriteName)
         {
@@ -588,6 +580,7 @@ namespace TwoLadles.Player
             string sprName = ResolveItemSpriteName(itemIdOrSpriteName);
             if (_itemSpriteCache.TryGetValue(sprName, out Sprite cached) && cached != null)
                 return cached;
+            if (_missingSprites.Contains(sprName)) return null;
 
             Sprite spr = Resources.Load<Sprite>($"Sprites/Items/{sprName}");
             if (spr == null)
@@ -610,6 +603,8 @@ namespace TwoLadles.Player
             }
             if (spr != null)
                 _itemSpriteCache[sprName] = spr;
+            else
+                _missingSprites.Add(sprName);
             return spr;
         }
 
@@ -638,8 +633,8 @@ namespace TwoLadles.Player
                 case "banh_mi_thit": case "bulgogi_banh_mi": return "bulgogi_banh_mi";
                 case "noodles_raw": case "noodles_blanched": case "pho_bo": return "tteokbokki";
                 case "broth_hot": return "gochujang";
-                case "clean_plate": case "dish_plate": case "clean_bowl": case "dish_bowl": return "cooked_rice";
-                case "burnt_waste": return "gochujang";
+                case "clean_plate": case "dish_plate": case "clean_bowl": case "dish_bowl": return "dish_bowl";
+                case "burnt_waste": return "beef_raw";
                 default: return itemId;
             }
         }

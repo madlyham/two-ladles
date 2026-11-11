@@ -227,6 +227,7 @@ namespace TwoLadles.Core
         public float waveTransitionTimer = 0.0f;
 
         public int totalScore = 0;
+        public static readonly int[] Day5WaveOrders = { 6, 8, 10 };
         public int ordersServed = 0;
         public int ordersFailed = 0;
         public int handoffsCompleted = 0;
@@ -334,7 +335,7 @@ namespace TwoLadles.Core
                 // Day 5 is a 3-Minute (180s) Bulgogi Bánh Mì High-Score Finale!
                 if (currentStageId == 5 && shiftTimeRemaining <= 0.0f)
                 {
-                    EndShift("3-Minute Bulgogi Bánh Mì Rush Complete!", true);
+                    EndShift("3-Minute Bulgogi Bánh Mì Rush Complete!", ordersServed > 0);
                     return;
                 }
 
@@ -483,8 +484,8 @@ namespace TwoLadles.Core
                 case 7:
                 case 8:
                 case 9:
-                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step6_title") : "STEP 6: BOWL IT & SEND IT OUT!";
-                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step6_desc") : "Put Tteokbokki in a BOWL (bowls are unlimited - no washing) then press [E] at the Send-Out Window by the north door. Tip: hand food over on the Pass Counter for +15 Flow or throw it with [Q] / right-click.";
+                    tutorialStepTitle = lm != null ? lm.Get("tutorial.step6_title") : "STEP 6: SEND IT OUT!";
+                    tutorialStepInstruction = lm != null ? lm.Get("tutorial.step6_desc") : "Pick up the Tteokbokki and press [E] at the Send-Out Window by the north door. Tip: hand food over on the Pass Counter for +15 Flow or throw it with [Q] / right-click.";
                     break;
                 case 10:
                     tutorialStepTitle = lm != null ? lm.Get("tutorial.complete_title") : "COMPLETE!";
@@ -570,9 +571,9 @@ namespace TwoLadles.Core
                     duration = 180.0f;
                     currentLevelWaves = new List<WaveSpec>
                     {
-                        new WaveSpec(1, 99, 10.0f, 75.0f, 3, dayRecipes),
-                        new WaveSpec(2, 99, 8.5f, 70.0f, 4, dayRecipes),
-                        new WaveSpec(3, 99, 7.5f, 65.0f, 4, dayRecipes)
+                        new WaveSpec(1, Day5WaveOrders[0], 10.0f, 75.0f, 3, dayRecipes),
+                        new WaveSpec(2, Day5WaveOrders[1], 8.5f, 70.0f, 4, dayRecipes),
+                        new WaveSpec(3, Day5WaveOrders[2], 7.5f, 65.0f, 4, dayRecipes)
                     };
                 }
                 else

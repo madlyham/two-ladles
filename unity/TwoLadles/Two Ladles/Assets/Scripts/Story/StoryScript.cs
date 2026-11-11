@@ -57,7 +57,7 @@ namespace TwoLadles.Story
                 chat = new StoryLine[]
                 {
                     new StoryLine("linh", "You know, I used to be a programmer. Bugs all day, deadlines all night.", "Cậu biết không, trước đây tớ là lập trình viên. Cả ngày lỗi và deadline.", "있잖아, 나 예전엔 개발자였어. 하루 종일 버그 잡고 마감에 쫓겼지."),
-                    new StoryLine("jiwon", "I worked in corporate operations. My old boss acted like the world was ending if you didn't reply to an email.", "Tớ thì làm quản lý vận hành ở công ty. Sếp cũ của tớ nghĩ email nào ko rep cx cháy nhà :,).", "난 회사에서 운영 쪽 일을 했어. 전 직장 상사는 이메일 답장이 조금만 늦어도 세상이 끝나는 줄 알았지. :"),
+                    new StoryLine("jiwon", "I worked in corporate operations. My old boss acted like the world was ending if you didn't reply to an email.", "Tớ thì làm quản lý vận hành ở công ty. Sếp cũ của tớ nghĩ email nào ko rep cx cháy nhà :,).", "난 회사에서 운영 쪽 일을 했어. 전 직장 상사는 이메일 답장이 조금만 늦어도 세상이 끝나는 줄 알았지."),
                     new StoryLine("linh", "No wonder you ran off to this little restaurant.", "Bảo sao cậu lại trốn về đây.", "어쩐지 이 작은 식당으로 도망쳐 왔구나."),
                     new StoryLine("jiwon", "Ran off? I prefer \"strategic career change.\" ", "Trốn á? Tui thà gọi đó là \"chuyển hướng sự nghiệp có chiến lược\" hơn.", "도망이라니? 난 '전략적인 커리어 전환'이라고 부를래. "),
                     new StoryLine("jiwon", "We've been selling the same thing for a while. Think we should add something new?", "Êy mà tụi mình bán mãi một món rồi. Cậu nghĩ nên thêm món mới không?", "우리 계속 같은 메뉴만 팔았잖아. 이제 새 메뉴 하나 추가할까?"),

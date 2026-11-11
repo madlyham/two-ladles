@@ -400,36 +400,6 @@ namespace TwoLadles.Kitchen
             }
         }
 
-        public void SwitchLocalChef()
-        {
-            // Two-device LAN game: each device owns exactly one chef, never swap.
-            if (NetworkManager.Instance != null && NetworkManager.Instance.isLanActive && NetworkManager.Instance.players.Count > 1) return;
-            int currentLocal = NetworkManager.Instance != null ? NetworkManager.Instance.localPeerId : 1;
-            int nextLocal = (currentLocal == 1) ? 2 : 1;
-            if (NetworkManager.Instance != null)
-            {
-                NetworkManager.Instance.localPeerId = nextLocal;
-            }
-            foreach (var kvp in playersByPeer)
-            {
-                kvp.Value.isLocalPlayer = (kvp.Key == nextLocal);
-            }
-            UpdateLocalPrompt();
-            string chefName = (nextLocal == 1) 
-                ? (LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("char.linh") : "Chef Linh (West Zone)")
-                : (LocalizationManager.Instance != null ? LocalizationManager.Instance.Get("char.jiwon") : "Chef Jiwon (East Zone)");
-            string activeChefText = LocalizationManager.Instance != null 
-                ? LocalizationManager.Instance.Format("hud.active_chef", chefName)
-                : $"Active Chef: {chefName}";
-            TriggerStatusToast(activeChefText, new Color(0.35f, 0.9f, 1.0f));
-            OnChefSwitched?.Invoke(nextLocal);
-
-            if (ShiftManager.Instance != null && ShiftManager.Instance.isTutorial && ShiftManager.Instance.tutorialStep == 5 && nextLocal == 2)
-            {
-                ShiftManager.Instance.AdvanceTutorialStep(6);
-            }
-        }
-
         public void BuildEnvironment()
         {
             // 1. Camera (Expanded 2.5D Orthographic FOV shifted +2 tiles up to frame expanded kitchen & restaurant patio)
@@ -1650,7 +1620,7 @@ namespace TwoLadles.Kitchen
                     {
                         prep.heldItem = null;
                         prep.strikesCompleted = 0;
-                        prep.RefreshStationVisuals();
+                        prep.UpdateVisuals();
                     }
                     else if (st is PassCounter pass)
                     {
@@ -1668,6 +1638,10 @@ namespace TwoLadles.Kitchen
                     }
                 }
             }
+
+            // 1b. Dismiss part-timers so they don't keep working into the results screen / next day
+            if (activeWorkers != null) { foreach (var w in new List<PartTimeWorker>(activeWorkers.Values)) if (w != null) Destroy(w.gameObject); activeWorkers.Clear(); }
+            if (workerCooldowns != null) workerCooldowns.Clear();
 
             // 2. Clear Chef Hands and Reset Spawn Positions
             if (playersByPeer != null)

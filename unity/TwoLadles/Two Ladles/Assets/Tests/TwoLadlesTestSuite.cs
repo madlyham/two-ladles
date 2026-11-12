@@ -1684,9 +1684,12 @@ namespace TwoLadles.Tests
 
             // Select wheel: half size, Linh left / Jiwon right, bots wait 0.5s before picking
             Assert(Mathf.Approximately(QuickSelectWheelUI.BOT_WHEEL_DELAY, 0.5f), "Bots hold the select wheel open for 0.5s before picking");
-            Assert(Mathf.Approximately(QuickSelectWheelUI.WHEEL_SCALE, 0.5f), "Select wheel is drawn at half size");
+            Assert(Mathf.Approximately(QuickSelectWheelUI.WHEEL_SCALE, 0.75f), "Select wheel is drawn at 75% size");
             Assert(QuickSelectWheelUI.GetWheelAnchorX("linh") < 0.5f, "Linh's select wheel sits on the left side of the screen");
             Assert(QuickSelectWheelUI.GetWheelAnchorX("jiwon") > 0.5f, "Jiwon's select wheel sits on the right side of the screen");
+            Assert(QuickSelectWheelUI.GetWheelAnchorX("linh") > 0.18f, "Linh's select wheel sits closer to the screen centre than the old edge spot");
+            Assert(QuickSelectWheelUI.GetWheelAnchorX("jiwon") < 0.82f, "Jiwon's select wheel sits closer to the screen centre than the old edge spot");
+            Assert(Mathf.Approximately(QuickSelectWheelUI.GetWheelAnchorX("linh") + QuickSelectWheelUI.GetWheelAnchorX("jiwon"), 1f), "Both select wheels sit mirror-symmetric around the screen centre");
             Assert(QuickSelectWheelUI.SliceIndexFor(Vector2.zero, 2) == -1, "Mouse at wheel centre selects nothing");
             Assert(QuickSelectWheelUI.SliceIndexFor(new Vector2(100f, 0f), 2) == 0, "Mouse right of wheel centre picks the first item");
             Assert(QuickSelectWheelUI.SliceIndexFor(new Vector2(-100f, 0f), 2) == 1, "Mouse left of wheel centre picks the second item");

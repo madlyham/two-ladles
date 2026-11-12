@@ -93,12 +93,17 @@ namespace TwoLadles.UI
 
         /// <summary>Bots hold their wheel open this long before taking the item.</summary>
         public const float BOT_WHEEL_DELAY = 0.5f;
-        /// <summary>Wheel drawn at half size so it does not cover the kitchen.</summary>
-        public const float WHEEL_SCALE = 0.5f;
+        /// <summary>Wheel drawn at 75% size: readable, still leaves the kitchen visible.</summary>
+        public const float WHEEL_SCALE = 0.75f;
         private const float DEAD_ZONE = 36f;
 
-        /// <summary>Linh's wheel sits on the left of the screen, Jiwon's on the right.</summary>
-        public static float GetWheelAnchorX(string characterId) => characterId == "jiwon" ? 0.82f : 0.18f;
+        // Shared wheel layout (unscaled pixels) for player and bot wheels.
+        private const float WHEEL_SIZE = 420f;
+        private const float SLICE_RADIUS = 145f;
+        private const float SLICE_SIZE = 96f;
+
+        /// <summary>Linh's wheel sits left of centre, Jiwon's right of centre (mirror-symmetric).</summary>
+        public static float GetWheelAnchorX(string characterId) => characterId == "jiwon" ? 0.72f : 0.28f;
 
         /// <summary>Slice under a mouse offset from the wheel centre; -1 inside the dead zone.</summary>
         public static int SliceIndexFor(Vector2 offset, int count)
@@ -252,20 +257,20 @@ namespace TwoLadles.UI
             r.anchorMax = new Vector2(ax, 0.5f);
             r.pivot = new Vector2(0.5f, 0.5f);
             r.anchoredPosition = Vector2.zero;
-            r.sizeDelta = new Vector2(420f, 420f);
+            r.sizeDelta = new Vector2(WHEEL_SIZE, WHEEL_SIZE);
             go.transform.localScale = Vector3.one * WHEEL_SCALE;
 
-            MakeDisc(go.transform, "Backdrop", Vector2.zero, 420f, new Color(0.06f, 0.08f, 0.12f, 0.85f));
+            MakeDisc(go.transform, "Backdrop", Vector2.zero, WHEEL_SIZE, new Color(0.06f, 0.08f, 0.12f, 0.85f));
             int chosen = Array.FindIndex(catalog, x => x.itemId == itemId);
             float step = (2f * Mathf.PI) / catalog.Length;
             for (int i = 0; i < catalog.Length; i++)
             {
-                var pos = new Vector2(Mathf.Cos(i * step), Mathf.Sin(i * step)) * 142f;
+                var pos = new Vector2(Mathf.Cos(i * step), Mathf.Sin(i * step)) * SLICE_RADIUS;
                 var col = i == chosen ? new Color(0.95f, 0.75f, 0.2f, 0.90f) : new Color(0.18f, 0.22f, 0.28f, 0.78f);
-                var slice = MakeDisc(go.transform, "Slice_" + catalog[i].itemId, pos, 74f, col);
+                var slice = MakeDisc(go.transform, "Slice_" + catalog[i].itemId, pos, SLICE_SIZE, col);
                 var icon = new GameObject("Icon", typeof(RectTransform));
                 icon.transform.SetParent(slice.transform, false);
-                icon.GetComponent<RectTransform>().sizeDelta = new Vector2(44f, 44f);
+                icon.GetComponent<RectTransform>().sizeDelta = new Vector2(62f, 62f);
                 var img = icon.AddComponent<Image>();
                 img.raycastTarget = false;
                 var spr = PlayerController.LoadItemSprite(catalog[i].iconSpriteName);
@@ -408,11 +413,12 @@ namespace TwoLadles.UI
             wheelRoot = new GameObject("RadialWheelContainer");
             wheelRoot.transform.SetParent(root, false);
             wheelRect = wheelRoot.AddComponent<RectTransform>();
-            wheelRect.anchorMin = new Vector2(0.18f, 0.5f);
-            wheelRect.anchorMax = new Vector2(0.18f, 0.5f);
+            float defaultAx = GetWheelAnchorX("linh");
+            wheelRect.anchorMin = new Vector2(defaultAx, 0.5f);
+            wheelRect.anchorMax = new Vector2(defaultAx, 0.5f);
             wheelRect.pivot = new Vector2(0.5f, 0.5f);
             wheelRect.anchoredPosition = Vector2.zero;
-            wheelRect.sizeDelta = new Vector2(420f, 420f);
+            wheelRect.sizeDelta = new Vector2(WHEEL_SIZE, WHEEL_SIZE);
             wheelRect.localScale = Vector3.one * WHEEL_SCALE;
 
             // Dark radial backdrop circle
@@ -433,12 +439,13 @@ namespace TwoLadles.UI
             hdrRect.anchorMin = new Vector2(0.5f, 1f);
             hdrRect.anchorMax = new Vector2(0.5f, 1f);
             hdrRect.pivot = new Vector2(0.5f, 0.5f);
-            hdrRect.anchoredPosition = new Vector2(0f, 22f);
-            hdrRect.sizeDelta = new Vector2(420f, 28f);
+            hdrRect.anchoredPosition = new Vector2(0f, 26f);
+            hdrRect.sizeDelta = new Vector2(WHEEL_SIZE, 36f);
             storageHeaderText = hdrObj.AddComponent<Text>();
             storageHeaderText.font = KitchenHUD.GetDefaultFont();
             storageHeaderText.text = "FRIDGE STORAGE";
-            storageHeaderText.fontSize = 14;
+            storageHeaderText.fontSize = 22;
+            storageHeaderText.fontStyle = FontStyle.Bold;
             storageHeaderText.alignment = TextAnchor.MiddleCenter;
             storageHeaderText.color = new Color(1.0f, 0.88f, 0.25f);
 
@@ -450,7 +457,7 @@ namespace TwoLadles.UI
             hRect.anchorMax = new Vector2(0.5f, 0.5f);
             hRect.pivot = new Vector2(0.5f, 0.5f);
             hRect.anchoredPosition = Vector2.zero;
-            hRect.sizeDelta = new Vector2(114f, 114f);
+            hRect.sizeDelta = new Vector2(132f, 132f);
             var hImg = hubObj.AddComponent<Image>();
             hImg.sprite = KitchenHUD.GetCircleSprite();
             hImg.color = new Color(0.12f, 0.15f, 0.20f, 0.98f);
@@ -465,8 +472,8 @@ namespace TwoLadles.UI
             ciRect.anchorMin = new Vector2(0.5f, 0.5f);
             ciRect.anchorMax = new Vector2(0.5f, 0.5f);
             ciRect.pivot = new Vector2(0.5f, 0.5f);
-            ciRect.anchoredPosition = new Vector2(0f, 12f);
-            ciRect.sizeDelta = new Vector2(48f, 48f);
+            ciRect.anchoredPosition = new Vector2(0f, 16f);
+            ciRect.sizeDelta = new Vector2(66f, 66f);
             centerIconImage = ciObj.AddComponent<Image>();
 
             // Center Label
@@ -481,7 +488,10 @@ namespace TwoLadles.UI
             centerTitleText = clObj.AddComponent<Text>();
             centerTitleText.font = KitchenHUD.GetDefaultFont();
             centerTitleText.text = "SELECT";
-            centerTitleText.fontSize = 11;
+            centerTitleText.fontSize = 17;
+            centerTitleText.resizeTextForBestFit = true;
+            centerTitleText.resizeTextMinSize = 10;
+            centerTitleText.resizeTextMaxSize = 17;
             centerTitleText.alignment = TextAnchor.MiddleCenter;
             centerTitleText.color = Color.white;
 
@@ -504,7 +514,7 @@ namespace TwoLadles.UI
 
             if (wheelRoot == null || currentCatalog == null) return;
 
-            float radius = 142f;
+            float radius = SLICE_RADIUS;
             float stepAngle = (2f * Mathf.PI) / currentCatalog.Length;
 
             for (int i = 0; i < currentCatalog.Length; i++)
@@ -522,7 +532,7 @@ namespace TwoLadles.UI
                 sRect.anchorMax = new Vector2(0.5f, 0.5f);
                 sRect.pivot = new Vector2(0.5f, 0.5f);
                 sRect.anchoredPosition = new Vector2(posX, posY);
-                sRect.sizeDelta = new Vector2(74f, 74f);
+                sRect.sizeDelta = new Vector2(SLICE_SIZE, SLICE_SIZE);
 
                 var sImg = sliceObj.AddComponent<Image>();
                 sImg.sprite = KitchenHUD.GetCircleSprite();
@@ -546,8 +556,8 @@ namespace TwoLadles.UI
                 iRect.anchorMin = new Vector2(0.5f, 0.5f);
                 iRect.anchorMax = new Vector2(0.5f, 0.5f);
                 iRect.pivot = new Vector2(0.5f, 0.5f);
-                iRect.anchoredPosition = new Vector2(0f, 8f);
-                iRect.sizeDelta = new Vector2(36f, 36f);
+                iRect.anchoredPosition = new Vector2(0f, 11f);
+                iRect.sizeDelta = new Vector2(54f, 54f);
                 var iImg = icoObj.AddComponent<Image>();
                 Sprite itemSpr = PlayerController.LoadItemSprite(item.iconSpriteName);
                 if (itemSpr != null) iImg.sprite = itemSpr;
@@ -564,7 +574,11 @@ namespace TwoLadles.UI
                 var lText = lblObj.AddComponent<Text>();
                 lText.font = KitchenHUD.GetDefaultFont();
                 lText.text = item.displayName.Split(' ')[0].ToUpper();
-                lText.fontSize = 10;
+                lText.fontSize = 16;
+                lText.fontStyle = FontStyle.Bold;
+                lText.resizeTextForBestFit = true;
+                lText.resizeTextMinSize = 10;
+                lText.resizeTextMaxSize = 16;
                 lText.alignment = TextAnchor.MiddleCenter;
                 lText.color = item.itemColor;
             }
